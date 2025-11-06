@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "124181390861",
+    "project_id": "snookerstats-4fb93",
+    "storage_bucket": "snookerstats-4fb93.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:124181390861:android:2e0c024896a8045d665744",
+        "android_client_info": {
+          "package_name": "com.example.snookerstats"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMvCKLvcligki-uojY9cfsr26sneSDj_c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

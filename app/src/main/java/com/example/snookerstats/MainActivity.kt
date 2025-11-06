@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
                             RegistrationSuccessScreen(navController = navController)
                         }
                         composable("main") {
-                            MainScreen()
+                            MainScreen(navController = navController) // Poprawka: przekazanie navController
                         }
                     }
                 }

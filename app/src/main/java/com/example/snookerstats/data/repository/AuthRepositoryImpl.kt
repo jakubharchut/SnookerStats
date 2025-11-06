@@ -20,7 +20,7 @@ class AuthRepositoryImpl @Inject constructor(
 
             user.sendEmailVerification().await()
 
-            val userDocument = User(uid = user.uid, email = email, username = "") // Nazwa użytkownika jest pusta przy rejestracji
+            val userDocument = User(uid = user.uid, email = email, username = "")
             firestore.collection("users").document(user.uid).set(userDocument).await()
 
             Response.Success(true)

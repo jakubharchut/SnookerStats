@@ -8,9 +8,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 @Composable
-fun DashboardScreen() {
+fun HomeScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "Dashboard Screen")
+        Text(text = "Ekran Główny")
     }
 }
 
@@ -22,12 +22,27 @@ fun PlayScreen() {
 }
 
 @Composable
+fun MatchHistoryScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text = "Match History Screen")
+    }
+}
+
+@Composable
+fun StatsScreen() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text = "Stats Screen")
+    }
+}
+
+@Composable
 fun CommunityScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(text = "Community Screen")
     }
 }
 
+// Te ekrany nie są już w dolnym menu, ale zostają na przyszłość
 @Composable
 fun TournamentsScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

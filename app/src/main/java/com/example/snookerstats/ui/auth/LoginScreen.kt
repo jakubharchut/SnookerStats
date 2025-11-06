@@ -38,17 +38,17 @@ fun LoginScreen(
     val authState by viewModel.authState.collectAsState()
     val focusManager = LocalFocusManager.current
 
-    // Nasłuchiwanie na jednorazowe zdarzenia nawigacyjne
+    val loginAction = {
+        focusManager.clearFocus()
+        viewModel.loginUser(email, password)
+    }
+
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collectLatest { event ->
-            when (event) {
-                is NavigationEvent.NavigateToMain -> {
-                    navController.navigate("main") {
-                        // Usuń ekran logowania z backstack, aby użytkownik nie mógł do niego wrócić
-                        popUpTo("login") { inclusive = true }
-                    }
+            if (event is NavigationEvent.NavigateToMain) {
+                navController.navigate("main") {
+                    popUpTo("login") { inclusive = true }
                 }
-                else -> {}
             }
         }
     }
@@ -88,19 +88,13 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    focusManager.clearFocus()
-                    viewModel.loginUser(email, password)
-                })
+                keyboardActions = KeyboardActions(onDone = { loginAction() })
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
-                onClick = { 
-                    focusManager.clearFocus()
-                    viewModel.loginUser(email, password) 
-                },
+                onClick = { loginAction() },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authState !is AuthState.Loading
             ) {

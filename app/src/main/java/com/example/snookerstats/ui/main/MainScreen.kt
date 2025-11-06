@@ -1,10 +1,13 @@
 package com.example.snookerstats.ui.main
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -21,21 +24,48 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.ui.screens.CommunityScreen
-import com.example.snookerstats.ui.screens.DashboardScreen
+import com.example.snookerstats.ui.screens.HomeScreen
+import com.example.snookerstats.ui.screens.MatchHistoryScreen
 import com.example.snookerstats.ui.screens.PlayScreen
 import com.example.snookerstats.ui.screens.ProfileScreen
-import com.example.snookerstats.ui.screens.TournamentsScreen
+import com.example.snookerstats.ui.screens.StatsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
-    val navController = rememberNavController()
+fun MainScreen(
+    navController: NavController
+) {
+    val internalNavController = rememberNavController()
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Snooker Stats") }) },
-        bottomBar = { BottomNavigationBar(navController = navController) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Snooker Stats") },
+                actions = {
+                    IconButton(onClick = { internalNavController.navigate(BottomNavItem.Profile.route) }) {
+                        Icon(
+                            imageVector = Icons.Filled.AccountCircle,
+                            contentDescription = "Profil"
+                        )
+                    }
+                    IconButton(onClick = { 
+                        // TODO: Implementacja logiki wylogowania - nawigacja do ekranu logowania
+                        navController.navigate("login") { 
+                            popUpTo("login") { inclusive = true }
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = "Wyloguj"
+                        )
+                    }
+                }
+            )
+        },
+        bottomBar = { BottomNavigationBar(navController = internalNavController) }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            NavigationGraph(navController = navController)
+            NavigationGraph(navController = internalNavController)
         }
     }
 }
@@ -43,11 +73,11 @@ fun MainScreen() {
 @Composable
 fun BottomNavigationBar(navController: NavController) {
     val items = listOf(
-        BottomNavItem.Dashboard,
+        BottomNavItem.Home,
         BottomNavItem.Play,
-        BottomNavItem.Community,
-        BottomNavItem.Tournaments,
-        BottomNavItem.Profile
+        BottomNavItem.MatchHistory,
+        BottomNavItem.Stats,
+        BottomNavItem.Community
     )
     NavigationBar {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -60,18 +90,10 @@ fun BottomNavigationBar(navController: NavController) {
                 selected = currentRoute == item.route,
                 onClick = {
                     navController.navigate(item.route) {
-                        // Pop up to the start destination of the graph to
-                        // avoid building up a large stack of destinations
-                        // on the back stack as users select items
                         navController.graph.startDestinationRoute?.let { route ->
-                            popUpTo(route) {
-                                saveState = true
-                            }
+                            popUpTo(route) { saveState = true }
                         }
-                        // Avoid multiple copies of the same destination when
-                        // reselecting the same item
                         launchSingleTop = true
-                        // Restore state when reselecting a previously selected item
                         restoreState = true
                     }
                 }
@@ -82,21 +104,12 @@ fun BottomNavigationBar(navController: NavController) {
 
 @Composable
 fun NavigationGraph(navController: NavHostController) {
-    NavHost(navController, startDestination = BottomNavItem.Dashboard.route) {
-        composable(BottomNavItem.Dashboard.route) {
-            DashboardScreen()
-        }
-        composable(BottomNavItem.Play.route) {
-            PlayScreen()
-        }
-        composable(BottomNavItem.Community.route) {
-            CommunityScreen()
-        }
-        composable(BottomNavItem.Tournaments.route) {
-            TournamentsScreen()
-        }
-        composable(BottomNavItem.Profile.route) {
-            ProfileScreen()
-        }
+    NavHost(navController, startDestination = BottomNavItem.Home.route) {
+        composable(BottomNavItem.Home.route) { HomeScreen() }
+        composable(BottomNavItem.Play.route) { PlayScreen() }
+        composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen() }
+        composable(BottomNavItem.Stats.route) { StatsScreen() }
+        composable(BottomNavItem.Community.route) { CommunityScreen() }
+        composable(BottomNavItem.Profile.route) { ProfileScreen() }
     }
 }

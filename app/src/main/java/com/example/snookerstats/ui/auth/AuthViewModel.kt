@@ -30,7 +30,7 @@ sealed class NavigationEvent {
 class AuthViewModel @Inject constructor(
     private val repo: AuthRepository,
     private val validateRegisterInput: ValidateRegisterInputUseCase,
-    private val firebaseAuth: FirebaseAuth // Potrzebne do sprawdzenia weryfikacji
+    private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
@@ -48,7 +48,6 @@ class AuthViewModel @Inject constructor(
             }
 
             _authState.value = AuthState.Loading
-            // Poprawione wywołanie - bez username
             when(val repoResponse = repo.registerUser(email.trim(), password.trim())) {
                 is Response.Success -> _navigationEvent.emit(NavigationEvent.NavigateToRegistrationSuccess)
                 is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(repoResponse.message))

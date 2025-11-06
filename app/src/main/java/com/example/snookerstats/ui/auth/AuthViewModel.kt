@@ -66,12 +66,37 @@ class AuthViewModel @Inject constructor(
             }
     }
 
+    fun loginUser(email: String, password: String) {
+        // Walidacja
+        if (email.isBlank() || password.isBlank()) {
+            _authState.value = AuthState.Error("Wszystkie pola muszą być wypełnione.")
+            return
+        }
+
+        // Proces Logowania
+        _authState.value = AuthState.Loading
+        firebaseAuth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Logowanie pomyślne
+                    // TODO: Sprawdzić, czy e-mail jest zweryfikowany
+                    _authState.value = AuthState.Success("Zalogowano pomyślnie!")
+                } else {
+                    // Błąd logowania
+                    val errorMessage = task.exception?.message ?: "Wystąpił nieznany błąd."
+                    _authState.value = AuthState.Error(mapFirebaseError(errorMessage))
+                }
+            }
+    }
+
     // Funkcja do mapowania błędów Firebase na bardziej przyjazne komunikaty
     private fun mapFirebaseError(errorCode: String): String {
         return when {
             errorCode.contains("EMAIL_EXISTS") || errorCode.contains("email-already-in-use") -> "Ten adres e-mail jest już zajęty."
             errorCode.contains("NETWORK_ERROR") -> "Błąd sieci. Sprawdź połączenie z internetem."
-            else -> "Błąd rejestracji: $errorCode"
+            errorCode.contains("INVALID_CREDENTIAL") || errorCode.contains("wrong-password") -> "Nieprawidłowy e-mail lub hasło."
+            errorCode.contains("user-not-found") -> "Nie znaleziono użytkownika o podanym adresie e-mail."
+            else -> "Błąd: $errorCode"
         }
     }
 }

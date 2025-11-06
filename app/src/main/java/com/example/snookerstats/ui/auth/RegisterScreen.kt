@@ -36,76 +36,76 @@ fun RegisterScreen(
 
     val authState by viewModel.authState.collectAsState()
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(16.dp)
     ) {
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Nazwa użytkownika") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Hasło") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(
-            value = confirmPassword,
-            onValueChange = { confirmPassword = it },
-            label = { Text("Potwierdź hasło") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Checkbox(
-                checked = termsAccepted,
-                onCheckedChange = { termsAccepted = it }
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Nazwa użytkownika") },
+                modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Akceptuję regulamin") // TODO: Make clickable and link to terms
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = { viewModel.registerUser(email, password, confirmPassword) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = termsAccepted && authState !is AuthState.Loading
-        ) {
-            if (authState is AuthState.Loading) {
-                CircularProgressIndicator(color = Color.White)
-            } else {
-                Text("Zarejestruj się")
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Hasło") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                label = { Text("Potwierdź hasło") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Checkbox(
+                    checked = termsAccepted,
+                    onCheckedChange = { termsAccepted = it }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Akceptuję regulamin") // TODO: Make clickable and link to terms
+            }
+
+            Button(
+                onClick = { viewModel.registerUser(email, password, confirmPassword) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = termsAccepted && authState !is AuthState.Loading
+            ) {
+                if (authState is AuthState.Loading) {
+                    CircularProgressIndicator(color = Color.White)
+                } else {
+                    Text("Zarejestruj się")
+                }
+            }
+
+            when (val state = authState) {
+                is AuthState.Success -> Text(state.message, color = Color.Green)
+                is AuthState.Error -> Text(state.message, color = Color.Red)
+                else -> {}
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
 
-        // Wyświetlanie komunikatów o błędach lub sukcesie
-        when (val state = authState) {
-            is AuthState.Success -> Text(state.message, color = Color.Green)
-            is AuthState.Error -> Text(state.message, color = Color.Red)
-            else -> {}
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        TextButton(onClick = { navController.navigate("login") }) {
+        TextButton(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            onClick = { navController.navigate("login") }
+        ) {
             Text("Masz już konto? Zaloguj się")
         }
     }

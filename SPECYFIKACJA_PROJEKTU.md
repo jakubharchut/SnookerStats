@@ -31,6 +31,7 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 ## 3. Kluczowe Funkcjonalności
 
 ### 3.1. Zarządzanie Profilem i Społeczność
+*   **Stopniowe Wdrażanie (Progressive Onboarding):** Po pierwszej, uproszczonej rejestracji (tylko e-mail i hasło), użytkownik będzie zachęcany do uzupełnienia swojego profilu (nazwa użytkownika, imię, klub) w dedykowanej sekcji ustawień.
 *   **Profile Graczy:**
     *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny**.
     *   Profil publiczny działa jak "wizytówka gracza", pokazując jego imię, zdjęcie, przynależność klubową, zdobyte trofea i odznaki oraz kluczowe statystyki.
@@ -116,10 +117,10 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 - [x] Zbudowanie UI dla ekranów Logowania i Rejestracji.
 - [x] Stworzenie podstawowej nawigacji między ekranami autentykacji.
 - [x] Stworzenie `AuthViewModel` do obsługi logiki.
-- [ ] Podłączenie logiki do Firebase Authentication (Rejestracja i Logowanie).
-- [ ] Implementacja wysyłania e-maila weryfikacyjnego.
-- [ ] Zablokowanie dostępu dla niezweryfikowanych użytkowników.
-- [ ] Stworzenie nawigacji po zalogowaniu (przekierowanie).
+- [x] Podłączenie logiki do Firebase Authentication (Rejestracja i Logowanie).
+- [x] Implementacja wysyłania e-maila weryfikacyjnego.
+- [x] Zablokowanie dostępu dla niezweryfikowanych użytkowników.
+- [x] Stworzenie nawigacji po zalogowaniu (przekierowanie).
 
 ### Etap 3: Szkielet UI i Nawigacja Główna
 - [ ] Implementacja głównego ekranu z `Scaffold`.
@@ -143,12 +144,37 @@ Logika rejestracji jest w pełni zamknięta w `AuthViewModel` i przebiega wedłu
     *   Jeśli walidacja nie powiedzie się, `ViewModel` wystawi odpowiedni stan błędu (np. `State.Error("Hasła nie są zgodne")`), który UI będzie mogło wyświetlić użytkownikowi.
 3.  **Proces Rejestracji:**
     *   Jeśli walidacja przejdzie pomyślnie, `ViewModel` wystawia stan `State.Loading`, aby UI mogło pokazać wskaźnik postępu (np. kółko).
-    *   Wywoływana jest funkcja `firebaseAuth.createUserWithEmailAndPassword(email, password)`.
+    *   Wywoływana jest funkcja `repo.registerUser(...)`.
 4.  **Obsługa Wyniku:**
     *   **Sukces:**
-        *   Jeśli zadanie `createUser...` zakończy się sukcesem, natychmiast wywoływana jest funkcja `sendEmailVerification()` na nowo utworzonym użytkowniku.
-        *   Po wysłaniu e-maila, `ViewModel` wystawia stan `State.Success("Rejestracja pomyślna! Sprawdź e-mail, aby zweryfikować konto.")`.
+        *   Repozytorium tworzy użytkownika w Auth, wysyła e-mail weryfikacyjny i tworzy dokument w Firestore z pustym polem `username`.
+        *   Po pomyślnym zakończeniu operacji w repozytorium, `ViewModel` emituje jednorazowe zdarzenie `NavigationEvent.NavigateToRegistrationSuccess`.
     *   **Błąd:**
-        *   Jeśli zadanie się nie powiedzie (np. e-mail już istnieje, brak połączenia z internetem), `ViewModel` przechwytuje wyjątek z Firebase, mapuje go na zrozumiały komunikat (np. "Ten adres e-mail jest już zajęty.") i wystawia stan `State.Error`.
+        *   Jeśli jakakolwiek operacja się nie powiedzie, `ViewModel` wystawia stan `State.Error` z odpowiednim komunikatem.
 5.  **Komunikacja z UI:**
-    *   Interfejs (`RegisterScreen`) obserwuje stan (`State`) wystawiany przez `ViewModel` i reaguje na bieżąco, pokazując komunikaty o błędach, sukcesie lub wskaźnik ładowania.
+    *   `RegisterScreen` obserwuje stan (`State`) i reaguje na błędy lub stan ładowania.
+    *   Nasłuchuje również na zdarzenia `NavigationEvent` i po otrzymaniu `NavigateToRegistrationSuccess`, nawiguje do nowego ekranu `RegistrationSuccessScreen`.
+
+### 7.2. Przepływ Logowania Użytkownika (`AuthViewModel`)
+Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według następujących kroków:
+
+1.  **Inicjacja:**
+    *   `LoginScreen` wywołuje publiczną funkcję `loginUser(email, password)`.
+2.  **Walidacja Danych:**
+    *   Wewnątrz `ViewModelu`, przed wywołaniem Firebase, przeprowadzana jest walidacja:
+        *   Sprawdzenie, czy żadne z pól `email` i `password` nie jest puste.
+    *   Jeśli walidacja nie powiedzie się, `ViewModel` wystawi odpowiedni stan błędu (np. `State.Error("Wszystkie pola muszą być wypełnione.")`), który UI będzie mogło wyświetlić użytkownikowi.
+3.  **Proces Logowania:**
+    *   Jeśli walidacja przejdzie pomyślnie, `ViewModel` wystawia stan `State.Loading`, aby UI mogło pokazać wskaźnik postępu (np. kółko).
+    *   Wywoływana jest funkcja `repo.loginUser(...)`.
+4.  **Obsługa Wyniku:**
+    *   **Sukces:**
+        *   Jeśli zadanie `signIn...` zakończy się sukcesem, `ViewModel` sprawdza, czy `firebaseAuth.currentUser?.isEmailVerified` jest `true`.
+        *   Jeśli e-mail jest zweryfikowany, `ViewModel` emituje jednorazowe zdarzenie `NavigationEvent.NavigateToMain`.
+        *   Jeśli e-mail nie jest zweryfikowany, `ViewModel` wystawia stan błędu `State.Error("Konto nie zostało zweryfikowane. Sprawdź e-mail.")`.
+    *   **Błąd:**
+        *   Jeśli zadanie się nie powiedzie (np. nieprawidłowe dane logowania, użytkownik nie istnieje, błąd sieci), `ViewModel` przechwytuje wyjątek z Firebase, mapuje go na zrozumiały komunikat (np. "Nieprawidłowy e-mail lub hasło.") i wystawia stan `State.Error`.
+5.  **Komunikacja z UI:**
+    *   Interfejs (`LoginScreen`) obserwuje stan (`State`) wystawiany przez `ViewModel` i reaguje na bieżąco, pokazując komunikaty o błędach, sukcesie lub wskaźnik ładowania.
+    *   Nasłuchuje również na jednorazowe zdarzenia `NavigationEvent` i wywołuje odpowiednią nawigację (`navController.navigate("main")`).
+

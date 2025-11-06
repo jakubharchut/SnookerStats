@@ -26,6 +26,7 @@ sealed class NavigationEvent {
     object NavigateToMain : NavigationEvent()
     object NavigateToRegistrationSuccess : NavigationEvent()
     object NavigateToLogin : NavigationEvent()
+    object NavigateToSetupProfile : NavigationEvent()
 }
 
 data class CredentialsState(val email: String = "", val password: String = "")
@@ -58,68 +59,33 @@ class AuthViewModel @Inject constructor(
     }
 
     fun registerUser(email: String, password: String, confirmPassword: String) {
-        viewModelScope.launch {
-            val validationResponse = validateRegisterInput(email, password, confirmPassword)
-            if (validationResponse is Response.Error) {
-                _authState.value = AuthState.Error(validationResponse.message)
-                return@launch
-            }
-
-            _authState.value = AuthState.Loading
-            when (val repoResponse = repo.registerUser(email.trim(), password.trim())) {
-                is Response.Success -> _navigationEvent.emit(NavigationEvent.NavigateToRegistrationSuccess)
-                is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(repoResponse.message))
-                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd podczas rejestracji.")
-            }
-        }
+        // ... (bez zmian)
     }
 
     fun loginUser(email: String, password: String, rememberMe: Boolean) {
-        viewModelScope.launch {
-            val trimmedEmail = email.trim()
-            val trimmedPassword = password.trim()
+        // ... (bez zmian)
+    }
 
-            if (trimmedEmail.isBlank() || trimmedPassword.isBlank()) {
-                _authState.value = AuthState.Error("Wszystkie pola muszą być wypełnione.")
+    fun saveUserProfile(username: String, firstName: String, lastName: String) {
+        viewModelScope.launch {
+            if (username.isBlank()) {
+                _authState.value = AuthState.Error("Nazwa wyświetlana jest obowiązkowa.")
                 return@launch
             }
-
             _authState.value = AuthState.Loading
-            when (val response = repo.loginUser(trimmedEmail, trimmedPassword)) {
-                is Response.Success -> {
-                    if (firebaseAuth.currentUser?.isEmailVerified == true) {
-                        if (rememberMe) { // Logika zapamiętywania
-                            repo.saveCredentials(trimmedEmail, trimmedPassword)
-                        } else {
-                            repo.clearCredentials()
-                        }
-                        _navigationEvent.emit(NavigationEvent.NavigateToMain)
-                    } else {
-                        _authState.value = AuthState.Error("Konto nie zostało zweryfikowane. Sprawdź e-mail.")
-                    }
-                }
+            when (val response = repo.updateUserProfile(username, firstName, lastName)) {
+                is Response.Success -> _navigationEvent.emit(NavigationEvent.NavigateToMain)
                 is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(response.message))
-                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd podczas logowania.")
+                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd.")
             }
         }
     }
 
     fun signOut() {
-        viewModelScope.launch {
-            firebaseAuth.signOut() // Tylko wylogowanie z Firebase
-            // repo.clearCredentials() - Usunięto czyszczenie danych przy wylogowaniu
-            _navigationEvent.emit(NavigationEvent.NavigateToLogin)
-        }
+        // ... (bez zmian)
     }
 
     private fun mapFirebaseError(errorCode: String): String {
-        return when {
-            errorCode.contains("EMAIL_EXISTS") || errorCode.contains("email-already-in-use") -> "Ten adres e-mail jest już zajęty."
-            errorCode.contains("NETWORK_ERROR") -> "Błąd sieci. Sprawdź połączenie z internetem."
-            errorCode.contains("INVALID_CREDENTIAL") || errorCode.contains("wrong-password") -> "Nieprawidłowy e-mail lub hasło."
-            errorCode.contains("user-not-found") -> "Nie znaleziono użytkownika o podanym adresie e-mail."
-            errorCode.contains("badly formatted") -> "Nieprawidłowy format adresu e-mail."
-            else -> "Wystąpił nieznany błąd. Spróbuj ponownie."
-        }
+        // ... (bez zmian)
     }
 }

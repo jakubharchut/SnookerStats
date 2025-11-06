@@ -9,6 +9,8 @@ interface CommunityRepository {
     suspend fun sendFriendRequest(toUserId: String): Response<Boolean>
     suspend fun acceptFriendRequest(fromUserId: String): Response<Boolean>
     suspend fun rejectFriendRequest(fromUserId: String): Response<Boolean>
-    fun getFriends(currentUserId: String): Flow<Response<List<User>>>
-    fun getReceivedFriendRequests(currentUserId: String): Flow<Response<List<User>>>
+    suspend fun cancelFriendRequest(toUserId: String): Response<Boolean>
+    fun getFriends(): Flow<Response<List<User>>>
+    fun getReceivedFriendRequests(): Flow<Response<List<User>>>
+    fun getSentFriendRequests(): Flow<Response<List<User>>>
 }

@@ -14,14 +14,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.snookerstats.ui.auth.AuthViewModel
+import com.example.snookerstats.ui.auth.NavigationEvent
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.ui.screens.CommunityScreen
 import com.example.snookerstats.ui.screens.HomeScreen
@@ -29,13 +33,25 @@ import com.example.snookerstats.ui.screens.MatchHistoryScreen
 import com.example.snookerstats.ui.screens.PlayScreen
 import com.example.snookerstats.ui.screens.ProfileScreen
 import com.example.snookerstats.ui.screens.StatsScreen
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    navController: NavController
+    navController: NavController,
+    authViewModel: AuthViewModel = hiltViewModel()
 ) {
     val internalNavController = rememberNavController()
+
+    LaunchedEffect(Unit) {
+        authViewModel.navigationEvent.collectLatest { event ->
+            if (event is NavigationEvent.NavigateToLogin) {
+                navController.navigate("login") {
+                    popUpTo("main") { inclusive = true }
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -49,10 +65,7 @@ fun MainScreen(
                         )
                     }
                     IconButton(onClick = { 
-                        // TODO: Implementacja logiki wylogowania - nawigacja do ekranu logowania
-                        navController.navigate("login") { 
-                            popUpTo("login") { inclusive = true }
-                        }
+                        authViewModel.signOut()
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -24,7 +25,10 @@ sealed class AuthState {
 sealed class NavigationEvent {
     object NavigateToMain : NavigationEvent()
     object NavigateToRegistrationSuccess : NavigationEvent()
+    object NavigateToLogin : NavigationEvent()
 }
+
+data class CredentialsState(val email: String = "", val password: String = "")
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -39,6 +43,20 @@ class AuthViewModel @Inject constructor(
     private val _navigationEvent = MutableSharedFlow<NavigationEvent>()
     val navigationEvent: SharedFlow<NavigationEvent> = _navigationEvent
 
+    private val _credentialsState = MutableStateFlow(CredentialsState())
+    val credentialsState: StateFlow<CredentialsState> = _credentialsState.asStateFlow()
+    
+    init {
+        loadCredentialsForPreFill()
+    }
+
+    private fun loadCredentialsForPreFill() {
+        val credentials = repo.getSavedCredentials()
+        if (credentials != null) {
+            _credentialsState.value = CredentialsState(email = credentials.first, password = credentials.second)
+        }
+    }
+
     fun registerUser(email: String, password: String, confirmPassword: String) {
         viewModelScope.launch {
             val validationResponse = validateRegisterInput(email, password, confirmPassword)
@@ -48,15 +66,15 @@ class AuthViewModel @Inject constructor(
             }
 
             _authState.value = AuthState.Loading
-            when(val repoResponse = repo.registerUser(email.trim(), password.trim())) {
+            when (val repoResponse = repo.registerUser(email.trim(), password.trim())) {
                 is Response.Success -> _navigationEvent.emit(NavigationEvent.NavigateToRegistrationSuccess)
                 is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(repoResponse.message))
-                else -> {}
+                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd podczas rejestracji.")
             }
         }
     }
 
-    fun loginUser(email: String, password: String) {
+    fun loginUser(email: String, password: String, rememberMe: Boolean) {
         viewModelScope.launch {
             val trimmedEmail = email.trim()
             val trimmedPassword = password.trim()
@@ -67,17 +85,30 @@ class AuthViewModel @Inject constructor(
             }
 
             _authState.value = AuthState.Loading
-            when(val response = repo.loginUser(trimmedEmail, trimmedPassword)) {
+            when (val response = repo.loginUser(trimmedEmail, trimmedPassword)) {
                 is Response.Success -> {
                     if (firebaseAuth.currentUser?.isEmailVerified == true) {
+                        if (rememberMe) { // Logika zapamiętywania
+                            repo.saveCredentials(trimmedEmail, trimmedPassword)
+                        } else {
+                            repo.clearCredentials()
+                        }
                         _navigationEvent.emit(NavigationEvent.NavigateToMain)
                     } else {
                         _authState.value = AuthState.Error("Konto nie zostało zweryfikowane. Sprawdź e-mail.")
                     }
                 }
                 is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(response.message))
-                else -> {}
+                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd podczas logowania.")
             }
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            firebaseAuth.signOut() // Tylko wylogowanie z Firebase
+            // repo.clearCredentials() - Usunięto czyszczenie danych przy wylogowaniu
+            _navigationEvent.emit(NavigationEvent.NavigateToLogin)
         }
     }
 

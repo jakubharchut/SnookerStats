@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,12 +20,9 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.example.snookerstats.ui.theme.SnookerStatsTheme
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -32,15 +30,28 @@ fun LoginScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val credentialsState by viewModel.credentialsState.collectAsState()
+    var email by remember { mutableStateOf(credentialsState.email) }
+    var password by remember { mutableStateOf(credentialsState.password) }
+    var rememberMe by remember { mutableStateOf(false) } // Dodano stan dla checkboxa
 
     val authState by viewModel.authState.collectAsState()
     val focusManager = LocalFocusManager.current
 
+    LaunchedEffect(credentialsState) {
+        if (credentialsState.email.isNotEmpty()) {
+            email = credentialsState.email
+        }
+        if (credentialsState.password.isNotEmpty()) {
+            password = credentialsState.password
+        }
+        // Po załadowaniu danych, domyślnie zaznacz checkbox, jeśli są dane
+        rememberMe = credentialsState.email.isNotEmpty() || credentialsState.password.isNotEmpty()
+    }
+
     val loginAction = {
         focusManager.clearFocus()
-        viewModel.loginUser(email, password)
+        viewModel.loginUser(email, password, rememberMe) // Przekazanie stanu checkboxa
     }
 
     LaunchedEffect(Unit) {
@@ -91,6 +102,17 @@ fun LoginScreen(
                 keyboardActions = KeyboardActions(onDone = { loginAction() })
             )
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = rememberMe,
+                    onCheckedChange = { rememberMe = it }
+                )
+                Text("Zapamiętaj mnie")
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
@@ -108,7 +130,7 @@ fun LoginScreen(
             when (val state = authState) {
                 is AuthState.Success -> Text(state.message, color = Color.Green)
                 is AuthState.Error -> Text(state.message, color = Color.Red)
-                else -> {}
+                else -> {} // Obsługa pozostałych stanów
             }
         }
 
@@ -118,13 +140,5 @@ fun LoginScreen(
         ) {
             Text("Nie masz konta? Zarejestruj się")
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun LoginScreenPreview() {
-    SnookerStatsTheme {
-        LoginScreen(navController = rememberNavController())
     }
 }

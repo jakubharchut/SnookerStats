@@ -1,5 +1,6 @@
 package com.example.snookerstats.data
 
+import com.example.snookerstats.data.local.preferences.EncryptedPrefsManager
 import com.example.snookerstats.data.repository.AuthRepositoryImpl
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
@@ -28,7 +29,11 @@ object FirebaseModule {
 
     @Provides
     @Singleton
-    fun provideAuthRepository(firebaseAuth: FirebaseAuth, firestore: FirebaseFirestore): AuthRepository {
-        return AuthRepositoryImpl(firebaseAuth, firestore)
+    fun provideAuthRepository(
+        firebaseAuth: FirebaseAuth, 
+        firestore: FirebaseFirestore, 
+        prefsManager: EncryptedPrefsManager
+    ): AuthRepository {
+        return AuthRepositoryImpl(firebaseAuth, firestore, prefsManager)
     }
 }

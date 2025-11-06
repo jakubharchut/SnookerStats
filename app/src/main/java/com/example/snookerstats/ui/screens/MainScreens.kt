@@ -35,12 +35,7 @@ fun StatsScreen() {
     }
 }
 
-@Composable
-fun CommunityScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "Community Screen")
-    }
-}
+// Usunięto zduplikowaną funkcję CommunityScreen()
 
 // Te ekrany nie są już w dolnym menu, ale zostają na przyszłość
 @Composable

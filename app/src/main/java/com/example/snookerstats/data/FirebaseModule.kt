@@ -2,7 +2,9 @@ package com.example.snookerstats.data
 
 import com.example.snookerstats.data.local.preferences.EncryptedPrefsManager
 import com.example.snookerstats.data.repository.AuthRepositoryImpl
+import com.example.snookerstats.data.repository.CommunityRepositoryImpl
 import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.CommunityRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Module
@@ -30,10 +32,19 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideAuthRepository(
-        firebaseAuth: FirebaseAuth, 
-        firestore: FirebaseFirestore, 
+        firebaseAuth: FirebaseAuth,
+        firestore: FirebaseFirestore,
         prefsManager: EncryptedPrefsManager
     ): AuthRepository {
         return AuthRepositoryImpl(firebaseAuth, firestore, prefsManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCommunityRepository(
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth // Dodano FirebaseAuth
+    ): CommunityRepository {
+        return CommunityRepositoryImpl(firestore, auth) // Przekazano FirebaseAuth
     }
 }

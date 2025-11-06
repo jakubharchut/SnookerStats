@@ -6,11 +6,14 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "users")
 data class User(
     @PrimaryKey val uid: String,
-    val username: String = "",
+    var username: String = "",
     val email: String = "",
-    val club: String? = null,
-    val profileImageUrl: String? = null,
+    var firstName: String? = null,
+    var lastName: String? = null,
+    var club: String? = null,
+    var profileImageUrl: String? = null,
     val friends: List<String> = emptyList(),
     val friendRequestsSent: List<String> = emptyList(),
-    val friendRequestsReceived: List<String> = emptyList()
+    val friendRequestsReceived: List<String> = emptyList(),
+    val isRealNameVisible: Boolean = false
 )

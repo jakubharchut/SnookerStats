@@ -16,14 +16,29 @@ class AuthRepositoryImpl @Inject constructor(
 ) : AuthRepository {
 
     override suspend fun registerUser(email: String, password: String): Response<Boolean> {
-        // ... (implementacja bez zmian)
-        return Response.Success(true)
+        return try {
+            val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+            val firebaseUser = result.user ?: return Response.Error("Failed to create user.")
+
+            firebaseUser.sendEmailVerification().await()
+
+            // Tworzenie obiektu User z pustym username
+            val user = User(
+                uid = firebaseUser.uid,
+                email = email,
+                username = "" // Username będzie ustawione przy pierwszym logowaniu
+            )
+            firestore.collection("users").document(firebaseUser.uid).set(user).await()
+
+            Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "An unknown error occurred.")
+        }
     }
 
     override suspend fun loginUser(email: String, password: String): Response<Boolean> {
         return try {
             firebaseAuth.signInWithEmailAndPassword(email, password).await()
-            // Usunięto automatyczne zapisywanie
             Response.Success(true)
         } catch (e: Exception) {
             Response.Error(e.message ?: "An unknown error occurred.")
@@ -50,6 +65,5 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signOut() {
         firebaseAuth.signOut()
-        // Usunięto automatyczne czyszczenie danych
     }
 }

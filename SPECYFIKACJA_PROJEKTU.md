@@ -18,14 +18,15 @@ Aplikacja będzie w pełni oparta o ekosystem Google Firebase, co zapewnia skalo
 *   **Uwierzytelnianie:** **Firebase Authentication** do zarządzania kontami użytkowników (rejestracja, logowanie przez e-mail/hasło, dostawców społecznościowych jak Google).
 *   **Weryfikacja E-mail:** Po rejestracji, na adres użytkownika automatycznie wysyłany jest link weryfikacyjny. Dostęp do pełnej funkcjonalności aplikacji będzie możliwy dopiero po potwierdzeniu adresu e-mail.
 *   **Akceptacja Regulaminu:** Proces rejestracji będzie wymagał od użytkownika aktywnego zaznaczenia zgody na regulamin serwisu. Przycisk rejestracji pozostanie nieaktywny do momentu wyrażenia zgody.
-*   **Zapamiętywanie Sesji Logowania:** Aplikacja oferuje opcję "Zapamiętaj mnie" (Checkbox w `LoginScreen`), która pozwala na zapisanie e-maila i hasła w bezpiecznym miejscu na urządzeniu (Encrypted SharedPreferences). Po zaznaczeniu tej opcji i udanym logowaniu, dane uwierzytelniające są zapisywane i automatycznie wypełniane przy kolejnych uruchomieniach aplikacji. Odznaczenie tej opcji usunie wcześniej zapisane dane. Wylogowanie użytkownika nie będzie usuwać zapisanych danych.
+*   **Zapamiętywanie Sesji Logowania:** Aplikacja oferuje opcję "Zapamiętaj mnie" (Checkbox w `LoginScreen`), która pozwala na zapisanie e-maila i hasła w bezpiecznym miejscu na urządzeniu (Encrypted SharedPreferences). Po zaznaczeniu tej opcji i udanym logowaniu, dane uwierzytelniające są zapisywane i automatycznie wypełniane przy kolejnych uruchomieniach aplikacji. Odznaczenie tej opcji usunie wcześniej zapisane dane. Wylogowanie użytkownika nie usuwa zapisanych danych.
 
 ### 2.2. Model Danych: "Online-First"
 Aplikacja jest projektowana z myślą o stałym dostępie do internetu. Wszystkie operacje zapisu i odczytu danych docelowo kierowane są do chmury, co zapewnia spójność danych na wszystkich urządzeniach użytkownika.
 
 ### 2.3. Wsparcie Offline: Lokalna Baza Danych Room
 Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cache)**, a nie głównego źródła danych.
-*   **Cel:** Zapewnienie błyskawicznego działania interfejsu (odczyt z lokalnej kopii), możliwość przeglądania danych bez połączenia z internetem oraz możliwość zapisania meczu w trybie offline, który zostanie automatycznie zsynchronizowany z Firebase po odzyskaniu połączenia.
+*   **Cel:** Zapewnienie błyskawicznego działania interfejsu (odczyt z lokalnej kopii), możliwość przeglądania danych bez połączenia z internetem oraz możliwość zapisania meczu w trybie offline.
+*   **Powrót do Gry:** Room będzie przechowywać stan bieżącego, niedokończonego meczu, aby użytkownik mógł do niego wrócić po przypadkowym zamknięciu aplikacji.
 
 ---
 
@@ -36,7 +37,7 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 *   **Profile Graczy:**
     *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny**.
     *   Profil publiczny działa jak "wizytówka gracza", pokazując jego imię, zdjęcie, przynależność klubową, zdobyte trofea i odznaki oraz kluczowe statystyki.
-*   **Wyszukiwarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
+*   **Wyszukiarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
 *   **System Sparing Partnerów ("Znajomych"):** Możliwość wysyłania zaproszeń do innych graczy, tworzenia listy znajomych i zarządzania nią.
 *   **Kluby:** Funkcjonalność tworzenia i dołączania do grup (klubów), które posiadają własne, wewnętrzne rankingi i statystyki.
 
@@ -46,6 +47,8 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
     2.  **Mecz Lokalny (Solo):** Możliwość samodzielnego wprowadzenia wyników meczu rozegranego offline.
 *   **Kategoryzacja Meczu:** Każdy mecz musi być oznaczony jako **Rankingowy** (liczony do oficjalnych statystyk) lub **Sparingowy** (towarzyski).
 *   **Współdzielona Historia:** Wynik meczu automatycznie pojawia się w historii obu graczy. Każdy z nich ma możliwość niezależnego usunięcia meczu ze swojego profilu.
+*   **Format Gry:** Przed rozpoczęciem meczu użytkownik będzie mógł wybrać liczbę czerwonych bil (15, 10, 6, 3).
+*   **Historia Uderzeń:** Aplikacja będzie zapisywać każde uderzenie w meczu (bila, czas, punkty), aby umożliwić szczegółową analizę i odtwarzanie przebiegu gry.
 
 ### 3.3. Moduł Turniejów
 *   **Tworzenie Turniejów:** Użytkownik (organizator) może stworzyć nowy turniej, definiując jego nazwę, format i datę.
@@ -128,10 +131,14 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 - [x] Implementacja `BottomNavigationBar`.
 - [x] Stworzenie pustych ekranów dla każdej sekcji.
 - [x] Implementacja nawigacji do ekranu profilu oraz akcji wylogowania w TopAppBar.
+- [x] Implementacja funkcji "Zapamiętaj mnie" (automatyczne wypełnianie formularza).
 
-### Etap 4: Modele Danych i Baza Lokalna
-- [ ] Stworzenie klas danych (`Match`, `Tournament`, etc.).
-- [ ] Konfiguracja bazy danych Room (Encje, DAO, Database).
+### Etap 4: Modele Danych i Baza Lokalna (W TOKU)
+- [ ] Zdefiniowanie modeli danych (`User`, `Match`, `Frame`, `Shot`).
+- [ ] Przekształcenie modeli w encje Room (`@Entity`).
+- [ ] Stworzenie DAO (`@Dao`) dla każdej encji.
+- [ ] Stworzenie głównej klasy bazy danych (`@Database`).
+- [ ] Integracja Room z Hilt.
 
 ### Etap 5: Rdzeń Aplikacji - Zapis Meczu Lokalnego
 - [ ] UI ekranu wprowadzania wyniku (shot-by-shot).
@@ -234,3 +241,49 @@ Etap 3 został w pełni zrealizowany. Wprowadzono następujące elementy:
 *   Dla każdej z głównych sekcji utworzono puste ekrany (`HomeScreen`, `PlayScreen`, `MatchHistoryScreen`, `StatsScreen`, `CommunityScreen`, `ProfileScreen`), które są wyświetlane po wybraniu odpowiedniej zakładki w dolnym pasku nawigacyjnym lub wywołaniu z `TopAppBar`.
 *   `TopAppBar` został zaimplementowany w `MainScreen.kt`. Zawiera statyczny tytuł "Snooker Stats", ikonę profilu (nawigującą do `ProfileScreen` za pomocą `internalNavController`) oraz ikonę wylogowania (nawigującą do ekranu `login` za pomocą `navController` z `MainActivity`, z opcją `popUpTo("login") { inclusive = true }` do czyszczenia stosu).
 *   W formularzu logowania (`LoginScreen.kt`) obsługa klawisza `Tab` w polu e-mail oraz klawisza `Enter` w polu hasła została zaimplementowana za pomocą modyfikatora `onKeyEvent`, zapewniając płynne i oczekiwane działanie.
+*   Zaimplementowano funkcję "Zapamiętaj mnie" (automatyczne wypełnianie formularza).
+
+### 7.4. Implementacja Etapu 4: Modele Danych i Baza Lokalna (W TOKU)
+
+**Cel:** Stworzenie kompletnych modeli danych dla aplikacji oraz skonfigurowanie lokalnej bazy danych Room do ich przechowywania. Modele te będą fundamentem dla funkcji zapisu meczy, statystyk, turniejów i profili użytkowników.
+
+**A. Definiowanie Modeli Danych**
+
+1.  **Klasa `User` (Użytkownik):**
+    *   **Zadanie:** Rozszerzyć istniejącą klasę `User` w `domain/model/User.kt`.
+    *   **Pola do dodania:** `username: String`, `club: String?`, `profileImageUrl: String?`. Pozostałe pola jak `trophies` czy `badges` zostaną dodane w przyszłości.
+
+2.  **Klasa `Shot` (Uderzenie):**
+    *   **Zadanie:** Stworzyć nową `data class Shot`.
+    *   **Pola:** `timestamp: Long`, `ball: String` (np. "RED", "BLUE"), `points: Int`, `isFoul: Boolean`.
+    *   **Lokalizacja:** `domain/model/Shot.kt`.
+
+3.  **Klasa `Frame` (Frejm):**
+    *   **Zadanie:** Stworzyć nową `data class Frame`.
+    *   **Pola:** `frameNumber: Int`, `player1Points: Int`, `player2Points: Int`, `shots: List<Shot>`.
+    *   **Lokalizacja:** `domain/model/Frame.kt`.
+
+4.  **Klasa `Match` (Mecz):**
+    *   **Zadanie:** Stworzyć nową `data class Match`.
+    *   **Pola:** `id: String` (unikalny identyfikator), `player1Id: String`, `player2Id: String?` (opcjonalny, np. dla treningu solo), `date: Long`, `matchType: String` (np. "RANKING", "SPARRING"), `numberOfReds: Int`, `status: String` (np. "IN_PROGRESS", "COMPLETED"), `frames: List<Frame>`.
+    *   **Lokalizacja:** `domain/model/Match.kt`.
+
+**B. Konfiguracja Bazy Danych Room**
+
+1.  **Encje (`@Entity`):**
+    *   **Zadanie:** Oznaczyć klasy `User`, `Match` i `Frame` jako encje Room. Będziemy musieli dodać adnotacje i, w przypadku list (`shots`, `frames`), stworzyć konwertery typów (Type Converters), aby Room wiedział, jak je zapisywać.
+    *   **Lokalizacja:** Pliki modeli danych zostaną zaktualizowane.
+
+2.  **DAO (Data Access Objects - `@Dao`):**
+    *   **Zadanie:** Stworzyć interfejsy z metodami do zarządzania danymi dla `User`, `Match`.
+    *   **Lokalizacja:**
+        *   `data/local/dao/UserDao.kt`
+        *   `data/local/dao/MatchDao.kt`
+
+3.  **Klasa Bazy Danych (`@Database`):**
+    *   **Zadanie:** Stworzyć główną klasę `SnookerStatsDatabase`, która połączy wszystkie nasze encje i DAO.
+    *   **Lokalizacja:** `data/local/SnookerStatsDatabase.kt`.
+
+4.  **Hilt Module dla Room:**
+    *   **Zadanie:** Stworzyć `DatabaseModule.kt` w pakiecie `di`, aby Hilt mógł dostarczać instancje bazy danych i DAO.
+    *   **Lokalizacja:** `di/DatabaseModule.kt`.

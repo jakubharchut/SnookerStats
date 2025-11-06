@@ -127,6 +127,49 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 - [ ] Implementacja `BottomNavigationBar`.
 - [ ] Stworzenie pustych ekranów dla każdej sekcji.
 
+### Etap 4: Modele Danych i Baza Lokalna
+- [ ] Stworzenie klas danych (`Match`, `Tournament`, etc.).
+- [ ] Konfiguracja bazy danych Room (Encje, DAO, Database).
+
+### Etap 5: Rdzeń Aplikacji - Zapis Meczu Lokalnego
+- [ ] UI ekranu wprowadzania wyniku (shot-by-shot).
+- [ ] ViewModel zarządzający stanem meczu.
+- [ ] Logika zapisu meczu do Room i Firestore.
+
+### Etap 6: Wyświetlanie Danych
+- [ ] Ekran historii meczy.
+- [ ] Dashboard z podstawowymi statystykami.
+
+### Etap 7: Funkcje Społecznościowe
+- [ ] Wyszukiwarka graczy i profil publiczny.
+- [ ] System zaproszeń do znajomych.
+- [ ] Ekran porównania statystyk Head-to-Head.
+
+### Etap 8: Mecz Online w Czasie Rzeczywistym
+- [ ] Synchronizacja danych przy użyciu listenerów Firestore.
+- [ ] System zapraszania do gry online.
+- [ ] Obsługa przypadków brzegowych (np. utrata połączenia).
+
+### Etap 9: Moduł Turniejów
+- [ ] UI do tworzenia turnieju i zapraszania graczy.
+- [ ] Logika generowania drabinki turniejowej.
+- [ ] Interfejs do wprowadzania wyników i aktualizacji drabinki.
+
+### Etap 10: Funkcje Zaawansowane i Grywalizacja
+- [ ] Implementacja Modułu Treningowego.
+- [ ] System przyznawania Odznak, Osiągnięć i Pucharów.
+- [ ] Zbudowanie rozbudowanych Rankingów.
+
+### Etap 11: Implementacja Monetyzacji
+- [ ] Integracja z Google AdMob i wyświetlanie reklam w wersji darmowej.
+- [ ] Implementacja jednorazowego zakupu w aplikacji (In-App Purchase) w celu usunięcia reklam.
+
+### Etap 12: Testowanie, Poprawki i Publikacja
+- [ ] Testy jednostkowe i UI.
+- [ ] Dopracowanie detali wizualnych i animacji.
+- [ ] **Zabezpieczenie reguł Firebase:** Zmiana reguł dostępu do Firestore z trybu testowego na produkcyjny.
+- [ ] Publikacja w sklepie Google Play.
+
 ---
 ## 7. Implementacja - Szczegóły Techniczne
 

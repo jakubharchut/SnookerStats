@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,9 +42,11 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun MainScreen(
     navController: NavController,
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    mainViewModel: MainViewModel = hiltViewModel()
 ) {
     val internalNavController = rememberNavController()
+    val username by mainViewModel.username.collectAsState()
 
     LaunchedEffect(Unit) {
         authViewModel.navigationEvent.collectLatest { event ->
@@ -58,7 +61,7 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Snooker Stats") },
+                title = { Text(username) },
                 actions = {
                     IconButton(onClick = { internalNavController.navigate(BottomNavItem.Profile.route) }) {
                         Icon(

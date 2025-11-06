@@ -1,6 +1,8 @@
 package com.example.snookerstats.ui.auth
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -9,7 +11,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -25,6 +30,12 @@ fun SetupProfileScreen(
     var lastName by remember { mutableStateOf("") }
 
     val authState by viewModel.authState.collectAsState()
+    val focusManager = LocalFocusManager.current
+
+    val saveAction = {
+        focusManager.clearFocus()
+        viewModel.saveUserProfile(username.trim(), firstName.trim(), lastName.trim())
+    }
 
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collectLatest { event ->
@@ -51,7 +62,10 @@ fun SetupProfileScreen(
             onValueChange = { username = it },
             label = { Text("Nazwa wyświetlana (obowiązkowe)") },
             modifier = Modifier.fillMaxWidth(),
-            isError = authState is AuthState.Error // Podświetlenie na czerwono w razie błędu
+            isError = authState is AuthState.Error,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -59,7 +73,10 @@ fun SetupProfileScreen(
             value = firstName,
             onValueChange = { firstName = it },
             label = { Text("Imię (opcjonalne)") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -67,14 +84,15 @@ fun SetupProfileScreen(
             value = lastName,
             onValueChange = { lastName = it },
             label = { Text("Nazwisko (opcjonalne)") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { saveAction() })
         )
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = {
-                viewModel.saveUserProfile(username.trim(), firstName.trim(), lastName.trim())
-            },
+            onClick = { saveAction() },
             modifier = Modifier.fillMaxWidth(),
             enabled = authState !is AuthState.Loading
         ) {

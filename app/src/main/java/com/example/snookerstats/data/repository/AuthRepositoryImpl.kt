@@ -16,15 +16,47 @@ class AuthRepositoryImpl @Inject constructor(
 ) : AuthRepository {
 
     override suspend fun registerUser(email: String, password: String): Response<Boolean> {
-        // ... (bez zmian)
+        return try {
+            val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+            val firebaseUser = result.user ?: return Response.Error("Failed to create user.")
+
+            firebaseUser.sendEmailVerification().await()
+
+            val user = User(
+                uid = firebaseUser.uid,
+                email = email,
+                username = ""
+            )
+            firestore.collection("users").document(firebaseUser.uid).set(user).await()
+
+            Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "An unknown error occurred.")
+        }
     }
 
     override suspend fun loginUser(email: String, password: String): Response<Boolean> {
-        // ... (bez zmian)
+        return try {
+            firebaseAuth.signInWithEmailAndPassword(email, password).await()
+            Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "An unknown error occurred.")
+        }
     }
 
     override suspend fun updateUserProfile(username: String, firstName: String, lastName: String): Response<Boolean> {
-        // ... (bez zmian)
+        return try {
+            val firebaseUser = firebaseAuth.currentUser ?: return Response.Error("User not logged in.")
+            val userUpdates = mapOf(
+                "username" to username,
+                "firstName" to firstName,
+                "lastName" to lastName
+            )
+            firestore.collection("users").document(firebaseUser.uid).update(userUpdates).await()
+            Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "An unknown error occurred.")
+        }
     }
 
     override suspend fun isUsernameTaken(username: String): Response<Boolean> {
@@ -41,22 +73,38 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getCurrentUserData(): Response<User?> {
-        // ... (bez zmian)
+        return try {
+            val firebaseUser = firebaseAuth.currentUser
+            if (firebaseUser != null) {
+                val user = firestore.collection("users").document(firebaseUser.uid).get().await().toObject(User::class.java)
+                Response.Success(user)
+            } else {
+                Response.Error("User not logged in.")
+            }
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "An unknown error occurred.")
+        }
     }
 
     override fun saveCredentials(email: String, password: String) {
-        // ... (bez zmian)
+        prefsManager.saveCredentials(email, password)
     }
 
     override fun getSavedCredentials(): Pair<String, String>? {
-        // ... (bez zmian)
+        val email = prefsManager.getEmail()
+        val password = prefsManager.getPassword()
+        return if (email != null && password != null) {
+            Pair(email, password)
+        } else {
+            null
+        }
     }
 
     override fun clearCredentials() {
-        // ... (bez zmian)
+        prefsManager.clearCredentials()
     }
 
     override suspend fun signOut() {
-        // ... (bez zmian)
+        firebaseAuth.signOut()
     }
 }

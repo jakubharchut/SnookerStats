@@ -18,7 +18,6 @@ Aplikacja będzie w pełni oparta o ekosystem Google Firebase, co zapewnia skalo
 *   **Uwierzytelnianie:** **Firebase Authentication** do zarządzania kontami użytkowników (rejestracja, logowanie przez e-mail/hasło, dostawców społecznościowych jak Google).
 *   **Weryfikacja E-mail:** Po rejestracji, na adres użytkownika automatycznie wysyłany jest link weryfikacyjny. Dostęp do pełnej funkcjonalności aplikacji będzie możliwy dopiero po potwierdzeniu adresu e-mail.
 *   **Akceptacja Regulaminu:** Proces rejestracji będzie wymagał od użytkownika aktywnego zaznaczenia zgody na regulamin serwisu. Przycisk rejestracji pozostanie nieaktywny do momentu wyrażenia zgody.
-*   **Zapamiętywanie Sesji Logowania:** Aplikacja będzie oferować opcję "Zapamiętaj mnie", która pozwoli na zapisanie danych uwierzytelniających w bezpiecznym miejscu na urządzeniu (np. Encrypted SharedPreferences). Umożliwi to automatyczne logowanie przy kolejnym uruchomieniu aplikacji.
 
 ### 2.2. Model Danych: "Online-First"
 Aplikacja jest projektowana z myślą o stałym dostępie do internetu. Wszystkie operacje zapisu i odczytu danych docelowo kierowane są do chmury, co zapewnia spójność danych na wszystkich urządzeniach użytkownika.
@@ -36,11 +35,11 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 *   **Profile Graczy:**
     *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny**.
     *   Profil publiczny działa jak "wizytówka gracza", pokazując jego imię, zdjęcie, przynależność klubową, zdobyte trofea i odznaki oraz kluczowe statystyki.
-*   **Wyszukiarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
+*   **Wyszukiwarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
 *   **System Sparing Partnerów ("Znajomych"):** Możliwość wysyłania zaproszeń do innych graczy, tworzenia listy znajomych i zarządzania nią.
 *   **Kluby:** Funkcjonalność tworzenia i dołączania do grup (klubów), które posiadają własne, wewnętrzne rankingi i statystyki.
 
-### 3.2. Rejestrowanie Meczów
+### 3.2. Rejestrowanie Meczy
 *   **Dwa Tryby Gry:**
     1.  **Mecz Online (Live):** Rozgrywka w czasie rzeczywistym ze sparing partnerem. Obaj gracze korzystają z współdzielonego ekranu do wprowadzania wyników uderzenie po uderzeniu.
     2.  **Mecz Lokalny (Solo):** Możliwość samodzielnego wprowadzenia wyników meczu rozegranego offline.
@@ -127,6 +126,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 - [x] Implementacja głównego ekranu z `Scaffold`.
 - [x] Implementacja `BottomNavigationBar`.
 - [x] Stworzenie pustych ekranów dla każdej sekcji.
+- [x] Implementacja nawigacji do ekranu profilu oraz akcji wylogowania w TopAppBar.
 
 ### Etap 4: Modele Danych i Baza Lokalna
 - [ ] Stworzenie klas danych (`Match`, `Tournament`, etc.).
@@ -203,7 +203,7 @@ Logika rejestracji jest w pełni zamknięta w `AuthViewModel` i przebiega wedłu
 Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według następujących kroków:
 
 1.  **Inicjacja:**
-    *   `LoginScreen` wywołuje publiczną funkcję `loginUser(email, password, rememberMe)`. W interfejsie użytkownika znajduje się `Checkbox` "Zapamiętaj mnie", którego stan (`rememberMe`) jest przekazywany do `ViewModelu`.
+    *   `LoginScreen` wywołuje publiczną funkcję `loginUser(email, password)`.
 2.  **Walidacja Danych:**
     *   Wewnątrz `ViewModelu`, przed wywołaniem Firebase, przeprowadzana jest walidacja:
         *   Sprawdzenie, czy żadne z pól `email` i `password` nie jest puste.
@@ -214,7 +214,6 @@ Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według 
 4.  **Obsługa Wyniku:**
     *   **Sukces:**
         *   Jeśli zadanie `signIn...` zakończy się sukcesem, `ViewModel` sprawdza, czy `firebaseAuth.currentUser?.isEmailVerified` jest `true`.
-        *   **Obsługa "Zapamiętaj mnie":** Jeśli `rememberMe` jest `true`, `ViewModel` wywołuje odpowiednią funkcję w repozytorium, aby zapisać dane uwierzytelniające w bezpieczny sposób (np. w `Encrypted SharedPreferences`). Jeśli `rememberMe` jest `false`, wszelkie wcześniej zapisane dane są usuwane.
         *   Jeśli e-mail jest zweryfikowany, `ViewModel` emituje jednorazowe zdarzenie `NavigationEvent.NavigateToMain`.
         *   Jeśli e-mail nie jest zweryfikowany, `ViewModel` wystawia stan błędu `State.Error("Konto nie zostało zweryfikowane. Sprawdź e-mail.")`.
     *   **Błąd:**
@@ -229,6 +228,7 @@ Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według 
 ### 7.3. Implementacja Etapu 3: Szkielet UI i Nawigacja Główna
 Etap 3 został w pełni zrealizowany. Wprowadzono następujące elementy:
 *   Główny ekran aplikacji (`MainScreen.kt`) został zbudowany w oparciu o komponent `Scaffold` z Jetpack Compose, zapewniając spójną ramę dla całej aplikacji.
-*   Zaimplementowano `BottomNavigationBar`, która umożliwia nawigację między pięcioma głównymi sekcjami: Dashboard, Graj, Społeczność, Turnieje i Profil. Definicje tych zakładek (trasa, ikona, tytuł) są zarządzane w osobnym, łatwo edytowalnym pliku `BottomNavItem.kt`.
-*   Dla każdej z głównych sekcji utworzono puste ekrany (`DashboardScreen`, `PlayScreen`, `CommunityScreen`, `TournamentsScreen`, `ProfileScreen`), które są wyświetlane po wybraniu odpowiedniej zakładki w dolnym pasku nawigacyjnym.
-*   `TopAppBar` został zaimplementowany w `MainScreen.kt`. Obecnie wyświetla statyczny tytuł "Snooker Stats". Docelowo będzie dynamicznie aktualizował się, pokazując tytuł aktualnie aktywnego ekranu oraz, w razie potrzeby, akcje kontekstowe dla danego widoku.
+*   Zaimplementowano `BottomNavigationBar`, która umożliwia nawigację między pięcioma głównymi sekcjami: "Główna", "Graj", "Mecze", "Statystyki" i "Ludzie". Definicje tych zakładek (trasa, ikona, tytuł) są zarządzane w osobnym, łatwo edytowalnym pliku `BottomNavItem.kt`.
+*   Dla każdej z głównych sekcji utworzono puste ekrany (`HomeScreen`, `PlayScreen`, `MatchHistoryScreen`, `StatsScreen`, `CommunityScreen`, `ProfileScreen`), które są wyświetlane po wybraniu odpowiedniej zakładki w dolnym pasku nawigacyjnym lub wywołaniu z `TopAppBar`.
+*   `TopAppBar` został zaimplementowany w `MainScreen.kt`. Zawiera statyczny tytuł "Snooker Stats", ikonę profilu (nawigującą do `ProfileScreen` za pomocą `internalNavController`) oraz ikonę wylogowania (nawigującą do ekranu `login` za pomocą `navController` z `MainActivity`, z opcją `popUpTo("login") { inclusive = true }` do czyszczenia stosu).
+*   W formularzu logowania (`LoginScreen.kt`) obsługa klawisza `Tab` w polu e-mail oraz klawisza `Enter` w polu hasła została zaimplementowana za pomocą modyfikatora `onKeyEvent`, zapewniając płynne i oczekiwane działanie.

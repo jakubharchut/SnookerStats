@@ -7,6 +7,7 @@ interface AuthRepository {
     suspend fun registerUser(email: String, password: String): Response<Boolean>
     suspend fun loginUser(email: String, password: String): Response<Boolean>
     suspend fun updateUserProfile(username: String, firstName: String, lastName: String): Response<Boolean>
+    suspend fun isUsernameTaken(username: String): Response<Boolean>
     fun saveCredentials(email: String, password: String)
     fun getSavedCredentials(): Pair<String, String>?
     fun clearCredentials()

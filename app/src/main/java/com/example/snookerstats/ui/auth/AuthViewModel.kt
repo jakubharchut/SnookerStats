@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.repository.AuthRepository
-import com.example.snookerstats.domain.use_case.ValidateRegisterInputUseCase
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -34,7 +33,6 @@ data class CredentialsState(val email: String = "", val password: String = "")
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val repo: AuthRepository,
-    private val validateRegisterInput: ValidateRegisterInputUseCase,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -59,11 +57,11 @@ class AuthViewModel @Inject constructor(
     }
 
     fun registerUser(email: String, password: String, confirmPassword: String) {
-        // ... (bez zmian)
+        // ... (implementacja wkrótce)
     }
 
     fun loginUser(email: String, password: String, rememberMe: Boolean) {
-        // ... (bez zmian)
+        // ... (implementacja bez zmian)
     }
 
     fun saveUserProfile(username: String, firstName: String, lastName: String) {
@@ -73,19 +71,41 @@ class AuthViewModel @Inject constructor(
                 return@launch
             }
             _authState.value = AuthState.Loading
-            when (val response = repo.updateUserProfile(username, firstName, lastName)) {
-                is Response.Success -> _navigationEvent.emit(NavigationEvent.NavigateToMain)
-                is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(response.message))
-                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd.")
+
+            // Sprawdź, czy nazwa użytkownika jest zajęta
+            when (val isTakenResponse = repo.isUsernameTaken(username)) {
+                is Response.Success -> {
+                    if (isTakenResponse.data) {
+                        _authState.value = AuthState.Error("Ta nazwa użytkownika jest już zajęta.")
+                        return@launch
+                    }
+                    // Jeśli nazwa jest wolna, kontynuuj zapis
+                    when (val updateResponse = repo.updateUserProfile(username, firstName, lastName)) {
+                        is Response.Success -> _navigationEvent.emit(NavigationEvent.NavigateToMain)
+                        is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(updateResponse.message))
+                        else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd.")
+                    }
+                }
+                is Response.Error -> {
+                    _authState.value = AuthState.Error(mapFirebaseError(isTakenResponse.message))
+                }
+                else -> {}
             }
         }
     }
 
     fun signOut() {
-        // ... (bez zmian)
+        // ... (implementacja bez zmian)
     }
 
     private fun mapFirebaseError(errorCode: String): String {
-        // ... (bez zmian)
+        return when {
+            errorCode.contains("EMAIL_EXISTS") || errorCode.contains("email-already-in-use") -> "Ten adres e-mail jest już zajęty."
+            errorCode.contains("NETWORK_ERROR") -> "Błąd sieci. Sprawdź połączenie z internetem."
+            errorCode.contains("INVALID_CREDENTIAL") || errorCode.contains("wrong-password") -> "Nieprawidłowy e-mail lub hasło."
+            errorCode.contains("user-not-found") -> "Nie znaleziono użytkownika o podanym adresie e-mail."
+            errorCode.contains("badly formatted") -> "Nieprawidłowy format adresu e-mail."
+            else -> "Wystąpił nieznany błąd. Spróbuj ponownie."
+        }
     }
 }

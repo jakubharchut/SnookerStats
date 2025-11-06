@@ -133,12 +133,18 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 - [x] Implementacja nawigacji do ekranu profilu oraz akcji wylogowania w TopAppBar.
 - [x] Implementacja funkcji "Zapamiętaj mnie" (automatyczne wypełnianie formularza).
 
-### Etap 4: Modele Danych i Baza Lokalna (W TOKU)
-- [ ] Zdefiniowanie modeli danych (`User`, `Match`, `Frame`, `Shot`).
-- [ ] Przekształcenie modeli w encje Room (`@Entity`).
-- [ ] Stworzenie DAO (`@Dao`) dla każdej encji.
-- [ ] Stworzenie głównej klasy bazy danych (`@Database`).
-- [ ] Integracja Room z Hilt.
+### Etap 4: Modele Danych i Baza Lokalna (ZREALIZOWANO)
+- [x] **Zdefiniowanie Modeli Danych:** Stworzono klasy `data class` dla `User`, `Shot`, `Frame` i `Match` w pakiecie `domain/model`. Zastosowano następujące pola:
+    *   `User`: `uid` (PrimaryKey), `username`, `email`, `club?`, `profileImageUrl?`, `friends: List<String>`, `friendRequestsSent: List<String>`, `friendRequestsReceived: List<String>`.
+    *   `Shot`: `id` (PrimaryKey, autoGenerate), `frameId`, `timestamp`, `ball`, `points`, `isFoul`.
+    *   `Frame`: `id` (PrimaryKey, autoGenerate), `matchId`, `frameNumber`, `player1Points`, `player2Points`, `shots: List<Shot>`.
+    *   `Match`: `id` (PrimaryKey), `player1Id`, `player2Id?`, `date`, `matchType`, `numberOfReds`, `status`, `frames: List<Frame>`.
+- [x] **Konfiguracja Bazy Danych Room:**
+    *   **Encje:** Klasy `User`, `Match` i `Frame` zostały oznaczone jako encje (`@Entity`). Klasa `Shot` jest używana jako obiekt osadzony w `Frame` za pomocą `TypeConverter`.
+    *   **Konwertery Typów (`TypeConverter`):** Stworzono `Converters.kt` (`data/local/Converters.kt`) z użyciem biblioteki Gson do serializacji/deserializacji `List<String>`, `List<Shot>` i `List<Frame>` na format JSON, umożliwiając ich przechowywanie w Room.
+    *   **DAO (Data Access Objects):** Stworzono interfejsy `UserDao.kt` i `MatchDao.kt` (`data/local/dao`) z podstawowymi operacjami CRUD oraz zapytaniami do pobierania danych.
+    *   **Klasa Bazy Danych:** Stworzono główną klasę `SnookerStatsDatabase.kt` (`data/local`) z adnotacją `@Database` i podłączeniem `TypeConverter`.
+    *   **Hilt Module dla Room:** Stworzono `DatabaseModule.kt` (`di`) do dostarczania instancji bazy danych i DAO.
 
 ### Etap 5: Rdzeń Aplikacji - Zapis Meczu Lokalnego
 - [ ] UI ekranu wprowadzania wyniku (shot-by-shot).
@@ -243,47 +249,51 @@ Etap 3 został w pełni zrealizowany. Wprowadzono następujące elementy:
 *   W formularzu logowania (`LoginScreen.kt`) obsługa klawisza `Tab` w polu e-mail oraz klawisza `Enter` w polu hasła została zaimplementowana za pomocą modyfikatora `onKeyEvent`, zapewniając płynne i oczekiwane działanie.
 *   Zaimplementowano funkcję "Zapamiętaj mnie" (automatyczne wypełnianie formularza).
 
-### 7.4. Implementacja Etapu 4: Modele Danych i Baza Lokalna (W TOKU)
+### 7.4. Implementacja Etapu 4: Modele Danych i Baza Lokalna (ZREALIZOWANO)
 
-**Cel:** Stworzenie kompletnych modeli danych dla aplikacji oraz skonfigurowanie lokalnej bazy danych Room do ich przechowywania. Modele te będą fundamentem dla funkcji zapisu meczy, statystyk, turniejów i profili użytkowników.
+**Cel:** Stworzenie kompletnych modeli danych dla aplikacji oraz skonfigurowanie lokalnej bazy danych Room do ich przechowywania. Modele te stanowią fundament dla funkcji zapisu meczy, statystyk, turniejów i profili użytkowników, a ich implementacja została zakończona.
 
 **A. Definiowanie Modeli Danych**
 
 1.  **Klasa `User` (Użytkownik):**
-    *   **Zadanie:** Rozszerzyć istniejącą klasę `User` w `domain/model/User.kt`.
+    *   **Zadanie:** Rozszerzono klasę `User` w `domain/model/User.kt`.
     *   **Pola:** `uid: String`, `username: String`, `email: String`, `club: String?`, `profileImageUrl: String?`, `friends: List<String>` (lista UID znajomych), `friendRequestsSent: List<String>` (lista UID wysłanych zaproszeń), `friendRequestsReceived: List<String>` (lista UID otrzymanych zaproszeń).
 
 2.  **Klasa `Shot` (Uderzenie):**
-    *   **Zadanie:** Stworzyć nową `data class Shot`.
+    *   **Zadanie:** Stworzono `data class Shot`.
     *   **Pola:** `timestamp: Long`, `ball: String` (np. "RED", "BLUE"), `points: Int`, `isFoul: Boolean`.
     *   **Lokalizacja:** `domain/model/Shot.kt`.
 
 3.  **Klasa `Frame` (Frejm):**
-    *   **Zadanie:** Stworzyć nową `data class Frame`.
+    *   **Zadanie:** Stworzono `data class Frame`.
     *   **Pola:** `frameNumber: Int`, `player1Points: Int`, `player2Points: Int`, `shots: List<Shot>`.
     *   **Lokalizacja:** `domain/model/Frame.kt`.
 
 4.  **Klasa `Match` (Mecz):**
-    *   **Zadanie:** Stworzyć nową `data class Match`.
+    *   **Zadanie:** Stworzono `data class Match`.
     *   **Pola:** `id: String` (unikalny identyfikator), `player1Id: String`, `player2Id: String?` (opcjonalny, np. dla treningu solo), `date: Long`, `matchType: String` (np. "RANKING", "SPARRING"), `numberOfReds: Int`, `status: String` (np. "IN_PROGRESS", "COMPLETED"), `frames: List<Frame>`.
     *   **Lokalizacja:** `domain/model/Match.kt`.
 
 **B. Konfiguracja Bazy Danych Room**
 
 1.  **Encje (`@Entity`):**
-    *   **Zadanie:** Oznaczyć klasy `User`, `Match` i `Frame` jako encje Room. Będziemy musieli dodać adnotacje i, w przypadku list (`shots`, `frames`), stworzyć konwertery typów (Type Converters), aby Room wiedział, jak je zapisywać.
-    *   **Lokalizacja:** Pliki modeli danych zostaną zaktualizowane.
+    *   **Zadanie:** Klasy `User`, `Match` i `Frame` zostały oznaczone jako encje Room (`@Entity`). Klasa `Shot` jest używana jako obiekt osadzony w `Frame` i konwertowana za pomocą `TypeConverter`.
+    *   **Lokalizacja:** Pliki modeli danych zostały zaktualizowane.
 
-2.  **DAO (Data Access Objects - `@Dao`):**
-    *   **Zadanie:** Stworzyć interfejsy z metodami do zarządzania danymi dla `User`, `Match`.
+2.  **Konwertery Typów (`TypeConverter`):**
+    *   **Zadanie:** Stworzono klasę `Converters` (`data/local/Converters.kt`) z użyciem biblioteki Gson do serializacji/deserializacji `List<String>`, `List<Shot>` i `List<Frame>` na format JSON, co umożliwia ich przechowywanie w Room. Zależność `com.google.code.gson:gson` została dodana do projektu.
+    *   **Lokalizacja:** `data/local/Converters.kt`.
+
+3.  **DAO (Data Access Objects - `@Dao`):**
+    *   **Zadanie:** Stworzono interfejsy `UserDao.kt` i `MatchDao.kt` (`data/local/dao`) z podstawowymi operacjami CRUD oraz zapytaniami do pobierania danych.
     *   **Lokalizacja:**
         *   `data/local/dao/UserDao.kt`
         *   `data/local/dao/MatchDao.kt`
 
-3.  **Klasa Bazy Danych (`@Database`):**
-    *   **Zadanie:** Stworzyć główną klasę `SnookerStatsDatabase`, która połączy wszystkie nasze encje i DAO.
+4.  **Klasa Bazy Danych (`@Database`):**
+    *   **Zadanie:** Stworzono główną klasę `SnookerStatsDatabase.kt` (`data/local`) z adnotacją `@Database`, deklaracją encji (`User`, `Match`, `Frame`) oraz podłączeniem `TypeConverter`.
     *   **Lokalizacja:** `data/local/SnookerStatsDatabase.kt`.
 
-4.  **Hilt Module dla Room:**
-    *   **Zadanie:** Stworzyć `DatabaseModule.kt` w pakiecie `di`, aby Hilt mógł dostarczać instancje bazy danych i DAO.
+5.  **Hilt Module dla Room:**
+    *   **Zadanie:** Stworzono `DatabaseModule.kt` w pakiecie `di`, aby Hilt mógł dostarczać instancje bazy danych i DAO.
     *   **Lokalizacja:** `di/DatabaseModule.kt`.

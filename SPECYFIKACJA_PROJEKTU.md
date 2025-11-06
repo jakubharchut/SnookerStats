@@ -17,6 +17,7 @@ Aplikacja będzie w pełni oparta o ekosystem Google Firebase, co zapewnia skalo
 *   **Baza Danych:** **Cloud Firestore** jako główne i jedyne źródło prawdy. Będzie przechowywać wszystkie dane użytkowników, mecze, statystyki, turnieje, itp. Jej mechanizmy real-time są kluczowe dla funkcji meczów online.
 *   **Uwierzytelnianie:** **Firebase Authentication** do zarządzania kontami użytkowników (rejestracja, logowanie przez e-mail/hasło, dostawców społecznościowych jak Google).
 *   **Weryfikacja E-mail:** Po rejestracji, na adres użytkownika automatycznie wysyłany jest link weryfikacyjny. Dostęp do pełnej funkcjonalności aplikacji będzie możliwy dopiero po potwierdzeniu adresu e-mail.
+*   **Akceptacja Regulaminu:** Proces rejestracji będzie wymagał od użytkownika aktywnego zaznaczenia zgody na regulamin serwisu. Przycisk rejestracji pozostanie nieaktywny do momentu wyrażenia zgody.
 
 ### 2.2. Model Danych: "Online-First"
 Aplikacja jest projektowana z myślą o stałym dostępie do internetu. Wszystkie operacje zapisu i odczytu danych docelowo kierowane są do chmury, co zapewnia spójność danych na wszystkich urządzeniach użytkownika.
@@ -48,7 +49,7 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 *   **Tworzenie Turniejów:** Użytkownik (organizator) może stworzyć nowy turniej, definiując jego nazwę, format i datę.
 *   **Zarządzanie Uczestnikami:** Organizator może zapraszać uczestników, zarówno **użytkowników aplikacji** z listy znajomych, jak i **graczy gościnnych** (spoza aplikacji) poprzez wpisanie ich imienia.
 *   **Automatyczna Drabinka:** Aplikacja automatycznie generuje i wizualizuje drabinkę turniejową (np. w systemie pucharowym).
-*   **Aktualzacje na Żywo:** Organizator wprowadza wyniki poszczególnych meczy, a drabinka aktualizuje się w czasie rzeczywistym dla wszystkich uczestników.
+*   **Aktualizacje na Żywo:** Organizator wprowadza wyniki poszczególnych meczy, a drabinka aktualizuje się w czasie rzeczywistym dla wszystkich uczestników.
 
 ### 3.4. Moduł Treningowy
 *   **Dedykowana sekcja** z predefiniowanymi ćwiczeniami (np. "Line-up", wbijanie długich bil, trening odstaw).
@@ -114,7 +115,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 ### Etap 2: Uwierzytelnianie Użytkownika
 - [x] Zbudowanie UI dla ekranów Logowania i Rejestracji.
 - [x] Stworzenie podstawowej nawigacji między ekranami autentykacji.
-- [ ] Stworzenie `AuthViewModel` do obsługi logiki.
+- [x] Stworzenie `AuthViewModel` do obsługi logiki.
 - [ ] Podłączenie logiki do Firebase Authentication (Rejestracja i Logowanie).
 - [ ] Implementacja wysyłania e-maila weryfikacyjnego.
 - [ ] Zablokowanie dostępu dla niezweryfikowanych użytkowników.
@@ -125,44 +126,29 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 - [ ] Implementacja `BottomNavigationBar`.
 - [ ] Stworzenie pustych ekranów dla każdej sekcji.
 
-### Etap 4: Modele Danych i Baza Lokalna
-- [ ] Stworzenie klas danych (`User`, `Match`, `Tournament`, etc.).
-- [ ] Konfiguracja bazy danych Room (Encje, DAO, Database).
+---
+## 7. Implementacja - Szczegóły Techniczne
 
-### Etap 5: Rdzeń Aplikacji - Zapis Meczu Lokalnego
-- [ ] UI ekranu wprowadzania wyniku (shot-by-shot).
-- [ ] ViewModel zarządzający stanem meczu.
-- [ ] Logika zapisu meczu do Room i Firestore.
+### 7.1. Przepływ Rejestracji Użytkownika (`AuthViewModel`)
+Logika rejestracji jest w pełni zamknięta w `AuthViewModel` i przebiega według następujących kroków:
 
-### Etap 6: Wyświetlanie Danych
-- [ ] Ekran historii meczy.
-- [ ] Dashboard z podstawowymi statystykami.
-
-### Etap 7: Funkcje Społecznościowe
-- [ ] Wyszukiwarka graczy i profil publiczny.
-- [ ] System zaproszeń do znajomych.
-- [ ] Ekran porównania statystyk Head-to-Head.
-
-### Etap 8: Mecz Online w Czasie Rzeczywistym
-- [ ] Synchronizacja danych przy użyciu listenerów Firestore.
-- [ ] System zapraszania do gry online.
-- [ ] Obsługa przypadków brzegowych (np. utrata połączenia).
-
-### Etap 9: Moduł Turniejów
-- [ ] UI do tworzenia turnieju i zapraszania graczy.
-- [ ] Logika generowania drabinki turniejowej.
-- [ ] Interfejs do wprowadzania wyników i aktualizacji drabinki.
-
-### Etap 10: Funkcje Zaawansowane i Grywalizacja
-- [ ] Implementacja Modułu Treningowego.
-- [ ] System przyznawania Odznak, Osiągnięć i Pucharów.
-- [ ] Zbudowanie rozbudowanych Rankingów.
-
-### Etap 11: Implementacja Monetyzacji
-- [ ] Integracja z Google AdMob i wyświetlanie reklam w wersji darmowej.
-- [ ] Implementacja jednorazowego zakupu w aplikacji (In-App Purchase) w celu usunięcia reklam.
-
-### Etap 12: Testowanie, Poprawki i Publikacja
-- [ ] Testy jednostkowe i UI.
-- [ ] Dopracowanie detali wizualnych i animacji.
-- [ ] Publikacja w sklepie Google Play.
+1.  **Inicjacja:**
+    *   `RegisterScreen` wywołuje publiczną funkcję `registerUser(email, password, confirmPassword)`.
+2.  **Walidacja Danych:**
+    *   Wewnątrz `ViewModelu`, przed wywołaniem Firebase, przeprowadzana jest walidacja:
+        *   Sprawdzenie, czy żadne z pól nie jest puste.
+        *   Sprawdzenie, czy `password` i `confirmPassword` są identyczne.
+        *   Sprawdzenie, czy `password` ma co najmniej 6 znaków (wymóg Firebase).
+        *   Sprawdzenie, czy `email` ma poprawny format.
+    *   Jeśli walidacja nie powiedzie się, `ViewModel` wystawi odpowiedni stan błędu (np. `State.Error("Hasła nie są zgodne")`), który UI będzie mogło wyświetlić użytkownikowi.
+3.  **Proces Rejestracji:**
+    *   Jeśli walidacja przejdzie pomyślnie, `ViewModel` wystawia stan `State.Loading`, aby UI mogło pokazać wskaźnik postępu (np. kółko).
+    *   Wywoływana jest funkcja `firebaseAuth.createUserWithEmailAndPassword(email, password)`.
+4.  **Obsługa Wyniku:**
+    *   **Sukces:**
+        *   Jeśli zadanie `createUser...` zakończy się sukcesem, natychmiast wywoływana jest funkcja `sendEmailVerification()` na nowo utworzonym użytkowniku.
+        *   Po wysłaniu e-maila, `ViewModel` wystawia stan `State.Success("Rejestracja pomyślna! Sprawdź e-mail, aby zweryfikować konto.")`.
+    *   **Błąd:**
+        *   Jeśli zadanie się nie powiedzie (np. e-mail już istnieje, brak połączenia z internetem), `ViewModel` przechwytuje wyjątek z Firebase, mapuje go na zrozumiały komunikat (np. "Ten adres e-mail jest już zajęty.") i wystawia stan `State.Error`.
+5.  **Komunikacja z UI:**
+    *   Interfejs (`RegisterScreen`) obserwuje stan (`State`) wystawiany przez `ViewModel` i reaguje na bieżąco, pokazując komunikaty o błędach, sukcesie lub wskaźnik ładowania.

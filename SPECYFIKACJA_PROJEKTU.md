@@ -16,6 +16,7 @@ Stworzenie zaawansowanej, społecznościowej platformy mobilnej dla amatorów sn
 Aplikacja będzie w pełni oparta o ekosystem Google Firebase, co zapewnia skalowalność, funkcje czasu rzeczywistego i bezpieczeństwo.
 *   **Baza Danych:** **Cloud Firestore** jako główne i jedyne źródło prawdy. Będzie przechowywać wszystkie dane użytkowników, mecze, statystyki, turnieje, itp. Jej mechanizmy real-time są kluczowe dla funkcji meczów online.
 *   **Uwierzytelnianie:** **Firebase Authentication** do zarządzania kontami użytkowników (rejestracja, logowanie przez e-mail/hasło, dostawców społecznościowych jak Google).
+*   **Weryfikacja E-mail:** Po rejestracji, na adres użytkownika automatycznie wysyłany jest link weryfikacyjny. Dostęp do pełnej funkcjonalności aplikacji będzie możliwy dopiero po potwierdzeniu adresu e-mail.
 
 ### 2.2. Model Danych: "Online-First"
 Aplikacja jest projektowana z myślą o stałym dostępie do internetu. Wszystkie operacje zapisu i odczytu danych docelowo kierowane są do chmury, co zapewnia spójność danych na wszystkich urządzeniach użytkownika.
@@ -47,7 +48,7 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 *   **Tworzenie Turniejów:** Użytkownik (organizator) może stworzyć nowy turniej, definiując jego nazwę, format i datę.
 *   **Zarządzanie Uczestnikami:** Organizator może zapraszać uczestników, zarówno **użytkowników aplikacji** z listy znajomych, jak i **graczy gościnnych** (spoza aplikacji) poprzez wpisanie ich imienia.
 *   **Automatyczna Drabinka:** Aplikacja automatycznie generuje i wizualizuje drabinkę turniejową (np. w systemie pucharowym).
-*   **Aktualizacje na Żywo:** Organizator wprowadza wyniki poszczególnych meczy, a drabinka aktualizuje się w czasie rzeczywistym dla wszystkich uczestników.
+*   **Aktualzacje na Żywo:** Organizator wprowadza wyniki poszczególnych meczy, a drabinka aktualizuje się w czasie rzeczywistym dla wszystkich uczestników.
 
 ### 3.4. Moduł Treningowy
 *   **Dedykowana sekcja** z predefiniowanymi ćwiczeniami (np. "Line-up", wbijanie długich bil, trening odstaw).
@@ -111,9 +112,13 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 - [x] Podstawowa konfiguracja Hilt.
 
 ### Etap 2: Uwierzytelnianie Użytkownika
-- [ ] Zbudowanie UI dla ekranów Logowania i Rejestracji.
-- [ ] Podłączenie logiki do Firebase Authentication.
-- [ ] Stworzenie podstawowej nawigacji (przekierowanie po zalogowaniu).
+- [x] Zbudowanie UI dla ekranów Logowania i Rejestracji.
+- [x] Stworzenie podstawowej nawigacji między ekranami autentykacji.
+- [ ] Stworzenie `AuthViewModel` do obsługi logiki.
+- [ ] Podłączenie logiki do Firebase Authentication (Rejestracja i Logowanie).
+- [ ] Implementacja wysyłania e-maila weryfikacyjnego.
+- [ ] Zablokowanie dostępu dla niezweryfikowanych użytkowników.
+- [ ] Stworzenie nawigacji po zalogowaniu (przekierowanie).
 
 ### Etap 3: Szkielet UI i Nawigacja Główna
 - [ ] Implementacja głównego ekranu z `Scaffold`.

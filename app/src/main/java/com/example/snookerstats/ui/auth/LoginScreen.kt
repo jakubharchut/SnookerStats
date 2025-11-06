@@ -12,14 +12,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.snookerstats.R
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(navController: NavController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -33,7 +33,7 @@ fun LoginScreen() {
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text(stringResource(R.string.login_email_label)) },
+            label = { Text("Email") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -42,7 +42,7 @@ fun LoginScreen() {
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text(stringResource(R.string.login_password_label)) },
+            label = { Text("Hasło") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -52,11 +52,11 @@ fun LoginScreen() {
             onClick = { /* TODO: Handle login */ },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(stringResource(R.string.login_button_text))
+            Text("Zaloguj się")
         }
 
-        TextButton(onClick = { /* TODO: Navigate to register */ }) {
-            Text(stringResource(R.string.login_register_prompt))
+        TextButton(onClick = { navController.navigate("register") }) {
+            Text("Nie masz konta? Zarejestruj się")
         }
     }
 }
@@ -65,6 +65,6 @@ fun LoginScreen() {
 @Composable
 fun LoginScreenPreview() {
     SnookerStatsTheme {
-        LoginScreen()
+        LoginScreen(navController = rememberNavController())
     }
 }

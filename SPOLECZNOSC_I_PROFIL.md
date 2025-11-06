@@ -101,3 +101,21 @@ Centralnym modelem danych dla tego modułu jest klasa `User`. Będzie ona przech
 2.  **Widok Własnego Profilu:**
     *   Wyświetla te same dane, co widok publiczny.
     *   Dodatkowo zawiera przycisk "Edytuj profil", który pozwoli na zmianę `username`, `firstName`, `lastName`, `club`, `profileImageUrl` oraz flagi `isRealNameVisible`.
+
+---
+
+## 4. Wygląd i Interfejs Użytkownika (UI/UX) Modułu Społeczność
+
+### 4.1. Ekran Społeczność - Styl Menu Zakładek
+
+Ekran Społeczności (`CommunityScreen`) będzie wykorzystywał górny pasek zakładek (`TabRow`) do organizacji treści. Ten styl menu jest zgodny z widocznym na zrzucie ekranu i zapewnia intuicyjne przełączanie się między sekcjami:
+
+*   **Komponent:** `TabRow` z `Jetpack Compose Material 3`.
+*   **Lokalizacja:** Umieszczony bezpośrednio pod `TopAppBar`.
+*   **Zakładki:** Trzy główne zakładki:
+    1.  **"Szukaj"**: Przeznaczona do wyszukiwania innych użytkowników.
+    2.  **"Znajomi"**: Wyświetla listę aktualnych znajomych użytkownika.
+    3.  **"Zaproszenia"**: Służy do zarządzania otrzymanymi i wysłanymi zaproszeniami.
+*   **Wizualizacja:** Zakładki będą wyraźnie oddzielone wizualnie, a aktywna zakładka zostanie podkreślona. Nawigacja między zakładkami odbywać się będzie poprzez kliknięcie lub przesunięcie palcem (swiping), wykorzystując `HorizontalPager`.
+*   **Interakcja:** Kliknięcie w nazwę zakładki spowoduje płynne przejście do odpowiedniej treści. Stan aktywnej zakładki będzie dynamicznie aktualizowany.
+*   **Przykładowy Widok:** Zgodny ze zrzutem ekranu, który był punktem odniesienia dla tego opisu.

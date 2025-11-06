@@ -60,7 +60,15 @@ fun MainScreen(
             TopAppBar(
                 title = { Text("Snooker Stats") },
                 actions = {
-                    IconButton(onClick = { internalNavController.navigate(BottomNavItem.Profile.route) }) {
+                    IconButton(onClick = {
+                        internalNavController.navigate(BottomNavItem.Profile.route) {
+                            popUpTo(internalNavController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.Filled.AccountCircle,
                             contentDescription = "Profil"

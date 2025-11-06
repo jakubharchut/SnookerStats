@@ -17,6 +17,7 @@ import com.example.snookerstats.ui.auth.LoginScreen
 import com.example.snookerstats.ui.auth.RegisterScreen
 import com.example.snookerstats.ui.auth.RegistrationSuccessScreen
 import com.example.snookerstats.ui.main.MainScreen
+import com.example.snookerstats.ui.profile.SetupProfileScreen
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -41,6 +42,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("registration_success") {
                             RegistrationSuccessScreen(navController = navController)
+                        }
+                        composable("setup_profile") {
+                            SetupProfileScreen(navController = navController)
                         }
                         composable("main") {
                             MainScreen(navController = navController)

@@ -35,7 +35,7 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 *   **Profile Graczy:**
     *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny**.
     *   Profil publiczny działa jak "wizytówka gracza", pokazując jego imię, zdjęcie, przynależność klubową, zdobyte trofea i odznaki oraz kluczowe statystyki.
-*   **Wyszukiwarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
+*   **Wyszukiarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
 *   **System Sparing Partnerów ("Znajomych"):** Możliwość wysyłania zaproszeń do innych graczy, tworzenia listy znajomych i zarządzania nią.
 *   **Kluby:** Funkcjonalność tworzenia i dołączania do grup (klubów), które posiadają własne, wewnętrzne rankingi i statystyki.
 
@@ -123,9 +123,9 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 - [x] Stworzenie nawigacji po zalogowaniu (przekierowanie).
 
 ### Etap 3: Szkielet UI i Nawigacja Główna
-- [ ] Implementacja głównego ekranu z `Scaffold`.
-- [ ] Implementacja `BottomNavigationBar`.
-- [ ] Stworzenie pustych ekranów dla każdej sekcji.
+- [x] Implementacja głównego ekranu z `Scaffold`.
+- [x] Implementacja `BottomNavigationBar`.
+- [x] Stworzenie pustych ekranów dla każdej sekcji.
 
 ### Etap 4: Modele Danych i Baza Lokalna
 - [ ] Stworzenie klas danych (`Match`, `Tournament`, etc.).
@@ -223,3 +223,10 @@ Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według 
         *   Do obsługi jednorazowych zdarzeń (jak nawigacja) używany jest `LaunchedEffect`, który nasłuchuje na `SharedFlow` z `ViewModelu`. Gwarantuje to, że nawigacja zostanie wywołana tylko raz.
         *   Po otrzymaniu zdarzenia `NavigateToMain`, wywoływana jest funkcja `navController.navigate("main")` ze specjalną opcją: `popUpTo("login") { inclusive = true }`.
         *   **Zasada Działania `popUpTo`:** Ten mechanizm czyści historię nawigacji (backstack). Usuwa wszystkie ekrany aż do ekranu `login` włącznie. W rezultacie, po pomyślnym zalogowaniu, użytkownik nie może wrócić do ekranu logowania za pomocą systemowego przycisku "wstecz", co jest kluczowe dla poprawnego UX.
+
+### 7.3. Implementacja Etapu 3: Szkielet UI i Nawigacja Główna
+Etap 3 został w pełni zrealizowany. Wprowadzono następujące elementy:
+*   Główny ekran aplikacji (`MainScreen.kt`) został zbudowany w oparciu o komponent `Scaffold` z Jetpack Compose, zapewniając spójną ramę dla całej aplikacji.
+*   Zaimplementowano `BottomNavigationBar`, która umożliwia nawigację między pięcioma głównymi sekcjami: Dashboard, Graj, Społeczność, Turnieje i Profil. Definicje tych zakładek (trasa, ikona, tytuł) są zarządzane w osobnym, łatwo edytowalnym pliku `BottomNavItem.kt`.
+*   Dla każdej z głównych sekcji utworzono puste ekrany (`DashboardScreen`, `PlayScreen`, `CommunityScreen`, `TournamentsScreen`, `ProfileScreen`), które są wyświetlane po wybraniu odpowiedniej zakładki w dolnym pasku nawigacyjnym.
+*   `TopAppBar` został zaimplementowany w `MainScreen.kt`. Obecnie wyświetla statyczny tytuł "Snooker Stats". Docelowo będzie dynamicznie aktualizował się, pokazując tytuł aktualnie aktywnego ekranu oraz, w razie potrzeby, akcje kontekstowe dla danego widoku.

@@ -251,7 +251,7 @@ Etap 3 został w pełni zrealizowany. Wprowadzono następujące elementy:
 
 1.  **Klasa `User` (Użytkownik):**
     *   **Zadanie:** Rozszerzyć istniejącą klasę `User` w `domain/model/User.kt`.
-    *   **Pola do dodania:** `username: String`, `club: String?`, `profileImageUrl: String?`. Pozostałe pola jak `trophies` czy `badges` zostaną dodane w przyszłości.
+    *   **Pola:** `uid: String`, `username: String`, `email: String`, `club: String?`, `profileImageUrl: String?`, `friends: List<String>` (lista UID znajomych), `friendRequestsSent: List<String>` (lista UID wysłanych zaproszeń), `friendRequestsReceived: List<String>` (lista UID otrzymanych zaproszeń).
 
 2.  **Klasa `Shot` (Uderzenie):**
     *   **Zadanie:** Stworzyć nową `data class Shot`.

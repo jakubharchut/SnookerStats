@@ -27,7 +27,7 @@ class AuthViewModel @Inject constructor(
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    fun registerUser(email: String, password: String, confirmPassword: String) {
+    fun registerUser(username: String, email: String, password: String, confirmPassword: String) {
         viewModelScope.launch {
             val validationResponse = validateRegisterInput(email, password, confirmPassword)
             if (validationResponse is Response.Error) {
@@ -36,7 +36,7 @@ class AuthViewModel @Inject constructor(
             }
 
             _authState.value = AuthState.Loading
-            when(val repoResponse = repo.registerUser(email, password)) {
+            when(val repoResponse = repo.registerUser(username, email, password)) {
                 is Response.Success -> _authState.value = AuthState.Success("Rejestracja pomyślna! Sprawdź e-mail, aby zweryfikować konto.")
                 is Response.Error -> _authState.value = AuthState.Error(repoResponse.message)
                 else -> {}

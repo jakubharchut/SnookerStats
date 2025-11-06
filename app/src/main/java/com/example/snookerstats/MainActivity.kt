@@ -13,6 +13,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.snookerstats.ui.auth.LoginScreen
 import com.example.snookerstats.ui.auth.RegisterScreen
+import com.example.snookerstats.ui.main.MainScreen
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -34,6 +35,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("register") {
                             RegisterScreen(navController = navController)
+                        }
+                        composable("main") {
+                            MainScreen()
                         }
                     }
                 }

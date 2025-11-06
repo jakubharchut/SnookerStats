@@ -2,11 +2,17 @@ package com.example.snookerstats.ui.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -16,31 +22,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
-import kotlinx.coroutines.flow.collectLatest
 
 @Composable
-fun LoginScreen(
+fun RegisterScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var termsAccepted by remember { mutableStateOf(false) }
 
     val authState by viewModel.authState.collectAsState()
-
-    // Nasłuchiwanie na jednorazowe zdarzenia nawigacyjne
-    LaunchedEffect(Unit) {
-        viewModel.navigationEvent.collectLatest { event ->
-            when (event) {
-                is NavigationEvent.NavigateToMain -> {
-                    navController.navigate("main") {
-                        // Usuń ekran logowania z backstack, aby użytkownik nie mógł do niego wrócić
-                        popUpTo("login") { inclusive = true }
-                    }
-                }
-            }
-        }
-    }
 
     Box(
         modifier = Modifier
@@ -53,30 +47,51 @@ fun LoginScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Nazwa użytkownika") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth()
             )
-
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Hasło") },
                 modifier = Modifier.fillMaxWidth()
             )
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                label = { Text("Potwierdź hasło") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Checkbox(
+                    checked = termsAccepted,
+                    onCheckedChange = { termsAccepted = it }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Akceptuję regulamin") // TODO: Make clickable and link to terms
+            }
 
             Button(
-                onClick = { viewModel.loginUser(email, password) },
+                onClick = { viewModel.registerUser(username, email, password, confirmPassword) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = authState !is AuthState.Loading
+                enabled = termsAccepted && authState !is AuthState.Loading
             ) {
                 if (authState is AuthState.Loading) {
                     CircularProgressIndicator(color = Color.White)
                 } else {
-                    Text("Zaloguj się")
+                    Text("Zarejestruj się")
                 }
             }
 
@@ -89,17 +104,17 @@ fun LoginScreen(
 
         TextButton(
             modifier = Modifier.align(Alignment.BottomCenter),
-            onClick = { navController.navigate("register") }
+            onClick = { navController.navigate("login") }
         ) {
-            Text("Nie masz konta? Zarejestruj się")
+            Text("Masz już konto? Zaloguj się")
         }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun LoginScreenPreview() {
+fun RegisterScreenPreview() {
     SnookerStatsTheme {
-        LoginScreen(navController = rememberNavController())
+        RegisterScreen(navController = rememberNavController())
     }
 }

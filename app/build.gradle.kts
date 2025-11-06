@@ -53,7 +53,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
 
     // AndroidX Security Crypto
-    implementation(libs.androidx.security.crypto) // Dodana zależność
+    implementation(libs.androidx.security.crypto)
+
+    // Material Components for Android (dla stylów XML Material3)
+    implementation(libs.google.android.material)
 
     // Firebase
     implementation(platform(libs.firebase.bom))

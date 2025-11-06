@@ -4,9 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -24,7 +26,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SnookerStatsTheme {
+            SnookerStatsTheme(darkTheme = false) { // Wymuszenie jasnego motywu
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -41,7 +43,7 @@ class MainActivity : ComponentActivity() {
                             RegistrationSuccessScreen(navController = navController)
                         }
                         composable("main") {
-                            MainScreen(navController = navController) // Poprawka: przekazanie navController
+                            MainScreen(navController = navController)
                         }
                     }
                 }

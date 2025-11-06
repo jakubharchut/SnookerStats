@@ -18,6 +18,7 @@ Aplikacja będzie w pełni oparta o ekosystem Google Firebase, co zapewnia skalo
 *   **Uwierzytelnianie:** **Firebase Authentication** do zarządzania kontami użytkowników (rejestracja, logowanie przez e-mail/hasło, dostawców społecznościowych jak Google).
 *   **Weryfikacja E-mail:** Po rejestracji, na adres użytkownika automatycznie wysyłany jest link weryfikacyjny. Dostęp do pełnej funkcjonalności aplikacji będzie możliwy dopiero po potwierdzeniu adresu e-mail.
 *   **Akceptacja Regulaminu:** Proces rejestracji będzie wymagał od użytkownika aktywnego zaznaczenia zgody na regulamin serwisu. Przycisk rejestracji pozostanie nieaktywny do momentu wyrażenia zgody.
+*   **Zapamiętywanie Sesji Logowania:** Aplikacja oferuje opcję "Zapamiętaj mnie" (Checkbox w `LoginScreen`), która pozwala na zapisanie e-maila i hasła w bezpiecznym miejscu na urządzeniu (Encrypted SharedPreferences). Po zaznaczeniu tej opcji i udanym logowaniu, dane uwierzytelniające są zapisywane i automatycznie wypełniane przy kolejnych uruchomieniach aplikacji. Odznaczenie tej opcji usunie wcześniej zapisane dane. Wylogowanie użytkownika nie będzie usuwać zapisanych danych.
 
 ### 2.2. Model Danych: "Online-First"
 Aplikacja jest projektowana z myślą o stałym dostępie do internetu. Wszystkie operacje zapisu i odczytu danych docelowo kierowane są do chmury, co zapewnia spójność danych na wszystkich urządzeniach użytkownika.
@@ -203,7 +204,7 @@ Logika rejestracji jest w pełni zamknięta w `AuthViewModel` i przebiega wedłu
 Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według następujących kroków:
 
 1.  **Inicjacja:**
-    *   `LoginScreen` wywołuje publiczną funkcję `loginUser(email, password)`.
+    *   `LoginScreen` wywołuje publiczną funkcję `loginUser(email, password, rememberMe)`. W interfejsie użytkownika znajduje się `Checkbox` "Zapamiętaj mnie", którego stan (`rememberMe`) jest przekazywany do `ViewModelu`.
 2.  **Walidacja Danych:**
     *   Wewnątrz `ViewModelu`, przed wywołaniem Firebase, przeprowadzana jest walidacja:
         *   Sprawdzenie, czy żadne z pól `email` i `password` nie jest puste.
@@ -214,6 +215,7 @@ Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według 
 4.  **Obsługa Wyniku:**
     *   **Sukces:**
         *   Jeśli zadanie `signIn...` zakończy się sukcesem, `ViewModel` sprawdza, czy `firebaseAuth.currentUser?.isEmailVerified` jest `true`.
+        *   **Obsługa "Zapamiętaj mnie":** Jeśli `rememberMe` jest `true`, `ViewModel` wywołuje odpowiednią funkcję w repozytorium, aby zapisać dane uwierzytelniające w bezpieczny sposób (np. w `Encrypted SharedPreferences`). Jeśli `rememberMe` jest `false`, wszelkie wcześniej zapisane dane są usuwane.
         *   Jeśli e-mail jest zweryfikowany, `ViewModel` emituje jednorazowe zdarzenie `NavigationEvent.NavigateToMain`.
         *   Jeśli e-mail nie jest zweryfikowany, `ViewModel` wystawia stan błędu `State.Error("Konto nie zostało zweryfikowane. Sprawdź e-mail.")`.
     *   **Błąd:**

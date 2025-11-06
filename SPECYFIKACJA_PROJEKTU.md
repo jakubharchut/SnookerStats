@@ -105,10 +105,10 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 ## 6. Plan Realizacji Projektu (Roadmap)
 
 ### Etap 1: Fundamenty i Konfiguracja
-- [ ] Utworzenie projektu w konsoli Firebase.
-- [ ] Dodanie zależności do `build.gradle.kts` (Firebase, Hilt, Room, Compose Navigation, etc.).
-- [ ] Stworzenie bazowej struktury pakietów (`data`, `domain`, `ui`).
-- [ ] Podstawowa konfiguracja Hilt.
+- [x] Utworzenie projektu w konsoli Firebase.
+- [x] Dodanie zależności do `build.gradle.kts` (Firebase, Hilt, Room, Compose Navigation, etc.).
+- [x] Stworzenie bazowej struktury pakietów (`data`, `domain`, `ui`).
+- [x] Podstawowa konfiguracja Hilt.
 
 ### Etap 2: Uwierzytelnianie Użytkownika
 - [ ] Zbudowanie UI dla ekranów Logowania i Rejestracji.

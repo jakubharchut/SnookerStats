@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">Snooker Stats</string>
+
+    <!-- Login Screen -->
+    <string name="login_email_label">Email</string>
+    <string name="login_password_label">Hasło</string>
+    <string name="login_button_text">Zaloguj się</string>
+    <string name="login_register_prompt">Nie masz konta? Zarejestruj się</string>
+
+    <!-- Register Screen -->
+    <string name="register_username_label">Nazwa użytkownika</string>
+    <string name="register_email_label">Email</string>
+    <string name="register_password_label">Hasło</string>
+    <string name="register_confirm_password_label">Potwierdź hasło</string>
+    <string name="register_button_text">Zarejestruj się</string>
+    <string name="register_login_prompt">Masz już konto? Zaloguj się</string>
 </resources>

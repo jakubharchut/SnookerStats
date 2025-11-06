@@ -57,6 +57,9 @@ dependencies {
 
     // Material Components for Android (dla stylów XML Material3)
     implementation(libs.google.android.material)
+    
+    // Gson
+    implementation(libs.google.code.gson)
 
     // Firebase
     implementation(platform(libs.firebase.bom))

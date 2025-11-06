@@ -1,7 +1,11 @@
 package com.example.snookerstats.domain.model
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "users")
 data class User(
-    val uid: String = "",
+    @PrimaryKey val uid: String,
     val username: String = "",
     val email: String = "",
     val club: String? = null,

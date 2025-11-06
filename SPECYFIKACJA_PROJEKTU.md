@@ -176,5 +176,7 @@ Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według 
         *   Jeśli zadanie się nie powiedzie (np. nieprawidłowe dane logowania, użytkownik nie istnieje, błąd sieci), `ViewModel` przechwytuje wyjątek z Firebase, mapuje go na zrozumiały komunikat (np. "Nieprawidłowy e-mail lub hasło.") i wystawia stan `State.Error`.
 5.  **Komunikacja z UI:**
     *   Interfejs (`LoginScreen`) obserwuje stan (`State`) wystawiany przez `ViewModel` i reaguje na bieżąco, pokazując komunikaty o błędach, sukcesie lub wskaźnik ładowania.
-    *   Nasłuchuje również na jednorazowe zdarzenia `NavigationEvent` i wywołuje odpowiednią nawigację (`navController.navigate("main")`).
-
+    *   **Obsługa Nawigacji (Side-effects):**
+        *   Do obsługi jednorazowych zdarzeń (jak nawigacja) używany jest `LaunchedEffect`, który nasłuchuje na `SharedFlow` z `ViewModelu`. Gwarantuje to, że nawigacja zostanie wywołana tylko raz.
+        *   Po otrzymaniu zdarzenia `NavigateToMain`, wywoływana jest funkcja `navController.navigate("main")` ze specjalną opcją: `popUpTo("login") { inclusive = true }`.
+        *   **Zasada Działania `popUpTo`:** Ten mechanizm czyści historię nawigacji (backstack). Usuwa wszystkie ekrany aż do ekranu `login` włącznie. W rezultacie, po pomyślnym zalogowaniu, użytkownik nie może wrócić do ekranu logowania za pomocą systemowego przycisku "wstecz", co jest kluczowe dla poprawnego UX.

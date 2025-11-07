@@ -41,9 +41,9 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 *   **Wyszukiwarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
 *   **System Sparing Partnerów ("Znajomych"):** Możliwość wysyłania zaproszeń do innych graczy, tworzenia listy znajomych i zarządzania nią.
 *   **System Komunikacji (Czat):**
-    *   Aplikacja będzie zawierać system wiadomości prywatnych między użytkownikami.
-    *   Główny dostęp do czatów będzie możliwy przez dedykowaną ikonę (np. koperty) w `TopAppBar`.
+    *   Aplikacja będzie zawierać system wiadomości prywatnych między użytkownikami. Główny dostęp do czatów będzie możliwy przez dedykowaną ikonę (np. koperty) w `TopAppBar`.
     *   Możliwość zainicjowania nowej rozmowy będzie dostępna z poziomu listy znajomych oraz profilu innego użytkownika.
+    *   **Szczegółowa Specyfikacja:** Dokładny opis architektury i UI dla tego modułu znajduje się w osobnym dokumencie: `system_komunikacji.md`.
 *   **Kluby:** Funkcjonalność tworzenia i dołączania do grup (klubów), które posiadają własne, wewnętrzne rankingi i statystyki.
 
 ### 3.2. Rejestrowanie Meczy
@@ -116,6 +116,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 ---
 
 ## 6. Plan Realizacji Projektu (Roadmap)
+
 
 ### Etap 1: Fundamenty i Konfiguracja
 - [x] Utworzenie projektu w konsoli Firebase.
@@ -201,28 +202,21 @@ Logika rejestracji jest w pełni zamknięta w `AuthViewModel` i przebiega wedłu
 1.  **Inicjacja:**
     *   `RegisterScreen` wywołuje publiczną funkcję `registerUser(email, password, confirmPassword)`.
 2.  **Walidacja Danych:**
-    *   Wewnątrz `ViewModelu`, przed wywołaniem Firebase, przeprowadzana jest walidacja:
-        *   Sprawdzenie, czy żadne z pól nie jest puste.
-        *   Sprawdzenie, czy `password` i `confirmPassword` są identyczne.
-        *   Sprawdzenie, czy `password` ma co najmniej 6 znaków (wymóg Firebase).
-        *   Sprawdzenie, czy `email` ma poprawny format.
-    *   Jeśli walidacja nie powiedzie się, `ViewModel` wystawi odpowiedni stan błędu (np. `State.Error("Hasła nie są zgodne")`), który UI będzie mogło wyświetlić użytkownikowi.
+    *   Wewnątrz `ViewModelu`, przed wywołaniem Firebase, przeprowadzana jest walidacja.
 3.  **Proces Rejestracji:**
-    *   Jeśli walidacja przejdzie pomyślnie, `ViewModel` wystawia stan `State.Loading`, aby UI mogło pokazać wskaźnik postępu (np. kółko).
+    *   Jeśli walidacja przejdzie pomyślnie, `ViewModel` wystawia stan `State.Loading`.
     *   Wywoływana jest funkcja `repo.registerUser(...)`.
 4.  **Obsługa Wyniku:**
     *   **Sukces:**
         *   Repozytorium tworzy użytkownika w Auth, wysyła e-mail weryfikacyjny i tworzy dokument w Firestore z pustym polem `username`.
-        *   Po pomyślnym zakończeniu operacji w repozytorium, `ViewModel` emituje jednorazowe zdarzenie `NavigationEvent.NavigateToRegistrationSuccess`.
+        *   `ViewModel` emituje `NavigationEvent.NavigateToRegistrationSuccess`.
     *   **Błąd:**
-        *   Jeśli jakakolwiek operacja się nie powiedzie, `ViewModel` wystawia stan `State.Error` z odpowiednim komunikatem.
+        *   `ViewModel` wystawia stan `State.Error` z odpowiednim komunikatem.
 5.  **Komunikacja z UI:**
-    *   `RegisterScreen` obserwuje stan (`State`) i reaguje na błędy lub stan ładowania.
-    *   Nasłuchuje również na zdarzenia `NavigationEvent` i po otrzymaniu `NavigateToRegistrationSuccess`, nawiguje do nowego ekranu `RegistrationSuccessScreen`.
+    *   `RegisterScreen` obserwuje stan i zdarzenia nawigacyjne.
 
 ### 7.2. Przepływ Logowania Użytkownika (`AuthViewModel`)
 Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według następujących kroków:
-
 1.  **Inicjacja:**
     *   `LoginScreen` wywołuje publiczną funkcję `loginUser(email, password, rememberMe)`. W interfejsie użytkownika znajduje się `Checkbox` "Zapamiętaj mnie", którego stan (`rememberMe`) jest przekazywany do `ViewModelu`.
 2.  **Walidacja Danych:**

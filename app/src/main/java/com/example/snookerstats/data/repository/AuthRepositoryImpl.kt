@@ -22,11 +22,10 @@ class AuthRepositoryImpl @Inject constructor(
 
             firebaseUser.sendEmailVerification().await()
 
-            // Tworzenie obiektu User z pustym username
             val user = User(
                 uid = firebaseUser.uid,
                 email = email,
-                username = "" // Username będzie ustawione przy pierwszym logowaniu
+                username = ""
             )
             firestore.collection("users").document(firebaseUser.uid).set(user).await()
 
@@ -40,6 +39,48 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             firebaseAuth.signInWithEmailAndPassword(email, password).await()
             Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "An unknown error occurred.")
+        }
+    }
+
+    override suspend fun updateUserProfile(username: String, firstName: String, lastName: String): Response<Boolean> {
+        return try {
+            val firebaseUser = firebaseAuth.currentUser ?: return Response.Error("User not logged in.")
+            val userUpdates = mapOf(
+                "username" to username,
+                "firstName" to firstName,
+                "lastName" to lastName
+            )
+            firestore.collection("users").document(firebaseUser.uid).update(userUpdates).await()
+            Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "An unknown error occurred.")
+        }
+    }
+
+    override suspend fun isUsernameTaken(username: String): Response<Boolean> {
+        return try {
+            val result = firestore.collection("users")
+                .whereEqualTo("username", username)
+                .limit(1)
+                .get()
+                .await()
+            Response.Success(!result.isEmpty)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "An unknown error occurred.")
+        }
+    }
+
+    override suspend fun getCurrentUserData(): Response<User?> {
+        return try {
+            val firebaseUser = firebaseAuth.currentUser
+            if (firebaseUser != null) {
+                val user = firestore.collection("users").document(firebaseUser.uid).get().await().toObject(User::class.java)
+                Response.Success(user)
+            } else {
+                Response.Error("User not logged in.")
+            }
         } catch (e: Exception) {
             Response.Error(e.message ?: "An unknown error occurred.")
         }

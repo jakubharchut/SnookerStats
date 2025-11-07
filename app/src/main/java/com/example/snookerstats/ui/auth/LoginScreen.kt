@@ -33,7 +33,7 @@ fun LoginScreen(
     val credentialsState by viewModel.credentialsState.collectAsState()
     var email by remember { mutableStateOf(credentialsState.email) }
     var password by remember { mutableStateOf(credentialsState.password) }
-    var rememberMe by remember { mutableStateOf(false) } // Dodano stan dla checkboxa
+    var rememberMe by remember { mutableStateOf(false) }
 
     val authState by viewModel.authState.collectAsState()
     val focusManager = LocalFocusManager.current
@@ -45,21 +45,28 @@ fun LoginScreen(
         if (credentialsState.password.isNotEmpty()) {
             password = credentialsState.password
         }
-        // Po załadowaniu danych, domyślnie zaznacz checkbox, jeśli są dane
         rememberMe = credentialsState.email.isNotEmpty() || credentialsState.password.isNotEmpty()
     }
 
     val loginAction = {
         focusManager.clearFocus()
-        viewModel.loginUser(email, password, rememberMe) // Przekazanie stanu checkboxa
+        viewModel.loginUser(email, password, rememberMe)
     }
 
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collectLatest { event ->
-            if (event is NavigationEvent.NavigateToMain) {
-                navController.navigate("main") {
-                    popUpTo("login") { inclusive = true }
+            when (event) {
+                is NavigationEvent.NavigateToMain -> {
+                    navController.navigate("main") {
+                        popUpTo("login") { inclusive = true }
+                    }
                 }
+                is NavigationEvent.NavigateToSetupProfile -> {
+                    navController.navigate("setup_profile") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
+                else -> {}
             }
         }
     }
@@ -130,7 +137,7 @@ fun LoginScreen(
             when (val state = authState) {
                 is AuthState.Success -> Text(state.message, color = Color.Green)
                 is AuthState.Error -> Text(state.message, color = Color.Red)
-                else -> {} // Obsługa pozostałych stanów
+                else -> {}
             }
         }
 

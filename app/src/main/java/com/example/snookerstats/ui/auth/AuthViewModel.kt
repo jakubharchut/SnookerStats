@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.repository.AuthRepository
-import com.example.snookerstats.domain.use_case.ValidateRegisterInputUseCase
-import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,15 +24,14 @@ sealed class NavigationEvent {
     object NavigateToMain : NavigationEvent()
     object NavigateToRegistrationSuccess : NavigationEvent()
     object NavigateToLogin : NavigationEvent()
+    object NavigateToSetupProfile : NavigationEvent()
 }
 
 data class CredentialsState(val email: String = "", val password: String = "")
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val repo: AuthRepository,
-    private val validateRegisterInput: ValidateRegisterInputUseCase,
-    private val firebaseAuth: FirebaseAuth
+    private val repo: AuthRepository
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
@@ -59,9 +56,13 @@ class AuthViewModel @Inject constructor(
 
     fun registerUser(email: String, password: String, confirmPassword: String) {
         viewModelScope.launch {
-            val validationResponse = validateRegisterInput(email, password, confirmPassword)
-            if (validationResponse is Response.Error) {
-                _authState.value = AuthState.Error(validationResponse.message)
+            // Walidacja po stronie klienta (bardzo podstawowa)
+            if (email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                _authState.value = AuthState.Error("Wszystkie pola muszą być wypełnione.")
+                return@launch
+            }
+            if (password != confirmPassword) {
+                _authState.value = AuthState.Error("Hasła nie są zgodne.")
                 return@launch
             }
 
@@ -85,29 +86,60 @@ class AuthViewModel @Inject constructor(
             }
 
             _authState.value = AuthState.Loading
-            when (val response = repo.loginUser(trimmedEmail, trimmedPassword)) {
+            when (val loginResponse = repo.loginUser(trimmedEmail, trimmedPassword)) {
                 is Response.Success -> {
-                    if (firebaseAuth.currentUser?.isEmailVerified == true) {
-                        if (rememberMe) { // Logika zapamiętywania
-                            repo.saveCredentials(trimmedEmail, trimmedPassword)
-                        } else {
-                            repo.clearCredentials()
+                    when (val userDataResponse = repo.getCurrentUserData()) {
+                        is Response.Success -> {
+                            val user = userDataResponse.data
+                            if (user?.username?.isBlank() == true) {
+                                if (rememberMe) repo.saveCredentials(trimmedEmail, trimmedPassword) else repo.clearCredentials()
+                                _navigationEvent.emit(NavigationEvent.NavigateToSetupProfile)
+                            } else {
+                                if (rememberMe) repo.saveCredentials(trimmedEmail, trimmedPassword) else repo.clearCredentials()
+                                _navigationEvent.emit(NavigationEvent.NavigateToMain)
+                            }
                         }
-                        _navigationEvent.emit(NavigationEvent.NavigateToMain)
-                    } else {
-                        _authState.value = AuthState.Error("Konto nie zostało zweryfikowane. Sprawdź e-mail.")
+                        is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(userDataResponse.message))
+                        else -> _authState.value = AuthState.Error("Błąd pobierania danych użytkownika.")
                     }
                 }
-                is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(response.message))
-                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd podczas logowania.")
+                is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(loginResponse.message))
+                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd logowania.")
+            }
+        }
+    }
+
+    fun saveUserProfile(username: String, firstName: String, lastName: String) {
+        viewModelScope.launch {
+            if (username.isBlank()) {
+                _authState.value = AuthState.Error("Nazwa wyświetlana jest obowiązkowa.")
+                return@launch
+            }
+            _authState.value = AuthState.Loading
+
+            when (val isTakenResponse = repo.isUsernameTaken(username)) {
+                is Response.Success -> {
+                    if (isTakenResponse.data) {
+                        _authState.value = AuthState.Error("Ta nazwa użytkownika jest już zajęta.")
+                        return@launch
+                    }
+                    when (val updateResponse = repo.updateUserProfile(username, firstName, lastName)) {
+                        is Response.Success -> _navigationEvent.emit(NavigationEvent.NavigateToMain)
+                        is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(updateResponse.message))
+                        else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd.")
+                    }
+                }
+                is Response.Error -> {
+                    _authState.value = AuthState.Error(mapFirebaseError(isTakenResponse.message))
+                }
+                else -> {}
             }
         }
     }
 
     fun signOut() {
         viewModelScope.launch {
-            firebaseAuth.signOut() // Tylko wylogowanie z Firebase
-            // repo.clearCredentials() - Usunięto czyszczenie danych przy wylogowaniu
+            repo.signOut()
             _navigationEvent.emit(NavigationEvent.NavigateToLogin)
         }
     }

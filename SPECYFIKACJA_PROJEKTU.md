@@ -117,7 +117,6 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 
 ## 6. Plan Realizacji Projektu (Roadmap)
 
-
 ### Etap 1: Fundamenty i Konfiguracja
 - [x] Utworzenie projektu w konsoli Firebase.
 - [x] Dodanie zależności do `build.gradle.kts` (Firebase, Hilt, Room, Compose Navigation, material-icons-extended, etc.).
@@ -157,20 +156,37 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
     *   **Klasa Bazy Danych:** Stworzono główną klasę `SnookerStatsDatabase.kt` (`data/local`) z adnotacją `@Database` i podłączeniem `TypeConverter`.
     *   **Hilt Module dla Room:** Stworzono `DatabaseModule.kt` (`di`) do dostarczania instancji bazy danych i DAO.
 
-### Etap 5: Rdzeń Aplikacji - Zapis Meczu Lokalnego
-- [x] UI ekranu wprowadzania wyniku (shot-by-shot) - wstępny placeholder `PlayScreen.kt` utworzony.
-- [ ] ViewModel zarządzający stanem meczu.
-- [ ] Logika zapisu meczu do Room i Firestore.
+### Etap 5: Funkcje Społecznościowe (NOWY ETAP)
+*   **Cel:** Implementacja kluczowych funkcji społecznościowych, które pozwolą użytkownikom na interakcję i budowanie sieci kontaktów w aplikacji.
+*   **Wymagania:** Dostęp do modeli danych `User` i ich aktualizacji (np. listy znajomych).
+*   **Kolejność prac w ramach etapu:**
+    *   [ ] **Wyszukiwarka graczy i profil publiczny:**
+        *   Implementacja UI dla profilu użytkownika (z możliwością ustawienia jako publiczny/prywatny).
+        *   Implementacja wyszukiwarki graczy (zapytania do Firestore).
+        *   Wyświetlanie publicznych profili.
+    *   [ ] **System zaproszeń do znajomych:**
+        *   Dodanie logiki wysyłania, odbierania i akceptowania zaproszeń (aktualizacja list w modelu `User` w Firestore).
+        *   UI do zarządzania zaproszeniami (np. w zakładce "Ludzie").
+    *   [ ] **Ekran porównania statystyk Head-to-Head:**
+        *   Wykorzystanie już istniejących lub przyszłych danych meczowych (z Firestore lub Room).
+        *   Implementacja UI do prezentacji porównania statystyk.
+    *   [ ] **Implementacja systemu czatu:**
+        *   Projekt i implementacja bazy danych Firestore dla wiadomości.
+        *   UI do listy czatów i pojedynczej rozmowy.
+        *   Obsługa wysyłania i odbierania wiadomości w czasie rzeczywistym.
 
-### Etap 6: Wyświetlanie Danych
+### Etap 6: Rdzeń Aplikacji - Zapis Meczu Lokalnego (NOWY ETAP)
+*   **Cel:** Umożliwienie użytkownikom zapisywania wyników meczów lokalnie.
+*   **Wymagania:** Zakończony Etap 4 (Modele Danych) i Etap 5 (Fundamenty społecznościowe).
+*   **Kolejność prac w ramach etapu:**
+    *   [ ] UI ekranu wprowadzania wyniku (shot-by-shot) - placeholder utworzony w Etapie 3.
+    *   [ ] ViewModel zarządzający stanem meczu.
+    *   [ ] Logika zapisu meczu do Room.
+    *   [ ] Logika zapisu meczu do Firestore (synchronizacja).
+
+### Etap 7: Wyświetlanie Danych
 - [ ] Ekran historii meczy.
 - [ ] Dashboard z podstawowymi statystykami.
-
-### Etap 7: Funkcje Społecznościowe
-- [ ] Wyszukiwarka graczy i profil publiczny.
-- [ ] System zaproszeń do znajomych.
-- [ ] Implementacja systemu czatu.
-- [ ] Ekran porównania statystyk Head-to-Head.
 
 ### Etap 8: Mecz Online w Czasie Rzeczywistym
 - [ ] Synchronizacja danych przy użyciu listenerów Firestore.

@@ -5,4 +5,5 @@ import com.example.snookerstats.domain.model.User
 
 interface ProfileRepository {
     suspend fun saveUserProfile(user: User): Response<Boolean>
+    suspend fun isUsernameTaken(username: String): Response<Boolean>
 }

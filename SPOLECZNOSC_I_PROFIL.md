@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: Społeczność i Profil
 
-## Wersja: 1.0 (stan na 2024-07-25)
+## Wersja: 1.1 (stan na 2024-07-25)
 
 ---
 
@@ -18,14 +18,14 @@ Centralnym modelem danych dla tego modułu jest klasa `User`. Będzie ona przech
 *   `uid: String` - (Klucz główny) Unikalny ID z Firebase Authentication.
 *   `username: String` - **(Obowiązkowe)** Publiczna, unikalna nazwa wyświetlana, używana w wyszukiwarce, rankingach itp.
 *   `email: String` - Adres e-mail (niepubliczny).
-*   `firstName: String?` - **(Opcjonalne)** Prawdziwe imię użytkownika.
-*   `lastName: String?` - **(Opcjonalne)** Prawdziwe nazwisko użytkownika.
+*   `firstName: String?` - **(Opcjonalne przy rejestracji)** Prawdziwe imię użytkownika. Wymagane do dołączenia do klubu lub turnieju.
+*   `lastName: String?` - **(Opcjonalne przy rejestracji)** Prawdziwe nazwisko użytkownika. Wymagane do dołączenia do klubu lub turnieju.
 *   `club: String?` - **(Opcjonalne)** Nazwa klubu, do którego należy gracz.
 *   `profileImageUrl: String?` - **(Opcjonalne)** URL do zdjęcia profilowego.
 *   `friends: List<String>` - Lista `uid` użytkowników, którzy są znajomymi.
 *   `friendRequestsSent: List<String>` - Lista `uid` użytkowników, do których wysłano zaproszenie.
 *   `friendRequestsReceived: List<String>` - Lista `uid` użytkowników, od których otrzymano zaproszenie.
-*   `isRealNameVisible: Boolean` - Flaga prywatności. Jeśli `true`, `firstName` i `lastName` są widoczne dla innych. Domyślnie `false`.
+*   `isPublicProfile: Boolean` - Flaga prywatności. Jeśli `true`, profil jest publiczny. Domyślnie `true`.
 
 ---
 
@@ -36,7 +36,7 @@ Centralnym modelem danych dla tego modułu jest klasa `User`. Będzie ona przech
 **Cel:** Zapewnienie, że każdy użytkownik ma ustawioną przynajmniej obowiązkową nazwę wyświetlaną (`username`).
 
 1.  **Wykrywanie Nowego Użytkownika:**
-    *   Po pomyślnym zalogowaniu, aplikacja (w `AuthViewModel` lub podobnym miejscu) pobierze dane użytkownika z Firestore.
+    *   Po pomyślnym zalogowaniu, aplikacja (w `AuthViewModel`) pobierze dane użytkownika z Firestore.
     *   Sprawdzi, czy pole `username` jest puste.
 2.  **Przekierowanie do Formularza:**
     *   Jeśli `username` jest pusty, użytkownik zostanie przekierowany do nowego ekranu `SetupProfileScreen`.
@@ -46,30 +46,36 @@ Centralnym modelem danych dla tego modułu jest klasa `User`. Będzie ona przech
         *   `username` (Nazwa wyświetlana) - **pole obowiązkowe**.
         *   `firstName` (Imię) - pole opcjonalne.
         *   `lastName` (Nazwisko) - pole opcjonalne.
+        *   Przełącznik `Switch` do ustawienia profilu jako prywatny.
     *   Przycisk "Zapisz i kontynuuj".
 4.  **Logika Zapisu:**
-    *   Po kliknięciu przycisku, dane zostaną zwalidowane (czy `username` nie jest pusty).
+    *   Po kliknięciu przycisku, dane zostaną zwalidowane (czy `username` nie jest pusty i czy jest unikalny).
     *   Aplikacja zaktualizuje dokument użytkownika w Firestore o nowe dane.
     *   Po pomyślnym zapisie, użytkownik zostanie przekierowany do `MainScreen`.
 
-### Krok 2: Ekran Społeczności (`CommunityScreen`)
+### Krok 2: Kontekstowe Wymaganie Danych (Turnieje i Kluby)
+
+**Cel:** Wdrożenie strategii "pytaj tylko, gdy to konieczne".
+
+*   **Implementacja:** W przyszłości, podczas implementacji modułu turniejów lub klubów, przed dołączeniem do turnieju lub klubu, aplikacja sprawdzi, czy pola `firstName` i `lastName` w profilu użytkownika są uzupełnione.
+*   **Dialog:** Jeśli pola te są puste, zostanie wyświetlony dialog z prośbą o ich uzupełnienie, informując użytkownika, że są one wymagane do udziału w oficjalnych rozgrywkach.
+
+### Krok 3: Ekran Społeczności (`CommunityScreen`)
 
 **Cel:** Stworzenie centralnego miejsca do zarządzania interakcjami społecznymi.
 
 1.  **Wyszukiwarka Graczy:**
-    *   Pole tekstowe do wpisywania `username`, `firstName` lub `lastName`.
+    *   Pole tekstowe do wpisywania `username`.
     *   Wyniki wyszukiwania będą wyświetlane w czasie rzeczywistym w `LazyColumn`.
-    *   Każdy wynik będzie zawierał `username`, opcjonalnie `firstName` i `lastName` (jeśli `isRealNameVisible` jest `true`) oraz przycisk "Dodaj do znajomych".
+    *   Każdy wynik będzie zawierał `username` oraz przycisk "Dodaj do znajomych".
 2.  **Lista Otrzymanych Zaproszeń:**
     *   Sekcja wyświetlająca listę użytkowników, którzy wysłali nam zaproszenie.
     *   Przy każdym zaproszeniu będą przyciski "Akceptuj" i "Odrzuć".
 3.  **Lista Znajomych:**
     *   Sekcja wyświetlająca listę naszych aktualnych znajomych.
     *   Każdy element na liście będzie klikalny, prowadząc do profilu gracza.
-4.  **Przycisk "Dodaj Gracza Gościnnego":**
-    *   Otworzy prosty dialog do wpisania nazwy przeciwnika, który nie ma konta w aplikacji. Ta nazwa będzie przekazywana do ekranu rozpoczynania meczu.
 
-### Krok 3: Implementacja Logiki Systemu Znajomych (`CommunityRepository`)
+### Krok 4: Implementacja Logiki Systemu Znajomych (`CommunityRepository`)
 
 **Cel:** Stworzenie logiki backendowej do zarządzania relacjami.
 
@@ -90,17 +96,17 @@ Centralnym modelem danych dla tego modułu jest klasa `User`. Będzie ona przech
     *   Akcja dostępna na profilu znajomego.
     *   Usuwa ID obu użytkowników z ich wzajemnych list `friends`.
 
-### Krok 4: Ekran Profilu Użytkownika (`ProfileScreen`)
+### Krok 5: Ekran Profilu Użytkownika (`ProfileScreen`)
 
 **Cel:** Stworzenie publicznej wizytówki gracza oraz miejsca do edycji własnych danych.
 
 1.  **Widok Publiczny:**
     *   Wyświetla `username`, `club`, `profileImageUrl`.
-    *   Wyświetla `firstName` i `lastName` **tylko wtedy**, gdy `isRealNameVisible` jest `true`.
+    *   Wyświetla `firstName` i `lastName` **tylko wtedy**, gdy profil jest publiczny.
     *   Wyświetla statystyki, osiągnięcia itp. (zostaną zaimplementowane w przyszłości).
 2.  **Widok Własnego Profilu:**
     *   Wyświetla te same dane, co widok publiczny.
-    *   Dodatkowo zawiera przycisk "Edytuj profil", który pozwoli na zmianę `username`, `firstName`, `lastName`, `club`, `profileImageUrl` oraz flagi `isRealNameVisible`.
+    *   Dodatkowo zawiera przycisk "Edytuj profil", który pozwoli na zmianę `username`, `firstName`, `lastName`, `club`, `profileImageUrl` oraz flagi `isPublicProfile`.
 
 ---
 

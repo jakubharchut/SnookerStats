@@ -17,7 +17,6 @@ class ProfileRepositoryImpl @Inject constructor(
         return try {
             val currentUser = auth.currentUser ?: return Response.Error("User not logged in")
             
-            // Pobierz istniejące dane, aby ich nie nadpisać
             val userRef = firestore.collection("users").document(currentUser.uid)
             val existingUser = userRef.get().await().toObject(User::class.java)
 
@@ -30,6 +29,15 @@ class ProfileRepositoryImpl @Inject constructor(
 
             userRef.set(updatedUser).await()
             Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    override suspend fun isUsernameTaken(username: String): Response<Boolean> {
+        return try {
+            val result = firestore.collection("users").whereEqualTo("username", username).limit(1).get().await()
+            Response.Success(result.isEmpty.not())
         } catch (e: Exception) {
             Response.Error(e.message ?: "Unknown error")
         }

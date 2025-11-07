@@ -38,12 +38,35 @@ class ProfileViewModel @Inject constructor(
     fun saveUserProfile(user: User) {
         viewModelScope.launch {
             _profileState.value = ProfileState.Loading
-            when(val response = repo.saveUserProfile(user)) {
+
+            // 1. Sprawdź, czy nazwa użytkownika nie jest pusta
+            if (user.username.isBlank()) {
+                _profileState.value = ProfileState.Error("Nazwa użytkownika nie może być pusta.")
+                return@launch
+            }
+
+            // 2. Sprawdź, czy nazwa użytkownika jest już zajęta
+            when (val isTakenResponse = repo.isUsernameTaken(user.username)) {
+                is Response.Success -> {
+                    if (isTakenResponse.data) {
+                        _profileState.value = ProfileState.Error("Ta nazwa użytkownika jest już zajęta.")
+                        return@launch
+                    }
+                }
+                is Response.Error -> {
+                    _profileState.value = ProfileState.Error(isTakenResponse.message)
+                    return@launch
+                }
+                else -> {}
+            }
+
+            // 3. Jeśli wszystko jest OK, zapisz profil
+            when(val saveResponse = repo.saveUserProfile(user)) {
                 is Response.Success -> {
                     _profileState.value = ProfileState.Success("Profil zapisany!")
                     _navigationEvent.emit(ProfileNavigationEvent.NavigateToMain)
                 }
-                is Response.Error -> _profileState.value = ProfileState.Error(response.message)
+                is Response.Error -> _profileState.value = ProfileState.Error(saveResponse.message)
                 else -> {}
             }
         }

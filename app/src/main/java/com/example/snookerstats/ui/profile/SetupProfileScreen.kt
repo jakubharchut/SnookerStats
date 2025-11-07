@@ -25,7 +25,7 @@ fun SetupProfileScreen(
     var username by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
-    var isPublicProfile by remember { mutableStateOf(false) }
+    var isPublicProfile by remember { mutableStateOf(true) } // Domyślnie publiczny
 
     val profileState by viewModel.profileState.collectAsState()
 
@@ -47,7 +47,7 @@ fun SetupProfileScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(32.dp)) // Większa przestrzeń od góry
         Text(
             text = "Uzupełnij swój profil",
             style = MaterialTheme.typography.headlineMedium,
@@ -56,7 +56,7 @@ fun SetupProfileScreen(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "To szybki krok, aby móc w pełni korzystać z aplikacji. Nazwa użytkownika jest obowiązkowa.",
+            text = "Witaj w Snooker Stats! Aby w pełni korzystać z aplikacji, musisz jednorazowo uzupełnić swój profil. Nazwa użytkownika jest obowiązkowa.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
@@ -110,10 +110,10 @@ fun SetupProfileScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Profil publiczny", style = MaterialTheme.typography.bodyLarge)
+            Text("Ukryj profil (domyślnie publiczny)", style = MaterialTheme.typography.bodyLarge)
             Switch(
-                checked = isPublicProfile,
-                onCheckedChange = { isPublicProfile = it }
+                checked = !isPublicProfile, // Odwrotna logika - checked oznacza UKRYTY
+                onCheckedChange = { isPublicProfile = !it }
             )
         }
 

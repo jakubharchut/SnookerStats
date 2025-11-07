@@ -1,6 +1,6 @@
 # Specyfikacja Projektu: Aplikacja "Snooker Stats"
 
-## Wersja: 1.0 (stan na 2024-07-25)
+## Wersja: 1.1 (stan na 2024-07-25)
 
 ---
 
@@ -33,6 +33,7 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 ## 3. Kluczowe Funkcjonalności
 
 ### 3.1. Zarządzanie Profilem i Społeczność
+*   **Szczegółowa Specyfikacja:** Dokładny opis modeli danych, przepływów i logiki dla tego modułu znajduje się w osobnym dokumencie: `spolecznosc_i_profil.md`.
 *   **Stopniowe Wdrażanie (Progressive Onboarding):** Po pierwszej, uproszczonej rejestracji (tylko e-mail i hasło), użytkownik będzie zachęcany do uzupełnienia swojego profilu (nazwa użytkownika, imię, klub) w dedykowanej sekcji ustawień.
 *   **Profile Graczy:**
     *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny**.
@@ -88,6 +89,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 *   **Górny Pasek Aplikacji (`TopAppBar`):** Zawiera tytuł ekranu i opcjonalne akcje kontekstowe.
 *   **Dolny Pasek Nawigacyjny (`BottomNavigationBar`):** Główna nawigacja między kluczowymi sekcjami (np. Dashboard, Graj, Społeczność, Turnieje, Profil).
 *   **Obszar Treści:** Centralna część ekranu, w której wyświetlana jest zawartość.
+*   **Menu Zakładek (`TabRow`):** W przypadku złożonych ekranów (takich jak Społeczność), do dalszej organizacji treści będzie używany system zakładek umieszczony pod `TopAppBar`. Szczegółowy opis tego wzorca znajduje się w odpowiedniej specyfikacji modułu.
 
 ### 4.3. Priorytety Projektowe
 *   **Czytelność i Intuicyjność:** Interfejs musi być prosty w obsłudze, nawet podczas stresującego meczu.

@@ -1,6 +1,6 @@
 # Specyfikacja Projektu: Aplikacja "Snooker Stats"
 
-## Wersja: 1.1 (stan na 2024-07-25)
+## Wersja: 1.2 (stan na 2024-07-26)
 
 ---
 
@@ -34,12 +34,16 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 
 ### 3.1. Zarządzanie Profilem i Społeczność
 *   **Szczegółowa Specyfikacja:** Dokładny opis modeli danych, przepływów i logiki dla tego modułu znajduje się w osobnym dokumencie: `spolecznosc_i_profil.md`.
-*   **Stopniowe Wdrażanie (Progressive Onboarding):** Po pierwszej, uproszczonej rejestracji (tylko e-mail i hasło), użytkownik będzie zachęcany do uzupełnienia swojego profilu (nazwa użytkownika, imię, klub) w dedykowanej sekcji ustawień.
+*   **Stopniowe Wdrażanie (Progressive Onboarding):** Po pierwszej, uproszczonej rejestracji (tylko e-mail i hasło), użytkownik jest przekierowywany do ekranu `SetupProfileScreen` w celu jednorazowego uzupełnienia profilu (`username`, opcjonalnie `firstName` i `lastName`).
 *   **Profile Graczy:**
     *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny**.
     *   Profil publiczny działa jak "wizytówka gracza", pokazując jego imię, zdjęcie, przynależność klubową, zdobyte trofea i odznaki oraz kluczowe statystyki.
-*   **Wyszukiarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
+*   **Wyszukiwarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
 *   **System Sparing Partnerów ("Znajomych"):** Możliwość wysyłania zaproszeń do innych graczy, tworzenia listy znajomych i zarządzania nią.
+*   **System Komunikacji (Czat):**
+    *   Aplikacja będzie zawierać system wiadomości prywatnych między użytkownikami.
+    *   Główny dostęp do czatów będzie możliwy przez dedykowaną ikonę (np. koperty) w `TopAppBar`.
+    *   Możliwość zainicjowania nowej rozmowy będzie dostępna z poziomu listy znajomych oraz profilu innego użytkownika.
 *   **Kluby:** Funkcjonalność tworzenia i dołączania do grup (klubów), które posiadają własne, wewnętrzne rankingi i statystyki.
 
 ### 3.2. Rejestrowanie Meczy
@@ -86,7 +90,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 
 ### 4.2. Spójna Struktura Ekranów
 *   **Wykorzystanie `Scaffold`:** Każdy główny ekran w aplikacji będzie zbudowany w oparciu o komponent `Scaffold` z Jetpack Compose, aby zapewnić spójność.
-*   **Górny Pasek Aplikacji (`TopAppBar`):** Zawiera tytuł ekranu i opcjonalne akcje kontekstowe.
+*   **Górny Pasek Aplikacji (`TopAppBar`):** Zawiera tytuł aplikacji. Będzie również zawierał ikony akcji, takie jak **Profil**, **Wiadomości (Czat)** i **Wyloguj**.
 *   **Dolny Pasek Nawigacyjny (`BottomNavigationBar`):** Główna nawigacja między kluczowymi sekcjami (np. Dashboard, Graj, Społeczność, Turnieje, Profil).
 *   **Obszar Treści:** Centralna część ekranu, w której wyświetlana jest zawartość.
 *   **Menu Zakładek (`TabRow`):** W przypadku złożonych ekranów (takich jak Społeczność), do dalszej organizacji treści będzie używany system zakładek umieszczony pod `TopAppBar`. Szczegółowy opis tego wzorca znajduje się w odpowiedniej specyfikacji modułu.
@@ -160,6 +164,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 ### Etap 7: Funkcje Społecznościowe
 - [ ] Wyszukiwarka graczy i profil publiczny.
 - [ ] System zaproszeń do znajomych.
+- [ ] Implementacja systemu czatu.
 - [ ] Ekran porównania statystyk Head-to-Head.
 
 ### Etap 8: Mecz Online w Czasie Rzeczywistym

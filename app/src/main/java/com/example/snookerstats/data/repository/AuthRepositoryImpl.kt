@@ -6,6 +6,8 @@ import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
@@ -22,10 +24,11 @@ class AuthRepositoryImpl @Inject constructor(
 
             firebaseUser.sendEmailVerification().await()
 
+            // Tworzenie obiektu User z pustym username
             val user = User(
                 uid = firebaseUser.uid,
                 email = email,
-                username = ""
+                username = "" // Username będzie ustawione przy pierwszym logowaniu
             )
             firestore.collection("users").document(firebaseUser.uid).set(user).await()
 
@@ -44,45 +47,17 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateUserProfile(username: String, firstName: String, lastName: String): Response<Boolean> {
-        return try {
-            val firebaseUser = firebaseAuth.currentUser ?: return Response.Error("User not logged in.")
-            val userUpdates = mapOf(
-                "username" to username,
-                "firstName" to firstName,
-                "lastName" to lastName
-            )
-            firestore.collection("users").document(firebaseUser.uid).update(userUpdates).await()
-            Response.Success(true)
-        } catch (e: Exception) {
-            Response.Error(e.message ?: "An unknown error occurred.")
-        }
-    }
-
-    override suspend fun isUsernameTaken(username: String): Response<Boolean> {
-        return try {
-            val result = firestore.collection("users")
-                .whereEqualTo("username", username)
-                .limit(1)
-                .get()
-                .await()
-            Response.Success(!result.isEmpty)
-        } catch (e: Exception) {
-            Response.Error(e.message ?: "An unknown error occurred.")
-        }
-    }
-
-    override suspend fun getCurrentUserData(): Response<User?> {
-        return try {
-            val firebaseUser = firebaseAuth.currentUser
-            if (firebaseUser != null) {
-                val user = firestore.collection("users").document(firebaseUser.uid).get().await().toObject(User::class.java)
-                Response.Success(user)
+    override fun getUserProfile(uid: String): Flow<Response<User>> = flow {
+        emit(Response.Loading)
+        try {
+            val user = firestore.collection("users").document(uid).get().await().toObject(User::class.java)
+            if (user != null) {
+                emit(Response.Success(user))
             } else {
-                Response.Error("User not logged in.")
+                emit(Response.Error("User profile not found."))
             }
         } catch (e: Exception) {
-            Response.Error(e.message ?: "An unknown error occurred.")
+            emit(Response.Error(e.message ?: "An unknown error occurred."))
         }
     }
 

@@ -3,12 +3,7 @@ package com.example.snookerstats.ui.auth
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,9 +15,12 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.example.snookerstats.ui.theme.SnookerStatsTheme
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -30,27 +28,21 @@ fun LoginScreen(
     navController: NavController,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
-    val credentialsState by viewModel.credentialsState.collectAsState()
-    var email by remember { mutableStateOf(credentialsState.email) }
-    var password by remember { mutableStateOf(credentialsState.password) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
 
     val authState by viewModel.authState.collectAsState()
+    val credentialsState by viewModel.credentialsState.collectAsState()
     val focusManager = LocalFocusManager.current
 
+    // Wypełnij pola, jeśli dane są zapisane
     LaunchedEffect(credentialsState) {
         if (credentialsState.email.isNotEmpty()) {
             email = credentialsState.email
-        }
-        if (credentialsState.password.isNotEmpty()) {
             password = credentialsState.password
+            rememberMe = true
         }
-        rememberMe = credentialsState.email.isNotEmpty() || credentialsState.password.isNotEmpty()
-    }
-
-    val loginAction = {
-        focusManager.clearFocus()
-        viewModel.loginUser(email, password, rememberMe)
     }
 
     LaunchedEffect(Unit) {
@@ -106,13 +98,13 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { loginAction() })
+                keyboardActions = KeyboardActions(onDone = {
+                    focusManager.clearFocus()
+                    viewModel.loginUser(email, password, rememberMe)
+                })
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = rememberMe,
                     onCheckedChange = { rememberMe = it }
@@ -123,7 +115,10 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
-                onClick = { loginAction() },
+                onClick = { 
+                    focusManager.clearFocus()
+                    viewModel.loginUser(email, password, rememberMe) 
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authState !is AuthState.Loading
             ) {
@@ -135,7 +130,6 @@ fun LoginScreen(
             }
 
             when (val state = authState) {
-                is AuthState.Success -> Text(state.message, color = Color.Green)
                 is AuthState.Error -> Text(state.message, color = Color.Red)
                 else -> {}
             }
@@ -147,5 +141,13 @@ fun LoginScreen(
         ) {
             Text("Nie masz konta? Zarejestruj się")
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoginScreenPreview() {
+    SnookerStatsTheme {
+        LoginScreen(navController = rememberNavController())
     }
 }

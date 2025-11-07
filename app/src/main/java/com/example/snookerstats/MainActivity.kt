@@ -14,7 +14,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.snookerstats.ui.auth.LoginScreen
 import com.example.snookerstats.ui.auth.RegisterScreen
 import com.example.snookerstats.ui.auth.RegistrationSuccessScreen
-import com.example.snookerstats.ui.auth.SetupProfileScreen
 import com.example.snookerstats.ui.main.MainScreen
 import com.example.snookerstats.ui.profile.SetupProfileScreen
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
@@ -47,9 +46,6 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("main") {
                             MainScreen(navController = navController)
-                        }
-                        composable("setup_profile") { // Dodano nową trasę
-                            SetupProfileScreen(navController = navController)
                         }
                     }
                 }

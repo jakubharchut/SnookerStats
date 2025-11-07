@@ -21,7 +21,24 @@ class CommunityRepositoryImpl @Inject constructor(
     private val currentUserId: String?
         get() = auth.currentUser?.uid
 
-    // ... searchUsers bez zmian ...
+    override fun searchUsers(query: String): Flow<Response<List<User>>> = flow {
+        emit(Response.Loading)
+        try {
+            if (query.isBlank()) {
+                emit(Response.Success(emptyList()))
+                return@flow
+            }
+            val users = firestore.collection("users")
+                .whereGreaterThanOrEqualTo("username", query)
+                .whereLessThanOrEqualTo("username", query + "\uf8ff")
+                .get()
+                .await()
+                .toObjects(User::class.java)
+            emit(Response.Success(users))
+        } catch (e: Exception) {
+            emit(Response.Error(e.message ?: "Unknown error"))
+        }
+    }
 
     override suspend fun sendFriendRequest(toUserId: String): Response<Boolean> {
         return try {
@@ -46,7 +63,7 @@ class CommunityRepositoryImpl @Inject constructor(
     override suspend fun cancelFriendRequest(toUserId: String): Response<Boolean> {
         return try {
             val fromUserId = currentUserId ?: return Response.Error("User not logged in")
-            
+
             val currentUserRef = firestore.collection("users").document(fromUserId)
             val targetUserRef = firestore.collection("users").document(toUserId)
 
@@ -55,7 +72,7 @@ class CommunityRepositoryImpl @Inject constructor(
                 .update(targetUserRef, "friendRequestsReceived", FieldValue.arrayRemove(fromUserId))
                 .commit()
                 .await()
-            
+
             Response.Success(true)
         } catch (e: Exception) {
             Response.Error(e.message ?: "Unknown error")
@@ -63,12 +80,24 @@ class CommunityRepositoryImpl @Inject constructor(
     }
 
     override suspend fun acceptFriendRequest(fromUserId: String): Response<Boolean> {
-        return Response.Success(true) // TODO
+        // TODO: Implement
+        return Response.Success(true)
     }
 
     override suspend fun rejectFriendRequest(fromUserId: String): Response<Boolean> {
-        return Response.Success(true) // TODO
+        // TODO: Implement
+        return Response.Success(true)
     }
 
-    // ... getFriends, getReceivedFriendRequests, getSentFriendRequests bez zmian ...
+    override fun getFriends(): Flow<Response<List<User>>> = flow {
+        // TODO: Implement
+    }
+
+    override fun getReceivedFriendRequests(): Flow<Response<List<User>>> = flow {
+        // TODO: Implement
+    }
+
+    override fun getSentFriendRequests(): Flow<Response<List<User>>> = flow {
+        // TODO: Implement
+    }
 }

@@ -4,12 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.use_case.ValidateRegisterInputUseCase
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,16 +25,18 @@ sealed class AuthState {
 
 sealed class NavigationEvent {
     object NavigateToMain : NavigationEvent()
+    object NavigateToSetupProfile : NavigationEvent()
     object NavigateToRegistrationSuccess : NavigationEvent()
     object NavigateToLogin : NavigationEvent()
-    object NavigateToSetupProfile : NavigationEvent()
 }
 
 data class CredentialsState(val email: String = "", val password: String = "")
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val repo: AuthRepository
+    private val repo: AuthRepository,
+    private val validateRegisterInput: ValidateRegisterInputUseCase,
+    private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
@@ -56,13 +61,9 @@ class AuthViewModel @Inject constructor(
 
     fun registerUser(email: String, password: String, confirmPassword: String) {
         viewModelScope.launch {
-            // Walidacja po stronie klienta (bardzo podstawowa)
-            if (email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
-                _authState.value = AuthState.Error("Wszystkie pola muszą być wypełnione.")
-                return@launch
-            }
-            if (password != confirmPassword) {
-                _authState.value = AuthState.Error("Hasła nie są zgodne.")
+            val validationResponse = validateRegisterInput(email, password, confirmPassword)
+            if (validationResponse is Response.Error) {
+                _authState.value = AuthState.Error(validationResponse.message)
                 return@launch
             }
 
@@ -86,53 +87,36 @@ class AuthViewModel @Inject constructor(
             }
 
             _authState.value = AuthState.Loading
-            when (val loginResponse = repo.loginUser(trimmedEmail, trimmedPassword)) {
+            when (val response = repo.loginUser(trimmedEmail, trimmedPassword)) {
                 is Response.Success -> {
-                    when (val userDataResponse = repo.getCurrentUserData()) {
-                        is Response.Success -> {
-                            val user = userDataResponse.data
-                            if (user?.username?.isBlank() == true) {
-                                if (rememberMe) repo.saveCredentials(trimmedEmail, trimmedPassword) else repo.clearCredentials()
-                                _navigationEvent.emit(NavigationEvent.NavigateToSetupProfile)
-                            } else {
-                                if (rememberMe) repo.saveCredentials(trimmedEmail, trimmedPassword) else repo.clearCredentials()
-                                _navigationEvent.emit(NavigationEvent.NavigateToMain)
+                    val user = firebaseAuth.currentUser
+                    if (user != null && user.isEmailVerified) {
+                        if (rememberMe) {
+                            repo.saveCredentials(trimmedEmail, trimmedPassword)
+                        } else {
+                            repo.clearCredentials()
+                        }
+                        
+                        // Sprawdź profil użytkownika
+                        repo.getUserProfile(user.uid).collectLatest { profileResponse ->
+                            when (profileResponse) {
+                                is Response.Success -> {
+                                    if (profileResponse.data.username.isBlank()) {
+                                        _navigationEvent.emit(NavigationEvent.NavigateToSetupProfile)
+                                    } else {
+                                        _navigationEvent.emit(NavigationEvent.NavigateToMain)
+                                    }
+                                }
+                                is Response.Error -> _authState.value = AuthState.Error("Nie udało się pobrać profilu.")
+                                else -> {}
                             }
                         }
-                        is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(userDataResponse.message))
-                        else -> _authState.value = AuthState.Error("Błąd pobierania danych użytkownika.")
+                    } else {
+                        _authState.value = AuthState.Error("Konto nie zostało zweryfikowane. Sprawdź e-mail.")
                     }
                 }
-                is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(loginResponse.message))
-                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd logowania.")
-            }
-        }
-    }
-
-    fun saveUserProfile(username: String, firstName: String, lastName: String) {
-        viewModelScope.launch {
-            if (username.isBlank()) {
-                _authState.value = AuthState.Error("Nazwa wyświetlana jest obowiązkowa.")
-                return@launch
-            }
-            _authState.value = AuthState.Loading
-
-            when (val isTakenResponse = repo.isUsernameTaken(username)) {
-                is Response.Success -> {
-                    if (isTakenResponse.data) {
-                        _authState.value = AuthState.Error("Ta nazwa użytkownika jest już zajęta.")
-                        return@launch
-                    }
-                    when (val updateResponse = repo.updateUserProfile(username, firstName, lastName)) {
-                        is Response.Success -> _navigationEvent.emit(NavigationEvent.NavigateToMain)
-                        is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(updateResponse.message))
-                        else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd.")
-                    }
-                }
-                is Response.Error -> {
-                    _authState.value = AuthState.Error(mapFirebaseError(isTakenResponse.message))
-                }
-                else -> {}
+                is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(response.message))
+                else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd podczas logowania.")
             }
         }
     }

@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: Społeczność i Profil
 
-## Wersja: 1.1 (stan na 2024-07-25)
+## Wersja: 1.2 (stan na 2024-07-29)
 
 ---
 
@@ -64,6 +64,8 @@ Centralnym modelem danych dla tego modułu jest klasa `User`. Będzie ona przech
 
 **Cel:** Stworzenie centralnego miejsca do zarządzania interakcjami społecznymi.
 
+Obecnie ekran `CommunityScreen` wyświetla tymczasowy tekst "Community Screen Content". Jego `TopAppBar` nie posiada lokalnego tytułu, aby był spójny z globalnym `TopAppBar` w `MainScreen.kt`. Docelowo będzie zawierał:
+
 1.  **Wyszukiwarka Graczy:**
     *   Pole tekstowe do wpisywania `username`.
     *   Wyniki wyszukiwania będą wyświetlane w czasie rzeczywistym w `LazyColumn`.
@@ -114,8 +116,9 @@ Centralnym modelem danych dla tego modułu jest klasa `User`. Będzie ona przech
 
 ### 4.1. Ekran Społeczność - Styl Menu Zakładek
 
-Ekran Społeczności (`CommunityScreen`) będzie wykorzystywał górny pasek zakładek (`TabRow`) do organizacji treści. Ten styl menu jest zgodny z widocznym na zrzucie ekranu i zapewnia intuicyjne przełączanie się między sekcjami:
+Ekran Społeczności (`CommunityScreen`) będzie wykorzystywał górny pasek zakładek (`TabRow`) do organizacji treści. Ten styl menu jest zgodny z widocznym na zrzucie ekranu i zapewnia intuicyjne przełączanie się między sekcjami.
 
+*   **Obecny stan:** Ekran `CommunityScreen` wyświetla tymczasowy tekst "Community Screen Content" i nie posiada lokalnego tytułu w `TopAppBar`.
 *   **Komponent:** `TabRow` z `Jetpack Compose Material 3`.
 *   **Lokalizacja:** Umieszczony bezpośrednio pod `TopAppBar`.
 *   **Zakładki:** Trzy główne zakładki:

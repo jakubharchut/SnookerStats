@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: System Komunikacji (Czat)
 
-## Wersja: 1.0 (stan na 2024-07-26)
+## Wersja: 1.1 (stan na 2024-07-29)
 
 ---
 
@@ -15,8 +15,9 @@ Celem tego modułu jest stworzenie w pełni funkcjonalnego, prywatnego systemu w
 System komunikacji będzie zintegrowany z głównym interfejsem aplikacji w sposób intuicyjny, zapewniając łatwy dostęp z wielu miejsc.
 
 ### 2.1. Główny Punkt Dostępu (`TopAppBar`)
-*   **Lokalizacja:** W głównym `TopAppBar` aplikacji (`MainScreen.kt`), obok ikony profilu, zostanie dodana ikona **koperty** lub **dymka czatu**.
-*   **Funkcjonalność:** Kliknięcie tej ikony przeniesie użytkownika bezpośrednio do głównego ekranu z listą wszystkich jego konwersacji (`ChatListScreen`).
+*   **Lokalizacja:** W głównym `TopAppBar` aplikacji (`MainScreen.kt`), obok ikony profilu, została dodana ikona **kilku dymków czatu** (`Icons.Filled.Forum`).
+*   **Wizualizacja Badge'a:** Ikona wiadomości posiada nałożony badge (czerwone kółko z licznikiem nieprzeczytanych wiadomości), umiejscowiony z przesunięciem `Modifier.offset(x = (-12).dp, y = (-4).dp)`, aby zapewnić jego pełną widoczność i prawidłowe pozycjonowanie względem ikony.
+*   **Funkcjonalność:** Kliknięcie tej ikony przeniesie użytkownika bezpośrednio do głównego ekranu z listą wszystkich jego konwersacji (`ChatListScreen`). Ekran `ChatListScreen.kt` został wstępnie utworzony jako placeholder z tekstem "Chat List Screen Content".
 
 ### 2.2. Inicjowanie Rozmowy (Kontekstowe)
 *   **Lokalizacja:** Możliwość rozpoczęcia nowej rozmowy będzie dostępna z poziomu modułu społeczności:

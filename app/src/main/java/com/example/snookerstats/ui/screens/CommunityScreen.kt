@@ -14,7 +14,7 @@ fun CommunityScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("") } // Pusty tytuł, aby był czysty
+                title = { Text("") } // Usunięto tytuł, aby był spójny z innymi ekranami
             )
         }
     ) { paddingValues ->
@@ -24,8 +24,7 @@ fun CommunityScreen() {
                 .padding(paddingValues),
             contentAlignment = Alignment.Center
         ) {
-            // Czysty ekran, gotowy na nową implementację
-            // Brak dodatkowego tekstu w środku
+            Text(text = "Community Screen Content") // Tymczasowy tekst wciąż widoczny
         }
     }
 }

@@ -1,10 +1,12 @@
 package com.example.snookerstats.ui.main
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +39,14 @@ import com.example.snookerstats.ui.screens.PlayScreen
 import com.example.snookerstats.ui.screens.ProfileScreen
 import com.example.snookerstats.ui.screens.StatsScreen
 import kotlinx.coroutines.flow.collectLatest
+import com.example.snookerstats.ui.chat.ChatListScreen
+
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.geometry.Offset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +57,9 @@ fun MainScreen(
 ) {
     val internalNavController = rememberNavController()
     val username by mainViewModel.username.collectAsState()
+
+    // Tymczasowy stan dla nieprzeczytanych wiadomości do celów demonstracyjnych
+    val unreadMessagesCount by remember { mutableStateOf(3) }
 
     LaunchedEffect(Unit) {
         authViewModel.navigationEvent.collectLatest { event ->
@@ -63,6 +76,35 @@ fun MainScreen(
             TopAppBar(
                 title = { Text(username) },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            internalNavController.navigate("chat_list") {
+                                popUpTo(internalNavController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                        // Usunięto: modifier = Modifier.padding(end = 4.dp)
+                    ) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadMessagesCount > 0) {
+                                    Badge(
+                                        modifier = Modifier.offset(x = (-12).dp, y = (-4).dp) // Dostosowano przesunięcie badge'a bardziej w lewo
+                                    ) {
+                                        Text(text = unreadMessagesCount.toString())
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Forum,
+                                contentDescription = "Wiadomości"
+                            )
+                        }
+                    }
                     IconButton(onClick = {
                         internalNavController.navigate(BottomNavItem.Profile.route) {
                             popUpTo(internalNavController.graph.findStartDestination().id) {
@@ -137,5 +179,6 @@ fun NavigationGraph(navController: NavHostController) {
         composable(BottomNavItem.Stats.route) { StatsScreen() }
         composable(BottomNavItem.Community.route) { CommunityScreen() }
         composable(BottomNavItem.Profile.route) { ProfileScreen() }
+        composable("chat_list") { ChatListScreen() }
     }
 }

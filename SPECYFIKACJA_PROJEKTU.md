@@ -1,6 +1,6 @@
 # Specyfikacja Projektu: Aplikacja "Snooker Stats"
 
-## Wersja: 1.2 (stan na 2024-07-26)
+## Wersja: 1.3 (stan na 2024-07-29)
 
 ---
 
@@ -90,8 +90,8 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 
 ### 4.2. Spójna Struktura Ekranów
 *   **Wykorzystanie `Scaffold`:** Każdy główny ekran w aplikacji będzie zbudowany w oparciu o komponent `Scaffold` z Jetpack Compose, aby zapewnić spójność.
-*   **Górny Pasek Aplikacji (`TopAppBar`):** Zawiera tytuł aplikacji. Będzie również zawierał ikony akcji, takie jak **Profil**, **Wiadomości (Czat)** i **Wyloguj**.
-*   **Dolny Pasek Nawigacyjny (`BottomNavigationBar`):** Główna nawigacja między kluczowymi sekcjami (np. Dashboard, Graj, Społeczność, Turnieje, Profil).
+*   **Górny Pasek Aplikacji (`TopAppBar`):** Zawiera tytuł aplikacji. Będzie również zawierał ikony akcji, takie jak **Wiadomości (Czat)**, **Profil** i **Wyloguj**.
+*   **Dolny Pasek Nawigacyjny (`BottomNavigationBar`):** Główna nawigacja między kluczowymi sekcjami (Dashboard, Graj, Historia, Statystyki, Ludzie, Profil).
 *   **Obszar Treści:** Centralna część ekranu, w której wyświetlana jest zawartość.
 *   **Menu Zakładek (`TabRow`):** W przypadku złożonych ekranów (takich jak Społeczność), do dalszej organizacji treści będzie używany system zakładek umieszczony pod `TopAppBar`. Szczegółowy opis tego wzorca znajduje się w odpowiedniej specyfikacji modułu.
 
@@ -120,7 +120,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 
 ### Etap 1: Fundamenty i Konfiguracja
 - [x] Utworzenie projektu w konsoli Firebase.
-- [x] Dodanie zależności do `build.gradle.kts` (Firebase, Hilt, Room, Compose Navigation, etc.).
+- [x] Dodanie zależności do `build.gradle.kts` (Firebase, Hilt, Room, Compose Navigation, material-icons-extended, etc.).
 - [x] Stworzenie bazowej struktury pakietów (`data`, `domain`, `ui`).
 - [x] Podstawowa konfiguracja Hilt.
 
@@ -135,26 +135,30 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 
 ### Etap 3: Szkielet UI i Nawigacja Główna
 - [x] Implementacja głównego ekranu z `Scaffold`.
-- [x] Implementacja `BottomNavigationBar`.
-- [x] Stworzenie pustych ekranów dla każdej sekcji.
-- [x] Implementacja nawigacji do ekranu profilu oraz akcji wylogowania w TopAppBar.
-- [x] Implementacja funkcji "Zapamiętaj mnie" (automatyczne wypełnianie formularza).
+- [x] Implementacja `BottomNavigationBar`, która umożliwia nawigację między sześcioma głównymi sekcjami: "Główna", "Graj", "Historia", "Statystyki", "Ludzie" i "Profil". Definicje tych zakładek (trasa, ikona, tytuł) są zarządzane w pliku `BottomNavItem.kt` i wykorzystują następujące ikony: `Icons.Default.Home` dla "Główna", `Icons.Default.PlayArrow` dla "Graj", `Icons.Default.History` dla "Historia", `Icons.Default.BarChart` dla "Statystyki", `Icons.Default.People` dla "Ludzie" oraz `Icons.Default.AccountCircle` dla "Profil".
+- [x] Stworzenie pustych ekranów dla każdej sekcji (`HomeScreen`, `PlayScreen`, `MatchHistoryScreen`, `StatsScreen`, `CommunityScreen`, `ProfileScreen`, `ChatListScreen`), które są wyświetlane po wybraniu odpowiedniej zakładki w dolnym pasku nawigacyjnym lub wywołaniu z `TopAppBar`.
+- [x] Implementacja nawigacji do ekranu profilu oraz akcji wylogowania w `TopAppBar`. `TopAppBar` w `MainScreen.kt` zawiera również ikonę wiadomości (`Icons.Default.Message`), która nawiguje do `ChatListScreen`.
+- [x] W formularzu logowania (`LoginScreen.kt`) obsługa klawisza `Tab` w polu e-mail oraz klawisza `Enter` w polu hasła została zaimplementowana za pomocą modyfikatora `onKeyEvent`, zapewniając płynne i oczekiwane działanie.
+- [x] Zaimplementowano funkcję "Zapamiętaj mnie" (automatyczne wypełnianie formularza).
+- [x] Ekran `CommunityScreen` zawiera tymczasowy tekst "Community Screen Content" i jego `TopAppBar` nie ma lokalnego tytułu, aby był spójny z innymi ekranami.
+- [x] Ekran `PlayScreen` został utworzony z tymczasowym tekstem "Play Screen Content".
+- [x] Ekran `ChatListScreen` został utworzony z tymczasowym tekstem "Chat List Screen Content".
 
 ### Etap 4: Modele Danych i Baza Lokalna (ZREALIZOWANO)
 - [x] **Zdefiniowanie Modeli Danych:** Stworzono klasy `data class` dla `User`, `Shot`, `Frame` i `Match` w pakiecie `domain/model`. Zastosowano następujące pola:
     *   `User`: `uid` (PrimaryKey), `username`, `email`, `club?`, `profileImageUrl?`, `friends: List<String>`, `friendRequestsSent: List<String>`, `friendRequestsReceived: List<String>`.
     *   `Shot`: `id` (PrimaryKey, autoGenerate), `frameId`, `timestamp`, `ball`, `points`, `isFoul`.
     *   `Frame`: `id` (PrimaryKey, autoGenerate), `matchId`, `frameNumber`, `player1Points`, `player2Points`, `shots: List<Shot>`.
-    *   `Match`: `id` (PrimaryKey), `player1Id`, `player2Id?`, `date`, `matchType`, `numberOfReds`, `status`, `frames: List<Frame>`.
+    *   `Match`: `id: String` (unikalny identyfikator), `player1Id: String`, `player2Id: String?` (opcjonalny, np. dla treningu solo), `date: Long`, `matchType: String` (np. "RANKING", "SPARRING"), `numberOfReds: Int`, `status: String` (np. "IN_PROGRESS", "COMPLETED"), `frames: List<Frame>`.
 - [x] **Konfiguracja Bazy Danych Room:**
     *   **Encje:** Klasy `User`, `Match` i `Frame` zostały oznaczone jako encje (`@Entity`). Klasa `Shot` jest używana jako obiekt osadzony w `Frame` za pomocą `TypeConverter`.
-    *   **Konwertery Typów (`TypeConverter`):** Stworzono `Converters.kt` (`data/local/Converters.kt`) z użyciem biblioteki Gson do serializacji/deserializacji `List<String>`, `List<Shot>` i `List<Frame>` na format JSON, umożliwiając ich przechowywanie w Room.
+    *   **Konwertery Typów (`TypeConverter`):** Stworzono `Converters.kt` (`data/local/Converters.kt`) z użyciem biblioteki Gson do serializacji/deserializacji `List<String>`, `List<Shot>` i `List<Frame>` na format JSON, co umożliwia ich przechowywanie w Room. Zależność `com.google.code.gson:gson` została dodana do projektu.
     *   **DAO (Data Access Objects):** Stworzono interfejsy `UserDao.kt` i `MatchDao.kt` (`data/local/dao`) z podstawowymi operacjami CRUD oraz zapytaniami do pobierania danych.
     *   **Klasa Bazy Danych:** Stworzono główną klasę `SnookerStatsDatabase.kt` (`data/local`) z adnotacją `@Database` i podłączeniem `TypeConverter`.
     *   **Hilt Module dla Room:** Stworzono `DatabaseModule.kt` (`di`) do dostarczania instancji bazy danych i DAO.
 
 ### Etap 5: Rdzeń Aplikacji - Zapis Meczu Lokalnego
-- [ ] UI ekranu wprowadzania wyniku (shot-by-shot).
+- [x] UI ekranu wprowadzania wyniku (shot-by-shot) - wstępny placeholder `PlayScreen.kt` utworzony.
 - [ ] ViewModel zarządzający stanem meczu.
 - [ ] Logika zapisu meczu do Room i Firestore.
 
@@ -244,9 +248,9 @@ Logika logowania jest w pełni zamknięta w `AuthViewModel` i przebiega według 
 ### 7.3. Implementacja Etapu 3: Szkielet UI i Nawigacja Główna
 Etap 3 został w pełni zrealizowany. Wprowadzono następujące elementy:
 *   Główny ekran aplikacji (`MainScreen.kt`) został zbudowany w oparciu o komponent `Scaffold` z Jetpack Compose, zapewniając spójną ramę dla całej aplikacji.
-*   Zaimplementowano `BottomNavigationBar`, która umożliwia nawigację między pięcioma głównymi sekcjami: "Główna", "Graj", "Mecze", "Statystyki" i "Ludzie". Definicje tych zakładek (trasa, ikona, tytuł) są zarządzane w osobnym, łatwo edytowalnym pliku `BottomNavItem.kt`.
-*   Dla każdej z głównych sekcji utworzono puste ekrany (`HomeScreen`, `PlayScreen`, `MatchHistoryScreen`, `StatsScreen`, `CommunityScreen`, `ProfileScreen`), które są wyświetlane po wybraniu odpowiedniej zakładki w dolnym pasku nawigacyjnym lub wywołaniu z `TopAppBar`.
-*   `TopAppBar` został zaimplementowany w `MainScreen.kt`. Zawiera statyczny tytuł "Snooker Stats", ikonę profilu (nawigującą do `ProfileScreen` za pomocą `internalNavController`) oraz ikonę wylogowania (nawigującą do ekranu `login` za pomocą `navController` z `MainActivity`, z opcją `popUpTo("login") { inclusive = true }` do czyszczenia stosu).
+*   Zaimplementowano `BottomNavigationBar`, która umożliwia nawigację między sześcioma głównymi sekcjami: "Główna", "Graj", "Historia", "Statystyki", "Ludzie" i "Profil". Definicje tych zakładek (trasa, ikona, tytuł) są zarządzane w osobnym, łatwo edytowalnym pliku `BottomNavItem.kt` i wykorzystują następujące ikony: `Icons.Default.Home` dla "Główna", `Icons.Default.PlayArrow` dla "Graj", `Icons.Default.History` dla "Historia", `Icons.Default.BarChart` dla "Statystyki", `Icons.Default.People` dla "Ludzie" oraz `Icons.Default.AccountCircle` dla "Profil".
+*   Dla każdej z głównych sekcji utworzono puste ekrany (`HomeScreen`, `PlayScreen`, `MatchHistoryScreen`, `StatsScreen`, `CommunityScreen`, `ProfileScreen`, `ChatListScreen`), które są wyświetlane po wybraniu odpowiedniej zakładki w dolnym pasku nawigacyjnym lub wywołaniu z `TopAppBar`.
+*   `TopAppBar` został zaimplementowany w `MainScreen.kt`. Zawiera dynamiczny tytuł (nazwę użytkownika), ikonę wiadomości (`Icons.Default.Message`) nawigującą do `ChatListScreen`, ikonę profilu (nawigującą do `ProfileScreen` za pomocą `internalNavController`) oraz ikonę wylogowania (nawigującą do ekranu `login` za pomocą `navController` z `MainActivity`, z opcją `popUpTo("login") { inclusive = true }` do czyszczenia stosu).
 *   W formularzu logowania (`LoginScreen.kt`) obsługa klawisza `Tab` w polu e-mail oraz klawisza `Enter` w polu hasła została zaimplementowana za pomocą modyfikatora `onKeyEvent`, zapewniając płynne i oczekiwane działanie.
 *   Zaimplementowano funkcję "Zapamiętaj mnie" (automatyczne wypełnianie formularza).
 
@@ -258,7 +262,8 @@ Etap 3 został w pełni zrealizowany. Wprowadzono następujące elementy:
 
 1.  **Klasa `User` (Użytkownik):**
     *   **Zadanie:** Rozszerzono klasę `User` w `domain/model/User.kt`.
-    *   **Pola:** `uid: String`, `username: String`, `email: String`, `club: String?`, `profileImageUrl: String?`, `friends: List<String>` (lista UID znajomych), `friendRequestsSent: List<String>` (lista UID wysłanych zaproszeń), `friendRequestsReceived: List<String>` (lista UID otrzymanych zaproszeń).
+    *   **Pola:** `uid: String`, `username: String`, `email: String`, `club: String?`, `profileImageUrl: String?`, `friends: List<String>` (lista UID znajomych), `friendRequestsSent: List<String>`, `friendRequestsReceived: List<String>`.
+    *   **Lokalizacja:** `domain/model/User.kt`.
 
 2.  **Klasa `Shot` (Uderzenie):**
     *   **Zadanie:** Stworzono `data class Shot`.

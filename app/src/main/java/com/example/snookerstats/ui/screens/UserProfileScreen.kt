@@ -45,8 +45,11 @@ fun UserProfileScreen(
                         Text(text = "Profil użytkownika", style = MaterialTheme.typography.headlineMedium)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(text = "Nazwa: ${profileState.targetUser.username}")
-                        Text(text = "Imię: ${profileState.targetUser.firstName ?: "Brak"}")
-                        Text(text = "Nazwisko: ${profileState.targetUser.lastName ?: "Brak"}")
+                        Text(text = "Imię: ${profileState.targetUser.firstName}")
+                        Text(text = "Nazwisko: ${profileState.targetUser.lastName}")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val profileType = if (profileState.targetUser.isPublicProfile) "Publiczny" else "Prywatny"
+                        Text(text = "Profil: $profileType")
                         // Tutaj w przyszłości pojawią się statystyki
                     }
                 } else {

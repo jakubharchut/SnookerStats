@@ -19,18 +19,16 @@ class ProfileRepositoryImpl @Inject constructor(
             
             val userRef = firestore.collection("users").document(currentUser.uid)
             
-            // Tworzymy mapę pól do aktualizacji
             val updates = mapOf(
                 "username" to user.username,
                 "username_lowercase" to user.username.lowercase(),
                 "firstName" to user.firstName,
-                "firstName_lowercase" to user.firstName?.lowercase(),
+                "firstName_lowercase" to user.firstName.lowercase(), // Usunięto '?'
                 "lastName" to user.lastName,
-                "lastName_lowercase" to user.lastName?.lowercase(),
+                "lastName_lowercase" to user.lastName.lowercase(), // Usunięto '?'
                 "publicProfile" to user.isPublicProfile
             )
 
-            // Używamy update zamiast set, aby zaktualizować tylko te pola
             userRef.update(updates).await()
             Response.Success(true)
         } catch (e: Exception) {

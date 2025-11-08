@@ -6,7 +6,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -20,7 +19,7 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun SetupProfileScreen(
     navController: NavController,
-    viewModel: ProfileViewModel = hiltViewModel()
+    viewModel: SetupProfileViewModel = hiltViewModel()
 ) {
     var username by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
@@ -28,6 +27,8 @@ fun SetupProfileScreen(
     var isPublicProfile by remember { mutableStateOf(true) }
 
     val profileState by viewModel.profileState.collectAsState()
+    val isUsernameValid = username.isNotBlank() && !username.contains(" ")
+    val isButtonEnabled = isUsernameValid && firstName.isNotBlank() && lastName.isNotBlank()
 
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collectLatest { event ->
@@ -47,26 +48,32 @@ fun SetupProfileScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // ... (sekcja tytułowa bez zmian)
-
+        Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Dane obowiązkowe",
-            // ... (style bez zmian)
+            text = "Uzupełnij swój profil",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Witaj w Snooker Stats! Aby w pełni korzystać z aplikacji, musisz jednorazowo uzupełnić swój profil.",
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
         OutlinedTextField(
             value = username,
             onValueChange = { username = it },
             label = { Text("Nazwa użytkownika") },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(
-            text = "Dane opcjonalne",
-            // ... (style bez zmian)
+            singleLine = true,
+            isError = !isUsernameValid && username.isNotEmpty(),
+            supportingText = {
+                if (!isUsernameValid && username.isNotEmpty()) {
+                    Text("Nazwa użytkownika nie może zawierać spacji.")
+                }
+            }
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
@@ -105,24 +112,29 @@ fun SetupProfileScreen(
             onClick = {
                 val user = User(
                     username = username.trim(),
-                    firstName = firstName.trim().ifEmpty { null },
-                    lastName = lastName.trim().ifEmpty { null },
+                    firstName = firstName.trim(),
+                    lastName = lastName.trim(),
                     isPublicProfile = isPublicProfile
                 )
                 viewModel.saveUserProfile(user)
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = profileState !is ProfileState.Loading && username.isNotBlank()
+            enabled = profileState !is SetupProfileState.Loading && isButtonEnabled
         ) {
-            if (profileState is ProfileState.Loading) {
+            if (profileState is SetupProfileState.Loading) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
             } else {
                 Text("Zapisz i kontynuuj")
             }
         }
         
-        if (profileState is ProfileState.Error) {
-            // ... (obsługa błędów bez zmian)
+        if (profileState is SetupProfileState.Error) {
+            val errorState = profileState as SetupProfileState.Error
+            Text(
+                text = errorState.message,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
     }
 }

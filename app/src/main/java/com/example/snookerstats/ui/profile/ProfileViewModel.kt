@@ -39,7 +39,8 @@ class ProfileViewModel @Inject constructor(
     val profileState: StateFlow<ProfileState> = _profileState.asStateFlow()
 
     init {
-        val targetUserId = savedStateHandle.get<String>("userId")
+        // Sprawdź, czy 'userId' jest przekazany. Jeśli nie, użyj ID bieżącego użytkownika.
+        val targetUserId = savedStateHandle.get<String>("userId") ?: firebaseAuth.currentUser?.uid
         val currentUserId = firebaseAuth.currentUser?.uid
 
         if (targetUserId != null && currentUserId != null) {
@@ -55,7 +56,6 @@ class ProfileViewModel @Inject constructor(
             val currentUserFlow = authRepository.getUserProfile(currentUserId)
 
             targetUserFlow.combine(currentUserFlow) { targetUserResponse, currentUserResponse ->
-                // Helper data class to hold combined results
                 data class CombinedUsers(val target: Response<User>, val current: Response<User>)
                 CombinedUsers(targetUserResponse, currentUserResponse)
             }.collect { combined ->
@@ -66,7 +66,7 @@ class ProfileViewModel @Inject constructor(
                     val targetUser = targetUserResponse.data
                     val currentUser = currentUserResponse.data
                     val isFriend = currentUser.friends.contains(targetUser.uid)
-                    val canViewProfile = targetUser.isPublicProfile || isFriend
+                    val canViewProfile = targetUser.isPublicProfile || isFriend || targetUser.uid == currentUser.uid
 
                     _profileState.value = ProfileState.Success(
                         targetUser = targetUser,

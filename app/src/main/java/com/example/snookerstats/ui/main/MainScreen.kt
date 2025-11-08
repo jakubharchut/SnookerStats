@@ -1,11 +1,10 @@
 package com.example.snookerstats.ui.main
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,24 +24,23 @@ import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.snookerstats.ui.auth.AuthViewModel
 import com.example.snookerstats.ui.auth.NavigationEvent
-import com.example.snookerstats.ui.navigation.BottomNavItem
-import com.example.snookerstats.ui.screens.*
-import kotlinx.coroutines.flow.collectLatest
 import com.example.snookerstats.ui.chat.ChatListScreen
-
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Badge
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
+import com.example.snookerstats.ui.navigation.BottomNavItem
+import com.example.snookerstats.ui.screens.CommunityScreen
+import com.example.snookerstats.ui.screens.HomeScreen
+import com.example.snookerstats.ui.screens.MatchHistoryScreen
+import com.example.snookerstats.ui.screens.PlayScreen
+import com.example.snookerstats.ui.screens.StatsScreen
+import com.example.snookerstats.ui.screens.UserProfileScreen
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,8 +51,6 @@ fun MainScreen(
 ) {
     val internalNavController = rememberNavController()
     val username by mainViewModel.username.collectAsState()
-
-    val unreadMessagesCount by remember { mutableStateOf(3) }
 
     LaunchedEffect(Unit) {
         authViewModel.navigationEvent.collectLatest { event ->
@@ -74,38 +70,20 @@ fun MainScreen(
                     IconButton(
                         onClick = {
                             internalNavController.navigate("chat_list") {
-                                popUpTo(internalNavController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
+                                popUpTo(internalNavController.graph.findStartDestination().id)
                                 launchSingleTop = true
-                                restoreState = true
                             }
                         }
                     ) {
-                        BadgedBox(
-                            badge = {
-                                if (unreadMessagesCount > 0) {
-                                    Badge(
-                                        modifier = Modifier.offset(x = (-12).dp, y = (-4).dp)
-                                    ) {
-                                        Text(text = unreadMessagesCount.toString())
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Forum,
-                                contentDescription = "Wiadomości"
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Filled.Forum,
+                            contentDescription = "Wiadomości"
+                        )
                     }
                     IconButton(onClick = {
-                        internalNavController.navigate(BottomNavItem.Profile.route) {
-                            popUpTo(internalNavController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
+                        internalNavController.navigate("profile") {
+                            popUpTo(internalNavController.graph.findStartDestination().id)
                             launchSingleTop = true
-                            restoreState = true
                         }
                     }) {
                         Icon(
@@ -149,14 +127,15 @@ fun BottomNavigationBar(navController: NavController) {
             NavigationBarItem(
                 icon = { Icon(imageVector = item.icon, contentDescription = item.title) },
                 label = { Text(text = item.title) },
-                selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
+                selected = currentDestination?.hierarchy?.any { it.route?.startsWith(item.route) == true } == true,
                 onClick = {
                     navController.navigate(item.route) {
+                        // Ta konfiguracja resetuje widok do ekranu startowego zakładki
                         popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+                            // saveState usunięte, aby nie zapisywać backstacku
                         }
                         launchSingleTop = true
-                        restoreState = true
+                        // restoreState usunięte
                     }
                 }
             )
@@ -172,13 +151,23 @@ fun NavigationGraph(navController: NavHostController) {
         composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen() }
         composable(BottomNavItem.Stats.route) { StatsScreen() }
         composable(BottomNavItem.Community.route) { CommunityScreen(navController = navController) }
-        composable(BottomNavItem.Profile.route) { ProfileScreen() }
         composable("chat_list") { ChatListScreen() }
+        
+        composable(
+            route = "profile?userId={userId}",
+            arguments = listOf(navArgument("userId") { 
+                type = NavType.StringType
+                nullable = true 
+            })
+        ) {
+            UserProfileScreen()
+        }
+        
         composable(
             route = "user_profile/{userId}",
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
         ) { backStackEntry ->
-            UserProfileScreen(userId = backStackEntry.arguments?.getString("userId"))
+            navController.navigate("profile?userId=${backStackEntry.arguments?.getString("userId")}")
         }
     }
 }

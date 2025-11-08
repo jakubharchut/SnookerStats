@@ -50,11 +50,33 @@ class CommunityViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     fun onSearchQueryChange(query: String) {
-        uiState = uiState.copy(searchQuery = query)
+        uiState = uiState.copy(searchQuery = query, errorMessage = null) // Resetuj błąd przy nowym zapytaniu
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             delay(500L)
             searchUsers()
+        }
+    }
+
+    fun sendFriendRequest(toUserId: String) {
+        viewModelScope.launch {
+            when (val response = communityRepository.sendFriendRequest(toUserId)) {
+                is Response.Success -> {
+                    // Aktualizuj status tylko dla tego jednego użytkownika
+                    val updatedResults = uiState.searchResults.map {
+                        if (it.user.uid == toUserId) {
+                            it.copy(status = RelationshipStatus.INVITE_SENT)
+                        } else {
+                            it
+                        }
+                    }
+                    uiState = uiState.copy(searchResults = updatedResults)
+                }
+                is Response.Error -> {
+                    uiState = uiState.copy(errorMessage = response.message)
+                }
+                else -> {}
+            }
         }
     }
 

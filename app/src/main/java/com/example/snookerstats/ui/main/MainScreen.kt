@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -48,16 +49,6 @@ fun MainScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        authViewModel.navigationEvent.collectLatest { event ->
-            if (event is NavigationEvent.NavigateToLogin) {
-                navController.navigate("login") {
-                    popUpTo("main") { inclusive = true }
-                }
-            }
-        }
-    }
-
     Scaffold(
         snackbarHost = {
             Box(
@@ -73,7 +64,11 @@ fun MainScreen(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ) {
-                        Text(text = data.visuals.message)
+                        Text(
+                            text = data.visuals.message,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }

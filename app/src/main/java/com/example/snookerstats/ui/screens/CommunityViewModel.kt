@@ -145,6 +145,7 @@ class CommunityViewModel @Inject constructor(
             }
             communityRepository.getSentFriendRequests().collect { response ->
                 if (response is Response.Success) {
+                    Log.d("CommunityViewModel", "Zaktualizowano stan UI o ${response.data.size} wysłanych zaproszeń.")
                     uiState = uiState.copy(sentInvites = response.data)
                 }
             }

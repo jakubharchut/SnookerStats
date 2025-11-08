@@ -1,18 +1,19 @@
 package com.example.snookerstats.data.repository
 
+import android.util.Log
 import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.CommunityRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 
 @Singleton
 class CommunityRepositoryImpl @Inject constructor(
@@ -31,6 +32,7 @@ class CommunityRepositoryImpl @Inject constructor(
                 return@flow
             }
             val lowercaseQuery = query.lowercase()
+            Log.d("CommunityRepo", "Wyszukiwanie dla: '$lowercaseQuery'")
 
             coroutineScope {
                 val usernameDeferred = async {
@@ -52,11 +54,18 @@ class CommunityRepositoryImpl @Inject constructor(
                         .get().await().toObjects(User::class.java)
                 }
 
-                val combinedResults = (usernameDeferred.await() + firstNameDeferred.await() + lastNameDeferred.await()).distinctBy { it.uid }
+                val usernameResults = usernameDeferred.await()
+                val firstNameResults = firstNameDeferred.await()
+                val lastNameResults = lastNameDeferred.await()
+
+                Log.d("CommunityRepo", "Wyniki - Username: ${usernameResults.size}, Imię: ${firstNameResults.size}, Nazwisko: ${lastNameResults.size}")
+
+                val combinedResults = (usernameResults + firstNameResults + lastNameResults).distinctBy { it.uid }
                 
                 emit(Response.Success(combinedResults))
             }
         } catch (e: Exception) {
+            Log.e("CommunityRepo", "Błąd wyszukiwania", e)
             emit(Response.Error(e.message ?: "Unknown error"))
         }
     }
@@ -65,16 +74,12 @@ class CommunityRepositoryImpl @Inject constructor(
         return try {
             val fromUserId = currentUserId
             if (fromUserId == toUserId) return Response.Error("Cannot send request to yourself")
-
             val currentUserRef = firestore.collection("users").document(fromUserId)
             val targetUserRef = firestore.collection("users").document(toUserId)
-
             firestore.batch()
                 .update(currentUserRef, "friendRequestsSent", FieldValue.arrayUnion(toUserId))
                 .update(targetUserRef, "friendRequestsReceived", FieldValue.arrayUnion(fromUserId))
-                .commit()
-                .await()
-
+                .commit().await()
             Response.Success(true)
         } catch (e: Exception) {
             Response.Error(e.message ?: "Unknown error")
@@ -86,13 +91,10 @@ class CommunityRepositoryImpl @Inject constructor(
             val fromUserId = currentUserId
             val currentUserRef = firestore.collection("users").document(fromUserId)
             val targetUserRef = firestore.collection("users").document(toUserId)
-
             firestore.batch()
                 .update(currentUserRef, "friendRequestsSent", FieldValue.arrayRemove(toUserId))
                 .update(targetUserRef, "friendRequestsReceived", FieldValue.arrayRemove(fromUserId))
-                .commit()
-                .await()
-
+                .commit().await()
             Response.Success(true)
         } catch (e: Exception) {
             Response.Error(e.message ?: "Unknown error")
@@ -103,14 +105,12 @@ class CommunityRepositoryImpl @Inject constructor(
         return try {
             val currentUserRef = firestore.collection("users").document(currentUserId)
             val friendUserRef = firestore.collection("users").document(fromUserId)
-
             firestore.batch()
                 .update(currentUserRef, "friends", FieldValue.arrayUnion(fromUserId))
                 .update(friendUserRef, "friends", FieldValue.arrayUnion(currentUserId))
                 .update(currentUserRef, "friendRequestsReceived", FieldValue.arrayRemove(fromUserId))
                 .update(friendUserRef, "friendRequestsSent", FieldValue.arrayRemove(currentUserId))
-                .commit()
-                .await()
+                .commit().await()
             Response.Success(true)
         } catch (e: Exception) {
             Response.Error(e.message ?: "Unknown error")
@@ -121,12 +121,10 @@ class CommunityRepositoryImpl @Inject constructor(
         return try {
             val currentUserRef = firestore.collection("users").document(currentUserId)
             val friendUserRef = firestore.collection("users").document(fromUserId)
-
             firestore.batch()
                 .update(currentUserRef, "friendRequestsReceived", FieldValue.arrayRemove(fromUserId))
                 .update(friendUserRef, "friendRequestsSent", FieldValue.arrayRemove(currentUserId))
-                .commit()
-                .await()
+                .commit().await()
             Response.Success(true)
         } catch (e: Exception) {
             Response.Error(e.message ?: "Unknown error")
@@ -142,12 +140,10 @@ class CommunityRepositoryImpl @Inject constructor(
         try {
             val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
             val requestIds = currentUserDoc.toObject(User::class.java)?.friendRequestsReceived ?: emptyList()
-
             if (requestIds.isEmpty()) {
                 emit(Response.Success(emptyList()))
                 return@flow
             }
-            
             val users = firestore.collection("users").whereIn("uid", requestIds).get().await().toObjects(User::class.java)
             emit(Response.Success(users))
         } catch (e: Exception) {
@@ -160,15 +156,16 @@ class CommunityRepositoryImpl @Inject constructor(
         try {
             val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
             val requestIds = currentUserDoc.toObject(User::class.java)?.friendRequestsSent ?: emptyList()
-
+            Log.d("CommunityRepo", "Znaleziono ID wysłanych zaproszeń: $requestIds")
             if (requestIds.isEmpty()) {
                 emit(Response.Success(emptyList()))
                 return@flow
             }
-
             val users = firestore.collection("users").whereIn("uid", requestIds).get().await().toObjects(User::class.java)
+            Log.d("CommunityRepo", "Pobrano ${users.size} profili dla wysłanych zaproszeń.")
             emit(Response.Success(users))
         } catch (e: Exception) {
+            Log.e("CommunityRepo", "Błąd w getSentFriendRequests", e)
             emit(Response.Error(e.message ?: "Unknown error"))
         }
     }

@@ -55,7 +55,7 @@ class CommunityViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     init {
-        loadInvitations()
+        startInvitationListeners()
     }
 
     fun onSearchQueryChange(query: String) {
@@ -124,13 +124,10 @@ class CommunityViewModel @Inject constructor(
             when (val response = communityRepository.sendFriendRequest(toUserId)) {
                 is Response.Success -> {
                     snackbarManager.showMessage("Wysłano zaproszenie do $username")
-                    // Aktualizuj status w wynikach wyszukiwania
                     val updatedResults = uiState.searchResults.map {
                         if (it.user.uid == toUserId) it.copy(status = RelationshipStatus.INVITE_SENT) else it
                     }
                     uiState = uiState.copy(searchResults = updatedResults)
-                    // Odśwież listy zaproszeń
-                    loadInvitations()
                 }
                 is Response.Error -> snackbarManager.showMessage("Błąd: Nie udało się wysłać zaproszenia")
                 else -> {}
@@ -138,20 +135,25 @@ class CommunityViewModel @Inject constructor(
         }
     }
 
-    fun loadInvitations() {
+    private fun startInvitationListeners() {
+        uiState = uiState.copy(isLoadingInvites = true)
+
         viewModelScope.launch {
-            uiState = uiState.copy(isLoadingInvites = true)
             communityRepository.getReceivedFriendRequests().collect { response ->
                 if (response is Response.Success) {
-                    uiState = uiState.copy(receivedInvites = response.data)
+                    uiState = uiState.copy(receivedInvites = response.data, isLoadingInvites = false)
                 }
+                // Można dodać obsługę błędów, jeśli to konieczne
             }
+        }
+
+        viewModelScope.launch {
             communityRepository.getSentFriendRequests().collect { response ->
                 if (response is Response.Success) {
-                    uiState = uiState.copy(sentInvites = response.data)
+                    uiState = uiState.copy(sentInvites = response.data, isLoadingInvites = false)
                 }
+                // Można dodać obsługę błędów, jeśli to konieczne
             }
-            uiState = uiState.copy(isLoadingInvites = false)
         }
     }
 
@@ -159,7 +161,6 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             if (communityRepository.acceptFriendRequest(fromUserId) is Response.Success) {
                 snackbarManager.showMessage("Zaakceptowano zaproszenie od $username")
-                loadInvitations()
             }
         }
     }
@@ -168,7 +169,6 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             if (communityRepository.rejectFriendRequest(fromUserId) is Response.Success) {
                 snackbarManager.showMessage("Odrzucono zaproszenie od $username")
-                loadInvitations()
             }
         }
     }
@@ -177,7 +177,6 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             if (communityRepository.cancelFriendRequest(toUserId) is Response.Success) {
                 snackbarManager.showMessage("Anulowano zaproszenie do $username")
-                loadInvitations()
             }
         }
     }

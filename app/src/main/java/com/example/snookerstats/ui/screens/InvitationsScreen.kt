@@ -5,6 +5,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -83,9 +85,13 @@ fun ReceivedInvitationsScreen(
             items(invites) { user ->
                 InvitationCard(user = user) {
                     Row {
-                        Button(onClick = { onAccept(user.uid, user.username) }) { Text("Akceptuj") }
+                        Button(onClick = { onAccept(user.uid, user.username) }) {
+                            Icon(imageVector = Icons.Default.Check, contentDescription = "Akceptuj zaproszenie")
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
-                        OutlinedButton(onClick = { onReject(user.uid, user.username) }) { Text("Odrzuć") }
+                        OutlinedButton(onClick = { onReject(user.uid, user.username) }) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = "Odrzuć zaproszenie")
+                        }
                     }
                 }
             }

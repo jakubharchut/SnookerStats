@@ -124,10 +124,13 @@ class CommunityViewModel @Inject constructor(
             when (val response = communityRepository.sendFriendRequest(toUserId)) {
                 is Response.Success -> {
                     snackbarManager.showMessage("Wysłano zaproszenie do $username")
+                    // Aktualizuj status w wynikach wyszukiwania
                     val updatedResults = uiState.searchResults.map {
                         if (it.user.uid == toUserId) it.copy(status = RelationshipStatus.INVITE_SENT) else it
                     }
                     uiState = uiState.copy(searchResults = updatedResults)
+                    // Odśwież listy zaproszeń
+                    loadInvitations()
                 }
                 is Response.Error -> snackbarManager.showMessage("Błąd: Nie udało się wysłać zaproszenia")
                 else -> {}
@@ -145,7 +148,6 @@ class CommunityViewModel @Inject constructor(
             }
             communityRepository.getSentFriendRequests().collect { response ->
                 if (response is Response.Success) {
-                    Log.d("CommunityViewModel", "Zaktualizowano stan UI o ${response.data.size} wysłanych zaproszeń.")
                     uiState = uiState.copy(sentInvites = response.data)
                 }
             }

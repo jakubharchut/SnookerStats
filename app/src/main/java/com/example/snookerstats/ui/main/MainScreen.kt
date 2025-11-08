@@ -41,6 +41,17 @@ fun MainScreen(
     val username by mainViewModel.username.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Efekt do obsługi nawigacji (w tym wylogowania)
+    LaunchedEffect(Unit) {
+        authViewModel.navigationEvent.collectLatest { event ->
+            if (event is NavigationEvent.NavigateToLogin) {
+                navController.navigate("login") {
+                    popUpTo("main") { inclusive = true }
+                }
+            }
+        }
+    }
+
     val snackbarMessage by snackbarManager.messages.collectAsState()
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
@@ -77,14 +88,12 @@ fun MainScreen(
             TopAppBar(
                 title = { Text(username) },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            internalNavController.navigate("chat_list") {
-                                popUpTo(internalNavController.graph.findStartDestination().id)
-                                launchSingleTop = true
-                            }
+                    IconButton(onClick = {
+                        internalNavController.navigate("chat_list") {
+                            popUpTo(internalNavController.graph.findStartDestination().id)
+                            launchSingleTop = true
                         }
-                    ) {
+                    }) {
                         Icon(imageVector = Icons.Filled.Forum, contentDescription = "Wiadomości")
                     }
                     IconButton(onClick = {
@@ -95,9 +104,7 @@ fun MainScreen(
                     }) {
                         Icon(imageVector = Icons.Filled.AccountCircle, contentDescription = "Profil")
                     }
-                    IconButton(onClick = { 
-                        authViewModel.signOut()
-                    }) {
+                    IconButton(onClick = { authViewModel.signOut() }) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Wyloguj")
                     }
                 }

@@ -52,6 +52,16 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun updateFcmToken(token: String): Response<Boolean> {
+        return try {
+            val userId = firebaseAuth.currentUser?.uid ?: return Response.Error("User not logged in.")
+            firestore.collection("users").document(userId).update("fcmToken", token).await()
+            Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "Failed to update FCM token.")
+        }
+    }
+
     override fun saveCredentials(email: String, password: String) {
         prefsManager.saveCredentials(email, password)
     }
@@ -61,6 +71,8 @@ class AuthRepositoryImpl @Inject constructor(
         val password = prefsManager.getPassword()
         return if (email != null && password != null) Pair(email, password) else null
     }
+
+
 
     override fun clearCredentials() {
         prefsManager.clearCredentials()

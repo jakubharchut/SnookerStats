@@ -1,5 +1,10 @@
 package com.example.snookerstats.ui.main
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,8 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -40,6 +47,7 @@ fun MainScreen(
     val internalNavController = rememberNavController()
     val username by mainViewModel.username.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     // Efekt do obsługi nawigacji (w tym wylogowania)
     LaunchedEffect(Unit) {
@@ -48,6 +56,32 @@ fun MainScreen(
                 navController.navigate("login") {
                     popUpTo("main") { inclusive = true }
                 }
+            }
+        }
+    }
+
+    // Prośba o uprawnienia do powiadomień na Android 13+
+    val requestPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted: Boolean ->
+            if (isGranted) {
+                // Uprawnienie przyznane
+                snackbarManager.showMessage("Zgoda na powiadomienia udzielona.")
+            } else {
+                // Uprawnienie odrzucone
+                snackbarManager.showMessage("Powiadomienia mogą nie działać bez zgody.")
+            }
+        }
+    )
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // TIRAMISU to Android 13
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }

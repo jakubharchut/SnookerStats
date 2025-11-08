@@ -1,11 +1,13 @@
 package com.example.snookerstats.ui.auth
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.use_case.ValidateRegisterInputUseCase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 sealed class AuthState {
@@ -36,7 +39,8 @@ data class CredentialsState(val email: String = "", val password: String = "")
 class AuthViewModel @Inject constructor(
     private val repo: AuthRepository,
     private val validateRegisterInput: ValidateRegisterInputUseCase,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val firebaseMessaging: FirebaseMessaging
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
@@ -93,14 +97,13 @@ class AuthViewModel @Inject constructor(
                     if (user != null && user.isEmailVerified) {
                         if (rememberMe) {
                             repo.saveCredentials(trimmedEmail, trimmedPassword)
-                        } else {
-                            repo.clearCredentials()
                         }
                         
                         // Sprawdź profil użytkownika
                         repo.getUserProfile(user.uid).collectLatest { profileResponse ->
                             when (profileResponse) {
                                 is Response.Success -> {
+                                    updateFcmToken()
                                     if (profileResponse.data.username.isBlank()) {
                                         _navigationEvent.emit(NavigationEvent.NavigateToSetupProfile)
                                     } else {
@@ -117,6 +120,18 @@ class AuthViewModel @Inject constructor(
                 }
                 is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(response.message))
                 else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd podczas logowania.")
+            }
+        }
+    }
+
+    private fun updateFcmToken() {
+        viewModelScope.launch {
+            try {
+                val token = firebaseMessaging.token.await()
+                Log.d("FCM_TOKEN_DEBUG", "Generated FCM Token: $token") // Dodano tę linię
+                repo.updateFcmToken(token)
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Failed to get/update FCM token", e)
             }
         }
     }

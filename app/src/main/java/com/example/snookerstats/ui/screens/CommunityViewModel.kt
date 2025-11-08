@@ -36,6 +36,7 @@ data class CommunityUiState(
     val searchResults: List<UserSearchResult> = emptyList(),
     val receivedInvites: List<User> = emptyList(),
     val sentInvites: List<User> = emptyList(),
+    val friends: List<User> = emptyList(),
     val isLoading: Boolean = false,
     val isLoadingInvites: Boolean = false,
     val errorMessage: String? = null
@@ -55,7 +56,7 @@ class CommunityViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     init {
-        startInvitationListeners()
+        startCommunityListeners()
     }
 
     fun onSearchQueryChange(query: String) {
@@ -135,7 +136,7 @@ class CommunityViewModel @Inject constructor(
         }
     }
 
-    private fun startInvitationListeners() {
+    private fun startCommunityListeners() {
         uiState = uiState.copy(isLoadingInvites = true)
 
         viewModelScope.launch {
@@ -143,7 +144,6 @@ class CommunityViewModel @Inject constructor(
                 if (response is Response.Success) {
                     uiState = uiState.copy(receivedInvites = response.data, isLoadingInvites = false)
                 }
-                // Można dodać obsługę błędów, jeśli to konieczne
             }
         }
 
@@ -152,7 +152,14 @@ class CommunityViewModel @Inject constructor(
                 if (response is Response.Success) {
                     uiState = uiState.copy(sentInvites = response.data, isLoadingInvites = false)
                 }
-                // Można dodać obsługę błędów, jeśli to konieczne
+            }
+        }
+
+        viewModelScope.launch {
+            communityRepository.getFriends().collect { response ->
+                if (response is Response.Success) {
+                    uiState = uiState.copy(friends = response.data)
+                }
             }
         }
     }

@@ -20,5 +20,6 @@ data class User(
     val profileImageUrl: String? = null,
     val friends: List<String> = emptyList(),
     val friendRequestsSent: List<String> = emptyList(),
-    val friendRequestsReceived: List<String> = emptyList()
+    val friendRequestsReceived: List<String> = emptyList(),
+    val fcmToken: String? = null
 )

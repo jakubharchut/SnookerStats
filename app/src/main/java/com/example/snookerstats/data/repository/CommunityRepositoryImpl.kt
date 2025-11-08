@@ -134,9 +134,21 @@ class CommunityRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getFriends(): Flow<Response<List<User>>> = flow {
-        // TODO: Implement
-    }
+    override fun getFriends(): Flow<Response<List<User>>> = firestore.collection("users").document(currentUserId)
+        .snapshots()
+        .map { snapshot ->
+            val friendIds = snapshot.toObject(User::class.java)?.friends ?: emptyList()
+            if (friendIds.isEmpty()) {
+                Response.Success(emptyList<User>())
+            } else {
+                try {
+                    val users = firestore.collection("users").whereIn("uid", friendIds).get().await().toObjects(User::class.java)
+                    Response.Success(users)
+                } catch (e: Exception) {
+                    Response.Error(e.message ?: "Unknown error")
+                }
+            }
+        }
 
     override fun getReceivedFriendRequests(): Flow<Response<List<User>>> = firestore.collection("users").document(currentUserId)
         .snapshots()

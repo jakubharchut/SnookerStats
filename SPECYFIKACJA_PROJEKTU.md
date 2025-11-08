@@ -170,8 +170,9 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
         *   Implementacja wyszukiwarki graczy (zapytania do Firestore).
         *   Wyświetlanie publicznych profili.
     *   [ ] **System zaproszeń do znajomych:**
-        *   Dodanie logiki wysyłania, odbierania i akceptowania zaproszeń (aktualizacja list w modelu `User` w Firestore).
-        *   UI do zarządzania zaproszeniami (np. w zakładce "Ludzie").
+        *   [x] Wysyłanie zaproszeń z poziomu wyszukiwarki i profilu gracza.
+        *   [ ] Implementacja zakładki "Zaproszenia" (Otrzymane / Wysłane).
+        *   [ ] Logika akceptowania, odrzucania i anulowania zaproszeń.
     *   [ ] **Ekran porównania statystyk Head-to-Head:**
         *   Wykorzystanie już istniejących lub przyszłych danych meczowych (z Firestore lub Room).
         *   Implementacja UI do prezentacji porównania statystyk.

@@ -1,6 +1,6 @@
 # Specyfikacja Projektu: Aplikacja "Snooker Stats"
 
-## Wersja: 1.3 (stan na 2024-07-29)
+## Wersja: 1.4 (stan na 2024-07-30)
 
 ---
 
@@ -34,14 +34,19 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 
 ### 3.1. Zarządzanie Profilem i Społeczność
 *   **Szczegółowa Specyfikacja:** Dokładny opis modeli danych, przepływów i logiki dla tego modułu znajduje się w osobnym dokumencie: `spolecznosc_i_profil.md`.
-*   **Stopniowe Wdrażanie (Progressive Onboarding):** Po pierwszej, uproszczonej rejestracji (tylko e-mail i hasło), użytkownik jest przekierowywany do ekranu `SetupProfileScreen` w celu jednorazowego uzupełnienia profilu (`username`, opcjonalnie `firstName` i `lastName`).
-*   **Profile Graczy:**
-    *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny**.
-    *   Profil publiczny działa jak "wizytówka gracza", pokazując jego imię, zdjęcie, przynależność klubową, zdobyte trofea i odznaki oraz kluczowe statystyki.
-*   **Wyszukiwarka Graczy:** Dedykowana funkcja pozwalająca na odnalezienie innych użytkowników po ich nazwie lub klubie.
+*   **Stopniowe Wdrażanie (Progressive Onboarding):** Po pierwszej, uproszczonej rejestracji (tylko e-mail i hasło), użytkownik jest przekierowywany do ekranu `SetupProfileScreen` w celu jednorazowego uzupełnienia profilu. Wszystkie pola (`username`, `firstName`, `lastName`) są **obowiązkowe**.
+*   **Profile Graczy i Prywatność:**
+    *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny** podczas konfiguracji profilu.
+    *   Profil publiczny jest w pełni widoczny dla wszystkich użytkowników.
+    *   Profil prywatny jest widoczny **tylko dla zaakceptowanych znajomych**. Dla pozostałych użytkowników widoczne są jedynie podstawowe informacje (nazwa użytkownika) oraz komunikat o prywatności.
+*   **Wyszukiwarka Graczy:**
+    *   **Wyszukiwanie po wielu polach:** Funkcja pozwala na odnalezienie innych użytkowników po ich **nazwie użytkownika, imieniu lub nazwisku**.
+    *   **Niewrażliwość na wielkość liter:** Mechanizm wyszukiwania ignoruje wielkość liter.
+    *   **Wyszukiwanie "na żywo":** Wyniki pojawiają się automatycznie po krótkiej przerwie w pisaniu (debouncing), bez potrzeby klikania przycisku.
+    *   **Walidacja:** Pole `username` nie może zawierać spacji, co jest walidowane w czasie rzeczywistym.
 *   **System Sparing Partnerów ("Znajomych"):** Możliwość wysyłania zaproszeń do innych graczy, tworzenia listy znajomych i zarządzania nią.
 *   **System Komunikacji (Czat):**
-    *   Aplikacja będzie zawierać system wiadomości prywatnych między użytkownikami. Główny dostęp do czatów będzie możliwy przez dedykowaną ikonę (np. koperty) w `TopAppBar`.
+    *   Aplikacja będzie zawierać system wiadomości prywatnych między użytkownikami. Główny dostęp do czatów będzie możliwy przez dedykowaną ikonę w `TopAppBar`.
     *   Możliwość zainicjowania nowej rozmowy będzie dostępna z poziomu listy znajomych oraz profilu innego użytkownika.
     *   **Szczegółowa Specyfikacja:** Dokładny opis architektury i UI dla tego modułu znajduje się w osobnym dokumencie: `system_komunikacji.md`.
 *   **Kluby:** Funkcjonalność tworzenia i dołączania do grup (klubów), które posiadają własne, wewnętrzne rankingi i statystyki.
@@ -156,11 +161,11 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
     *   **Klasa Bazy Danych:** Stworzono główną klasę `SnookerStatsDatabase.kt` (`data/local`) z adnotacją `@Database` i podłączeniem `TypeConverter`.
     *   **Hilt Module dla Room:** Stworzono `DatabaseModule.kt` (`di`) do dostarczania instancji bazy danych i DAO.
 
-### Etap 5: Funkcje Społecznościowe (NOWY ETAP)
+### Etap 5: Funkcje Społecznościowe (W TRAKCIE)
 *   **Cel:** Implementacja kluczowych funkcji społecznościowych, które pozwolą użytkownikom na interakcję i budowanie sieci kontaktów w aplikacji.
 *   **Wymagania:** Dostęp do modeli danych `User` i ich aktualizacji (np. listy znajomych).
 *   **Kolejność prac w ramach etapu:**
-    *   [ ] **Wyszukiwarka graczy i profil publiczny:**
+    *   [x] **Wyszukiwarka graczy i profil publiczny:**
         *   Implementacja UI dla profilu użytkownika (z możliwością ustawienia jako publiczny/prywatny).
         *   Implementacja wyszukiwarki graczy (zapytania do Firestore).
         *   Wyświetlanie publicznych profili.

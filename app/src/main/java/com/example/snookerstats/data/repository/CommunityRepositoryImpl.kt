@@ -20,8 +20,8 @@ class CommunityRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth
 ) : CommunityRepository {
 
-    private val currentUserId: String?
-        get() = auth.currentUser?.uid
+    private val currentUserId: String
+        get() = auth.currentUser!!.uid
 
     override fun searchUsers(query: String): Flow<Response<List<User>>> = flow {
         emit(Response.Loading)
@@ -63,7 +63,7 @@ class CommunityRepositoryImpl @Inject constructor(
 
     override suspend fun sendFriendRequest(toUserId: String): Response<Boolean> {
         return try {
-            val fromUserId = currentUserId ?: return Response.Error("User not logged in")
+            val fromUserId = currentUserId
             if (fromUserId == toUserId) return Response.Error("Cannot send request to yourself")
 
             val currentUserRef = firestore.collection("users").document(fromUserId)
@@ -83,8 +83,7 @@ class CommunityRepositoryImpl @Inject constructor(
 
     override suspend fun cancelFriendRequest(toUserId: String): Response<Boolean> {
         return try {
-            val fromUserId = currentUserId ?: return Response.Error("User not logged in")
-
+            val fromUserId = currentUserId
             val currentUserRef = firestore.collection("users").document(fromUserId)
             val targetUserRef = firestore.collection("users").document(toUserId)
 
@@ -101,13 +100,37 @@ class CommunityRepositoryImpl @Inject constructor(
     }
 
     override suspend fun acceptFriendRequest(fromUserId: String): Response<Boolean> {
-        // TODO: Implement
-        return Response.Success(true)
+        return try {
+            val currentUserRef = firestore.collection("users").document(currentUserId)
+            val friendUserRef = firestore.collection("users").document(fromUserId)
+
+            firestore.batch()
+                .update(currentUserRef, "friends", FieldValue.arrayUnion(fromUserId))
+                .update(friendUserRef, "friends", FieldValue.arrayUnion(currentUserId))
+                .update(currentUserRef, "friendRequestsReceived", FieldValue.arrayRemove(fromUserId))
+                .update(friendUserRef, "friendRequestsSent", FieldValue.arrayRemove(currentUserId))
+                .commit()
+                .await()
+            Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "Unknown error")
+        }
     }
 
     override suspend fun rejectFriendRequest(fromUserId: String): Response<Boolean> {
-        // TODO: Implement
-        return Response.Success(true)
+        return try {
+            val currentUserRef = firestore.collection("users").document(currentUserId)
+            val friendUserRef = firestore.collection("users").document(fromUserId)
+
+            firestore.batch()
+                .update(currentUserRef, "friendRequestsReceived", FieldValue.arrayRemove(fromUserId))
+                .update(friendUserRef, "friendRequestsSent", FieldValue.arrayRemove(currentUserId))
+                .commit()
+                .await()
+            Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "Unknown error")
+        }
     }
 
     override fun getFriends(): Flow<Response<List<User>>> = flow {
@@ -115,10 +138,38 @@ class CommunityRepositoryImpl @Inject constructor(
     }
 
     override fun getReceivedFriendRequests(): Flow<Response<List<User>>> = flow {
-        // TODO: Implement
+        emit(Response.Loading)
+        try {
+            val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
+            val requestIds = currentUserDoc.toObject(User::class.java)?.friendRequestsReceived ?: emptyList()
+
+            if (requestIds.isEmpty()) {
+                emit(Response.Success(emptyList()))
+                return@flow
+            }
+            
+            val users = firestore.collection("users").whereIn("uid", requestIds).get().await().toObjects(User::class.java)
+            emit(Response.Success(users))
+        } catch (e: Exception) {
+            emit(Response.Error(e.message ?: "Unknown error"))
+        }
     }
 
     override fun getSentFriendRequests(): Flow<Response<List<User>>> = flow {
-        // TODO: Implement
+        emit(Response.Loading)
+        try {
+            val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
+            val requestIds = currentUserDoc.toObject(User::class.java)?.friendRequestsSent ?: emptyList()
+
+            if (requestIds.isEmpty()) {
+                emit(Response.Success(emptyList()))
+                return@flow
+            }
+
+            val users = firestore.collection("users").whereIn("uid", requestIds).get().await().toObjects(User::class.java)
+            emit(Response.Success(users))
+        } catch (e: Exception) {
+            emit(Response.Error(e.message ?: "Unknown error"))
+        }
     }
 }

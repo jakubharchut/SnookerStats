@@ -39,7 +39,7 @@ fun PlayerSearchScreen(
         onUserClick = { userId ->
             navController.navigate("user_profile/$userId")
         },
-        onInviteClick = { userId -> viewModel.sendFriendRequest(userId) },
+        onInviteClick = { userId, username -> viewModel.sendFriendRequest(userId, username) },
         onChatClick = { /* TODO: navController.navigate("chat/$it") */ }
     )
 }
@@ -50,7 +50,7 @@ fun PlayerSearchScreenContent(
     onQueryChange: (String) -> Unit,
     onSearchClick: () -> Unit,
     onUserClick: (String) -> Unit,
-    onInviteClick: (String) -> Unit,
+    onInviteClick: (String, String) -> Unit,
     onChatClick: (String) -> Unit
 ) {
     Column(
@@ -87,7 +87,7 @@ fun PlayerSearchScreenContent(
                     user = result.user,
                     status = result.status,
                     onClick = { onUserClick(result.user.uid) },
-                    onInviteClick = { onInviteClick(result.user.uid) },
+                    onInviteClick = { onInviteClick(result.user.uid, result.user.username) },
                     onChatClick = { onChatClick(result.user.uid) }
                 )
             }
@@ -136,7 +136,6 @@ fun UserCard(
 
             if (status != RelationshipStatus.SELF) {
                 Row {
-                    // Zaktualizowany warunek: pokaż czat dla znajomych, obcych i zaproszonych
                     if (status == RelationshipStatus.FRIENDS || status == RelationshipStatus.STRANGER || status == RelationshipStatus.INVITE_SENT) {
                         IconButton(onClick = onChatClick) {
                             Icon(imageVector = Icons.Default.Chat, contentDescription = "Chat")
@@ -175,11 +174,6 @@ fun PlayerSearchScreenPreview() {
             UserCard(
                 user = User(uid = "2", username = "friend", firstName = "John", lastName = "Doe"),
                 status = RelationshipStatus.FRIENDS,
-                onClick = {}, onInviteClick = {}, onChatClick = {}
-            )
-            UserCard(
-                user = User(uid = "3", username = "invited", firstName = "Jane", lastName = "Doe"),
-                status = RelationshipStatus.INVITE_SENT, // Teraz ma obie ikony (chat i check)
                 onClick = {}, onInviteClick = {}, onChatClick = {}
             )
         }

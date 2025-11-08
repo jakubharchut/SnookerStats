@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: Społeczność i Profil
 
-## Wersja: 1.3 (stan na 2024-07-30)
+## Wersja: 1.4 (stan na 2024-07-30)
 
 ---
 
@@ -46,7 +46,7 @@ Centralnym modelem danych dla tego modułu jest klasa `User`. Będzie ona przech
     *   Jeśli `username` nie jest pusty, użytkownik zostanie przekierowany do głównego ekranu aplikacji (`MainScreen`).
 3.  **Ekran `SetupProfileScreen`:**
     *   Będzie zawierał formularz z polami: `username`, `firstName`, `lastName` - **wszystkie pola są obowiązkowe**.
-    *   **Walidacja:** Pole `username` nie może zawierać spacji. Walidacja odbywa się w czasie rzeczywistym, a przycisk zapisu jest nieaktywny, dopóki wszystkie pola nie są poprawnie wypełnione.
+    *   **Walidacja:** Pole `username` nie może zawierać spacji i musi być unikalne w bazie. Walidacja odbywa się w czasie rzeczywistym, a przycisk zapisu jest nieaktywny, dopóki wszystkie pola nie są poprawnie wypełnione.
     *   Zawiera przełącznik `Switch` do ustawienia profilu jako publiczny/prywatny.
 4.  **Logika Zapisu:**
     *   Po kliknięciu przycisku, dane zostaną zwalidowane (czy `username` nie jest pusty i czy jest unikalny).
@@ -70,12 +70,14 @@ Zaimplementowano strukturę z trzema zakładkami: "Szukaj", "Znajomi", "Zaprosze
     *   Pole tekstowe do wpisywania frazy.
     *   **Wyszukiwanie odbywa się "na żywo"** (z 500ms opóźnieniem) po wpisaniu co najmniej 3 znaków.
     *   Mechanizm przeszukuje pola `username`, `firstName` i `lastName`, ignorując wielkość liter.
-    *   Wyniki wyświetlane są w `LazyColumn`.
+    *   Wyniki wyświetlane są w `LazyColumn` jako estetyczne karty (`UserCard`).
+    *   **Dynamiczne Akcje:** Karta każdego użytkownika wyświetla odpowiednie ikony akcji (czat, dodaj znajomego, zaproszenie wysłane) w zależności od statusu relacji.
     *   Kliknięcie na wynik nawiguje do ekranu profilu danego użytkownika (`UserProfileScreen`).
-2.  **Lista Otrzymanych Zaproszeń:**
-    *   Sekcja wyświetlająca listę użytkowników, którzy wysłali nam zaproszenie.
-    *   Przy każdym zaproszeniu będą przyciski "Akceptuj" i "Odrzuć".
-3.  **Lista Znajomych:**
+2.  **Zarządzanie Zaproszeniami (zakładka "Zaproszenia"):**
+    *   **Podział na widoki:** Ekran posiada dwie pod-zakładki w stylu `FilterChip`: "Otrzymane" i "Wysłane".
+    *   **Puste listy:** Jeśli którakolwiek z list jest pusta, wyświetlany jest odpowiedni komunikat.
+    *   **Akcje:** Użytkownik może akceptować/odrzucać otrzymane zaproszenia oraz anulować wysłane.
+3.  **Lista Znajomych (zakładka "Znajomi"):**
     *   Sekcja wyświetlająca listę naszych aktualnych znajomych.
     *   Każdy element na liście będzie klikalny, prowadząc do profilu gracza.
 
@@ -132,3 +134,4 @@ Ekran Społeczności (`CommunityScreen`) wykorzystuje górny pasek zakładek (`T
 *   **Wizualizacja:** Zakładki będą wyraźnie oddzielone wizualnie, a aktywna zakładka zostanie podkreślona. Nawigacja między zakładkami odbywać się będzie poprzez kliknięcie. W przyszłości można rozważyć dodanie `HorizontalPager` do obsługi przesuwania palcem (swiping).
 *   **Interakcja:** Kliknięcie w nazwę zakładki powoduje natychmiastowe przejście do odpowiedniej treści.
 *   **Przykładowy Widok:** Zgodny ze zrzutem ekranu, który był punktem odniesienia dla tego opisu.
+*   **Potwierdzenia Akcji (Snackbar):** Wszystkie akcje w module społecznościowym (wysłanie, akceptacja, odrzucenie zaproszenia) są potwierdzane przez globalny `SnackbarManager`, który wyświetla na dole ekranu krótkie komunikaty informujące o wykonaniu akcji.

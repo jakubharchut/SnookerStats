@@ -15,17 +15,23 @@ import com.example.snookerstats.ui.auth.LoginScreen
 import com.example.snookerstats.ui.auth.RegisterScreen
 import com.example.snookerstats.ui.auth.RegistrationSuccessScreen
 import com.example.snookerstats.ui.main.MainScreen
+import com.example.snookerstats.ui.main.SnackbarManager
 import com.example.snookerstats.ui.profile.SetupProfileScreen
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var snackbarManager: SnackbarManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SnookerStatsTheme(darkTheme = false) { // Wymuszenie jasnego motywu
+            SnookerStatsTheme(darkTheme = false) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -45,8 +51,9 @@ class MainActivity : ComponentActivity() {
                             SetupProfileScreen(navController = navController)
                         }
                         composable("main") {
-                            MainScreen(navController = navController)
+                            MainScreen(navController = navController, snackbarManager = snackbarManager)
                         }
+
                     }
                 }
             }

@@ -9,6 +9,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -40,20 +42,26 @@ fun UserProfileScreen(
             }
             is ProfileState.Success -> {
                 if (profileState.canViewProfile) {
-                    // Widok publiczny lub dla znajomego
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = "Profil użytkownika", style = MaterialTheme.typography.headlineMedium)
                         Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Status: ${profileState.relationshipStatus}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         Text(text = "Nazwa: ${profileState.targetUser.username}")
                         Text(text = "Imię: ${profileState.targetUser.firstName}")
                         Text(text = "Nazwisko: ${profileState.targetUser.lastName}")
                         Spacer(modifier = Modifier.height(8.dp))
                         val profileType = if (profileState.targetUser.isPublicProfile) "Publiczny" else "Prywatny"
                         Text(text = "Profil: $profileType")
-                        // Tutaj w przyszłości pojawią się statystyki
                     }
                 } else {
-                    // Widok prywatny
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center

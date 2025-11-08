@@ -10,6 +10,7 @@ import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.CommunityRepository
+import com.example.snookerstats.ui.main.SnackbarManager
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -33,7 +34,10 @@ data class UserSearchResult(
 data class CommunityUiState(
     val searchQuery: String = "",
     val searchResults: List<UserSearchResult> = emptyList(),
+    val receivedInvites: List<User> = emptyList(),
+    val sentInvites: List<User> = emptyList(),
     val isLoading: Boolean = false,
+    val isLoadingInvites: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -41,7 +45,8 @@ data class CommunityUiState(
 class CommunityViewModel @Inject constructor(
     private val communityRepository: CommunityRepository,
     private val authRepository: AuthRepository,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val snackbarManager: SnackbarManager
 ) : ViewModel() {
 
     var uiState by mutableStateOf(CommunityUiState())
@@ -49,34 +54,16 @@ class CommunityViewModel @Inject constructor(
 
     private var searchJob: Job? = null
 
+    init {
+        loadInvitations()
+    }
+
     fun onSearchQueryChange(query: String) {
-        uiState = uiState.copy(searchQuery = query, errorMessage = null) // Resetuj błąd przy nowym zapytaniu
+        uiState = uiState.copy(searchQuery = query, errorMessage = null)
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             delay(500L)
             searchUsers()
-        }
-    }
-
-    fun sendFriendRequest(toUserId: String) {
-        viewModelScope.launch {
-            when (val response = communityRepository.sendFriendRequest(toUserId)) {
-                is Response.Success -> {
-                    // Aktualizuj status tylko dla tego jednego użytkownika
-                    val updatedResults = uiState.searchResults.map {
-                        if (it.user.uid == toUserId) {
-                            it.copy(status = RelationshipStatus.INVITE_SENT)
-                        } else {
-                            it
-                        }
-                    }
-                    uiState = uiState.copy(searchResults = updatedResults)
-                }
-                is Response.Error -> {
-                    uiState = uiState.copy(errorMessage = response.message)
-                }
-                else -> {}
-            }
         }
     }
 
@@ -128,6 +115,66 @@ class CommunityViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e("CommunityViewModel", "Krytyczny błąd podczas pobierania profilu", e)
                 uiState = uiState.copy(errorMessage = "Wystąpił krytyczny błąd podczas ładowania Twojego profilu.", isLoading = false)
+            }
+        }
+    }
+    
+    fun sendFriendRequest(toUserId: String, username: String) {
+        viewModelScope.launch {
+            when (val response = communityRepository.sendFriendRequest(toUserId)) {
+                is Response.Success -> {
+                    snackbarManager.showMessage("Wysłano zaproszenie do $username")
+                    val updatedResults = uiState.searchResults.map {
+                        if (it.user.uid == toUserId) it.copy(status = RelationshipStatus.INVITE_SENT) else it
+                    }
+                    uiState = uiState.copy(searchResults = updatedResults)
+                }
+                is Response.Error -> snackbarManager.showMessage("Błąd: Nie udało się wysłać zaproszenia")
+                else -> {}
+            }
+        }
+    }
+
+    fun loadInvitations() {
+        viewModelScope.launch {
+            uiState = uiState.copy(isLoadingInvites = true)
+            communityRepository.getReceivedFriendRequests().collect { response ->
+                if (response is Response.Success) {
+                    uiState = uiState.copy(receivedInvites = response.data)
+                }
+            }
+            communityRepository.getSentFriendRequests().collect { response ->
+                if (response is Response.Success) {
+                    uiState = uiState.copy(sentInvites = response.data)
+                }
+            }
+            uiState = uiState.copy(isLoadingInvites = false)
+        }
+    }
+
+    fun acceptInvite(fromUserId: String, username: String) {
+        viewModelScope.launch {
+            if (communityRepository.acceptFriendRequest(fromUserId) is Response.Success) {
+                snackbarManager.showMessage("Zaakceptowano zaproszenie od $username")
+                loadInvitations()
+            }
+        }
+    }
+
+    fun rejectInvite(fromUserId: String, username: String) {
+        viewModelScope.launch {
+            if (communityRepository.rejectFriendRequest(fromUserId) is Response.Success) {
+                snackbarManager.showMessage("Odrzucono zaproszenie od $username")
+                loadInvitations()
+            }
+        }
+    }
+
+    fun cancelInvite(toUserId: String, username: String) {
+        viewModelScope.launch {
+            if (communityRepository.cancelFriendRequest(toUserId) is Response.Success) {
+                snackbarManager.showMessage("Anulowano zaproszenie do $username")
+                loadInvitations()
             }
         }
     }

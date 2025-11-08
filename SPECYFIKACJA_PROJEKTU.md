@@ -1,6 +1,6 @@
 # Specyfikacja Projektu: Aplikacja "Snooker Stats"
 
-## Wersja: 1.4 (stan na 2024-07-30)
+## Wersja: 1.5 (stan na 2024-07-30)
 
 ---
 
@@ -99,6 +99,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 *   **Dolny Pasek Nawigacyjny (`BottomNavigationBar`):** Główna nawigacja między kluczowymi sekcjami (Dashboard, Graj, Historia, Statystyki, Ludzie, Profil).
 *   **Obszar Treści:** Centralna część ekranu, w której wyświetlana jest zawartość.
 *   **Menu Zakładek (`TabRow`):** W przypadku złożonych ekranów (takich jak Społeczność), do dalszej organizacji treści będzie używany system zakładek umieszczony pod `TopAppBar`. Szczegółowy opis tego wzorca znajduje się w odpowiedniej specyfikacji modułu.
+*   **Potwierdzenia Akcji (Snackbar):** Zaimplementowano globalny `SnackbarManager`, który pozwala na wyświetlanie krótkich komunikatów na dole ekranu, potwierdzających wykonanie akcji (np. "Wysłano zaproszenie").
 
 ### 4.3. Priorytety Projektowe
 *   **Czytelność i Intuicyjność:** Interfejs musi być prosty w obsłudze, nawet podczas stresującego meczu.
@@ -169,10 +170,12 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
         *   Implementacja UI dla profilu użytkownika (z możliwością ustawienia jako publiczny/prywatny).
         *   Implementacja wyszukiwarki graczy (zapytania do Firestore).
         *   Wyświetlanie publicznych profili.
-    *   [ ] **System zaproszeń do znajomych:**
+    *   [x] **System zaproszeń do znajomych:**
         *   [x] Wysyłanie zaproszeń z poziomu wyszukiwarki i profilu gracza.
-        *   [ ] Implementacja zakładki "Zaproszenia" (Otrzymane / Wysłane).
-        *   [ ] Logika akceptowania, odrzucania i anulowania zaproszeń.
+        *   [x] Implementacja zakładki "Zaproszenia" (Otrzymane / Wysłane) z pełną funkcjonalnością.
+        *   [x] Logika akceptowania, odrzucania i anulowania zaproszeń.
+    *   [ ] **Lista znajomych:**
+        *   [ ] Implementacja zakładki "Znajomi" do wyświetlania listy połączonych użytkowników.
     *   [ ] **Ekran porównania statystyk Head-to-Head:**
         *   Wykorzystanie już istniejących lub przyszłych danych meczowych (z Firestore lub Room).
         *   Implementacja UI do prezentacji porównania statystyk.

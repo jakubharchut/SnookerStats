@@ -24,11 +24,12 @@ class AuthRepositoryImpl @Inject constructor(
 
             firebaseUser.sendEmailVerification().await()
 
-            // Tworzenie obiektu User z pustym username
+            // Tworzenie obiektu User z pustym username i username_lowercase
             val user = User(
                 uid = firebaseUser.uid,
                 email = email,
-                username = "" // Username będzie ustawione przy pierwszym logowaniu
+                username = "",
+                username_lowercase = ""
             )
             firestore.collection("users").document(firebaseUser.uid).set(user).await()
 

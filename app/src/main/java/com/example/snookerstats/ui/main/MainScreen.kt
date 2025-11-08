@@ -32,12 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.snookerstats.ui.auth.AuthViewModel
 import com.example.snookerstats.ui.auth.NavigationEvent
 import com.example.snookerstats.ui.navigation.BottomNavItem
-import com.example.snookerstats.ui.screens.CommunityScreen
-import com.example.snookerstats.ui.screens.HomeScreen
-import com.example.snookerstats.ui.screens.MatchHistoryScreen
-import com.example.snookerstats.ui.screens.PlayScreen
-import com.example.snookerstats.ui.screens.ProfileScreen
-import com.example.snookerstats.ui.screens.StatsScreen
+import com.example.snookerstats.ui.screens.*
 import kotlinx.coroutines.flow.collectLatest
 import com.example.snookerstats.ui.chat.ChatListScreen
 
@@ -46,7 +41,8 @@ import androidx.compose.material3.Badge
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.geometry.Offset
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +54,6 @@ fun MainScreen(
     val internalNavController = rememberNavController()
     val username by mainViewModel.username.collectAsState()
 
-    // Tymczasowy stan dla nieprzeczytanych wiadomości do celów demonstracyjnych
     val unreadMessagesCount by remember { mutableStateOf(3) }
 
     LaunchedEffect(Unit) {
@@ -86,13 +81,12 @@ fun MainScreen(
                                 restoreState = true
                             }
                         }
-                        // Usunięto: modifier = Modifier.padding(end = 4.dp)
                     ) {
                         BadgedBox(
                             badge = {
                                 if (unreadMessagesCount > 0) {
                                     Badge(
-                                        modifier = Modifier.offset(x = (-12).dp, y = (-4).dp) // Dostosowano przesunięcie badge'a bardziej w lewo
+                                        modifier = Modifier.offset(x = (-12).dp, y = (-4).dp)
                                     ) {
                                         Text(text = unreadMessagesCount.toString())
                                     }
@@ -177,8 +171,14 @@ fun NavigationGraph(navController: NavHostController) {
         composable(BottomNavItem.Play.route) { PlayScreen() }
         composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen() }
         composable(BottomNavItem.Stats.route) { StatsScreen() }
-        composable(BottomNavItem.Community.route) { CommunityScreen() }
+        composable(BottomNavItem.Community.route) { CommunityScreen(navController = navController) }
         composable(BottomNavItem.Profile.route) { ProfileScreen() }
         composable("chat_list") { ChatListScreen() }
+        composable(
+            route = "user_profile/{userId}",
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            UserProfileScreen(userId = backStackEntry.arguments?.getString("userId"))
+        }
     }
 }

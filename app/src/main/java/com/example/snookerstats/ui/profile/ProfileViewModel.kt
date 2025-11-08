@@ -1,73 +1,86 @@
 package com.example.snookerstats.ui.profile
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.ProfileRepository
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class ProfileState {
-    object Idle : ProfileState()
     object Loading : ProfileState()
-    data class Success(val message: String) : ProfileState()
+    data class Success(
+        val targetUser: User,
+        val currentUser: User,
+        val isFriend: Boolean,
+        val canViewProfile: Boolean
+    ) : ProfileState()
     data class Error(val message: String) : ProfileState()
-}
-
-sealed class ProfileNavigationEvent {
-    object NavigateToMain : ProfileNavigationEvent()
 }
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val repo: ProfileRepository
+    private val authRepository: AuthRepository,
+    private val profileRepository: ProfileRepository,
+    private val firebaseAuth: FirebaseAuth,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Idle)
-    val profileState: StateFlow<ProfileState> = _profileState
+    private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Loading)
+    val profileState: StateFlow<ProfileState> = _profileState.asStateFlow()
 
-    private val _navigationEvent = MutableSharedFlow<ProfileNavigationEvent>()
-    val navigationEvent: SharedFlow<ProfileNavigationEvent> = _navigationEvent
+    init {
+        val targetUserId = savedStateHandle.get<String>("userId")
+        val currentUserId = firebaseAuth.currentUser?.uid
 
-    fun saveUserProfile(user: User) {
+        if (targetUserId != null && currentUserId != null) {
+            loadProfileData(targetUserId, currentUserId)
+        } else {
+            _profileState.value = ProfileState.Error("User not found.")
+        }
+    }
+
+    private fun loadProfileData(targetUserId: String, currentUserId: String) {
         viewModelScope.launch {
-            _profileState.value = ProfileState.Loading
+            val targetUserFlow = authRepository.getUserProfile(targetUserId)
+            val currentUserFlow = authRepository.getUserProfile(currentUserId)
 
-            // 1. Sprawdź, czy nazwa użytkownika nie jest pusta
-            if (user.username.isBlank()) {
-                _profileState.value = ProfileState.Error("Nazwa użytkownika nie może być pusta.")
-                return@launch
-            }
+            targetUserFlow.combine(currentUserFlow) { targetUserResponse, currentUserResponse ->
+                // Helper data class to hold combined results
+                data class CombinedUsers(val target: Response<User>, val current: Response<User>)
+                CombinedUsers(targetUserResponse, currentUserResponse)
+            }.collect { combined ->
+                val targetUserResponse = combined.target
+                val currentUserResponse = combined.current
 
-            // 2. Sprawdź, czy nazwa użytkownika jest już zajęta
-            when (val isTakenResponse = repo.isUsernameTaken(user.username)) {
-                is Response.Success -> {
-                    if (isTakenResponse.data) {
-                        _profileState.value = ProfileState.Error("Ta nazwa użytkownika jest już zajęta.")
-                        return@launch
-                    }
-                }
-                is Response.Error -> {
-                    _profileState.value = ProfileState.Error(isTakenResponse.message)
-                    return@launch
-                }
-                else -> {}
-            }
+                if (targetUserResponse is Response.Success && currentUserResponse is Response.Success) {
+                    val targetUser = targetUserResponse.data
+                    val currentUser = currentUserResponse.data
+                    val isFriend = currentUser.friends.contains(targetUser.uid)
+                    val canViewProfile = targetUser.isPublicProfile || isFriend
 
-            // 3. Jeśli wszystko jest OK, zapisz profil
-            when(val saveResponse = repo.saveUserProfile(user)) {
-                is Response.Success -> {
-                    _profileState.value = ProfileState.Success("Profil zapisany!")
-                    _navigationEvent.emit(ProfileNavigationEvent.NavigateToMain)
+                    _profileState.value = ProfileState.Success(
+                        targetUser = targetUser,
+                        currentUser = currentUser,
+                        isFriend = isFriend,
+                        canViewProfile = canViewProfile
+                    )
+                } else if (targetUserResponse is Response.Error) {
+                    _profileState.value = ProfileState.Error(targetUserResponse.message)
+                } else if (currentUserResponse is Response.Error) {
+                    _profileState.value = ProfileState.Error(currentUserResponse.message)
+                } else {
+                    _profileState.value = ProfileState.Loading
                 }
-                is Response.Error -> _profileState.value = ProfileState.Error(saveResponse.message)
-                else -> {}
             }
         }
     }

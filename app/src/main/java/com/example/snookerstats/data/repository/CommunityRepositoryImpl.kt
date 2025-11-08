@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 @Singleton
 class CommunityRepositoryImpl @Inject constructor(
@@ -24,17 +26,36 @@ class CommunityRepositoryImpl @Inject constructor(
     override fun searchUsers(query: String): Flow<Response<List<User>>> = flow {
         emit(Response.Loading)
         try {
-            if (query.isBlank()) {
+            if (query.isBlank() || query.length < 3) {
                 emit(Response.Success(emptyList()))
                 return@flow
             }
-            val users = firestore.collection("users")
-                .whereGreaterThanOrEqualTo("username", query)
-                .whereLessThanOrEqualTo("username", query + "\uf8ff")
-                .get()
-                .await()
-                .toObjects(User::class.java)
-            emit(Response.Success(users))
+            val lowercaseQuery = query.lowercase()
+
+            coroutineScope {
+                val usernameDeferred = async {
+                    firestore.collection("users")
+                        .whereGreaterThanOrEqualTo("username_lowercase", lowercaseQuery)
+                        .whereLessThanOrEqualTo("username_lowercase", lowercaseQuery + "\uf8ff")
+                        .get().await().toObjects(User::class.java)
+                }
+                val firstNameDeferred = async {
+                    firestore.collection("users")
+                        .whereGreaterThanOrEqualTo("firstName_lowercase", lowercaseQuery)
+                        .whereLessThanOrEqualTo("firstName_lowercase", lowercaseQuery + "\uf8ff")
+                        .get().await().toObjects(User::class.java)
+                }
+                val lastNameDeferred = async {
+                    firestore.collection("users")
+                        .whereGreaterThanOrEqualTo("lastName_lowercase", lowercaseQuery)
+                        .whereLessThanOrEqualTo("lastName_lowercase", lowercaseQuery + "\uf8ff")
+                        .get().await().toObjects(User::class.java)
+                }
+
+                val combinedResults = (usernameDeferred.await() + firstNameDeferred.await() + lastNameDeferred.await()).distinctBy { it.uid }
+                
+                emit(Response.Success(combinedResults))
+            }
         } catch (e: Exception) {
             emit(Response.Error(e.message ?: "Unknown error"))
         }

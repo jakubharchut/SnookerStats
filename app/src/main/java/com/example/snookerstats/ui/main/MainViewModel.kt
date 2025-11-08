@@ -36,10 +36,8 @@ class MainViewModel @Inject constructor(
                             val user = response.data
                             if (user.username.isNotBlank()) {
                                 _username.value = "Witaj, ${user.username}"
-                            } else if (user.firstName?.isNotBlank() == true) {
-                                _username.value = "Witaj, ${user.firstName}"
                             } else {
-                                _username.value = "Witaj, użytkowniku!"
+                                _username.value = "Witaj, dokończ profil!" // Zmieniono tekst, gdy username jest pusty
                             }
                         }
                         is Response.Error -> {

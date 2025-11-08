@@ -18,16 +18,20 @@ class ProfileRepositoryImpl @Inject constructor(
             val currentUser = auth.currentUser ?: return Response.Error("User not logged in")
             
             val userRef = firestore.collection("users").document(currentUser.uid)
-            val existingUser = userRef.get().await().toObject(User::class.java)
+            
+            // Tworzymy mapę pól do aktualizacji
+            val updates = mapOf(
+                "username" to user.username,
+                "username_lowercase" to user.username.lowercase(),
+                "firstName" to user.firstName,
+                "firstName_lowercase" to user.firstName?.lowercase(),
+                "lastName" to user.lastName,
+                "lastName_lowercase" to user.lastName?.lowercase(),
+                "publicProfile" to user.isPublicProfile
+            )
 
-            val updatedUser = existingUser?.copy(
-                username = user.username,
-                firstName = user.firstName,
-                lastName = user.lastName,
-                isPublicProfile = user.isPublicProfile
-            ) ?: user.copy(uid = currentUser.uid, email = currentUser.email ?: "")
-
-            userRef.set(updatedUser).await()
+            // Używamy update zamiast set, aby zaktualizować tylko te pola
+            userRef.update(updates).await()
             Response.Success(true)
         } catch (e: Exception) {
             Response.Error(e.message ?: "Unknown error")
@@ -36,7 +40,7 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun isUsernameTaken(username: String): Response<Boolean> {
         return try {
-            val result = firestore.collection("users").whereEqualTo("username", username).limit(1).get().await()
+            val result = firestore.collection("users").whereEqualTo("username_lowercase", username.lowercase()).limit(1).get().await()
             Response.Success(result.isEmpty.not())
         } catch (e: Exception) {
             Response.Error(e.message ?: "Unknown error")

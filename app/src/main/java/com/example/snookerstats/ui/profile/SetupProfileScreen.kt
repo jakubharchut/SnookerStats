@@ -26,9 +26,14 @@ fun SetupProfileScreen(
     var lastName by remember { mutableStateOf("") }
     var isPublicProfile by remember { mutableStateOf(true) }
 
-    val profileState by viewModel.profileState.collectAsState()
-    val isUsernameValid = username.isNotBlank() && !username.contains(" ")
-    val isButtonEnabled = isUsernameValid && firstName.isNotBlank() && lastName.isNotBlank()
+    val setupState by viewModel.setupState.collectAsState()
+    val usernameValidationState by viewModel.usernameValidationState.collectAsState()
+    
+    val isUsernameFormatValid = username.isNotBlank() && !username.contains(" ")
+    val isButtonEnabled = isUsernameFormatValid &&
+                          usernameValidationState.isAvailable == true &&
+                          firstName.isNotBlank() &&
+                          lastName.isNotBlank()
 
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collectLatest { event ->
@@ -64,14 +69,22 @@ fun SetupProfileScreen(
 
         OutlinedTextField(
             value = username,
-            onValueChange = { username = it },
+            onValueChange = {
+                username = it
+                viewModel.onUsernameChange(it)
+            },
             label = { Text("Nazwa użytkownika") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            isError = !isUsernameValid && username.isNotEmpty(),
+            isError = (username.isNotEmpty() && !isUsernameFormatValid) || usernameValidationState.isAvailable == false,
             supportingText = {
-                if (!isUsernameValid && username.isNotEmpty()) {
-                    Text("Nazwa użytkownika nie może zawierać spacji.")
+                if (username.isNotEmpty()) {
+                    when {
+                        !isUsernameFormatValid -> Text("Nazwa użytkownika nie może zawierać spacji.")
+                        usernameValidationState.isChecking -> Text("Sprawdzanie dostępności...")
+                        usernameValidationState.isAvailable == false -> Text("Ta nazwa jest już zajęta.")
+                        usernameValidationState.isAvailable == true -> Text("Nazwa dostępna!", color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
         )
@@ -119,17 +132,17 @@ fun SetupProfileScreen(
                 viewModel.saveUserProfile(user)
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = profileState !is SetupProfileState.Loading && isButtonEnabled
+            enabled = setupState !is SetupProfileState.Loading && isButtonEnabled
         ) {
-            if (profileState is SetupProfileState.Loading) {
+            if (setupState is SetupProfileState.Loading) {
                 CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
             } else {
                 Text("Zapisz i kontynuuj")
             }
         }
         
-        if (profileState is SetupProfileState.Error) {
-            val errorState = profileState as SetupProfileState.Error
+        if (setupState is SetupProfileState.Error) {
+            val errorState = setupState as SetupProfileState.Error
             Text(
                 text = errorState.message,
                 color = MaterialTheme.colorScheme.error,

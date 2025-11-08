@@ -8,24 +8,40 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.CommunityRepository
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class RelationshipStatus {
+    FRIENDS,
+    INVITE_SENT,
+    STRANGER,
+    SELF
+}
+
+data class UserSearchResult(
+    val user: User,
+    val status: RelationshipStatus
+)
+
 data class CommunityUiState(
     val searchQuery: String = "",
-    val searchResults: List<User> = emptyList(),
+    val searchResults: List<UserSearchResult> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
 
 @HiltViewModel
 class CommunityViewModel @Inject constructor(
-    private val repository: CommunityRepository
+    private val communityRepository: CommunityRepository,
+    private val authRepository: AuthRepository,
+    private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
     var uiState by mutableStateOf(CommunityUiState())
@@ -35,37 +51,61 @@ class CommunityViewModel @Inject constructor(
 
     fun onSearchQueryChange(query: String) {
         uiState = uiState.copy(searchQuery = query)
-        searchJob?.cancel() // Anuluj poprzednie zadanie wyszukiwania
+        searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            delay(500L) // Poczekaj 500ms
+            delay(500L)
             searchUsers()
         }
     }
 
     fun searchUsers() {
-        searchJob?.cancel() // Anuluj opóźnione wyszukiwanie, jeśli użytkownik kliknie przycisk
+        searchJob?.cancel()
         viewModelScope.launch {
             val query = uiState.searchQuery
-            if (query.length < 3) { // Nie szukaj, jeśli zapytanie jest zbyt krótkie
+            if (query.length < 3) {
                 uiState = uiState.copy(searchResults = emptyList())
                 return@launch
             }
             Log.d("CommunityViewModel", "Rozpoczynanie wyszukiwania dla: '$query'")
-            repository.searchUsers(query).collect { response ->
-                when (response) {
-                    is Response.Loading -> {
-                        Log.d("CommunityViewModel", "Stan: Ładowanie...")
-                        uiState = uiState.copy(isLoading = true)
-                    }
-                    is Response.Success -> {
-                        Log.d("CommunityViewModel", "Stan: Sukces. Znaleziono użytkowników: ${response.data.size}")
-                        uiState = uiState.copy(searchResults = response.data, isLoading = false)
-                    }
-                    is Response.Error -> {
-                        Log.e("CommunityViewModel", "Stan: Błąd - ${response.message}")
-                        uiState = uiState.copy(errorMessage = response.message, isLoading = false)
+
+            val currentUserId = firebaseAuth.currentUser?.uid ?: return@launch
+            
+            try {
+                val currentUserResponse = authRepository.getUserProfile(currentUserId).first { it !is Response.Loading }
+
+                if (currentUserResponse !is Response.Success) {
+                    val errorMessage = (currentUserResponse as? Response.Error)?.message ?: "Nieznany błąd"
+                    Log.e("CommunityViewModel", "Błąd ładowania profilu użytkownika: $errorMessage")
+                    uiState = uiState.copy(errorMessage = "Nie można załadować Twojego profilu.", isLoading = false)
+                    return@launch
+                }
+                val currentUser = currentUserResponse.data
+
+                communityRepository.searchUsers(query).collect { response ->
+                    when (response) {
+                        is Response.Loading -> uiState = uiState.copy(isLoading = true)
+                        is Response.Success -> {
+                            val results = response.data.map { user ->
+                                val status = when {
+                                    user.uid == currentUserId -> RelationshipStatus.SELF
+                                    currentUser.friends.contains(user.uid) -> RelationshipStatus.FRIENDS
+                                    currentUser.friendRequestsSent.contains(user.uid) -> RelationshipStatus.INVITE_SENT
+                                    else -> RelationshipStatus.STRANGER
+                                }
+                                UserSearchResult(user, status)
+                            }
+                            uiState = uiState.copy(searchResults = results, isLoading = false, errorMessage = null)
+                            Log.d("CommunityViewModel", "Stan: Sukces. Znaleziono użytkowników: ${results.size}")
+                        }
+                        is Response.Error -> {
+                            uiState = uiState.copy(errorMessage = response.message, isLoading = false)
+                            Log.e("CommunityViewModel", "Stan: Błąd - ${response.message}")
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                Log.e("CommunityViewModel", "Krytyczny błąd podczas pobierania profilu", e)
+                uiState = uiState.copy(errorMessage = "Wystąpił krytyczny błąd podczas ładowania Twojego profilu.", isLoading = false)
             }
         }
     }

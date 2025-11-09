@@ -72,6 +72,9 @@ class NotificationViewModel @Inject constructor(
 
     fun onDeleteNotificationConfirmed(notification: Notification) {
         viewModelScope.launch {
+            if (_notifications.value.size == 1) {
+                _notifications.value = emptyList()
+            }
             notificationRepository.deleteNotification(notification.id)
             loadNotifications()
         }

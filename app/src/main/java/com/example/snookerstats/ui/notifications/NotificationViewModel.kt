@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Notification
 import com.example.snookerstats.domain.model.NotificationType
 import com.example.snookerstats.domain.repository.NotificationRepository
-import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
@@ -14,8 +13,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
-    private val notificationRepository: NotificationRepository,
-    private val auth: FirebaseAuth
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     sealed class NavigationEvent {
@@ -38,14 +36,7 @@ class NotificationViewModel @Inject constructor(
     private var notificationsJob: Job? = null
 
     init {
-        auth.addAuthStateListener { firebaseAuth ->
-            if (firebaseAuth.currentUser != null) {
-                loadNotifications()
-            } else {
-                notificationsJob?.cancel()
-                _notifications.value = emptyList()
-            }
-        }
+        loadNotifications()
     }
 
     private fun loadNotifications() {
@@ -60,11 +51,11 @@ class NotificationViewModel @Inject constructor(
     fun onNotificationClicked(notification: Notification) {
         viewModelScope.launch {
             if (!notification.isRead) {
+                notificationRepository.markNotificationAsRead(notification.id)
+                
                 if (notification.type == NotificationType.FRIEND_REQUEST) {
                     _navigationEvent.emit(NavigationEvent.NavigateToCommunity(tabIndex = 2))
                 }
-                
-                notificationRepository.markNotificationAsRead(notification.id)
                 loadNotifications()
             }
         }
@@ -72,6 +63,7 @@ class NotificationViewModel @Inject constructor(
 
     fun onDeleteNotificationConfirmed(notification: Notification) {
         viewModelScope.launch {
+            // If this is the last notification, clear the list immediately for better UX
             if (_notifications.value.size == 1) {
                 _notifications.value = emptyList()
             }

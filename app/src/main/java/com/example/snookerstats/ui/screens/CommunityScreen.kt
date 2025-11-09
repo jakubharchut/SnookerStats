@@ -12,7 +12,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.ui.community.CommunityViewModel
 import com.example.snookerstats.ui.screens.common.UserCard
+import com.example.snookerstats.util.Resource
 
 @Composable
 fun CommunityScreen(
@@ -22,11 +24,11 @@ fun CommunityScreen(
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(initialTabIndex) }
     val tabs = listOf("Szukaj", "Znajomi", "Zaproszenia")
-    val uiState = viewModel.uiState
+    val friendsState by viewModel.friends.collectAsState()
 
     LaunchedEffect(selectedTabIndex) {
-        if (selectedTabIndex == 0) {
-            viewModel.searchUsers()
+        if (selectedTabIndex == 1) {
+            viewModel.fetchFriends()
         }
     }
 
@@ -43,11 +45,27 @@ fun CommunityScreen(
 
         when (selectedTabIndex) {
             0 -> PlayerSearchScreen(navController = navController, viewModel = viewModel)
-            1 -> FriendsScreen(
-                navController = navController,
-                viewModel = viewModel,
-                friends = uiState.friends
-            )
+            1 -> {
+                when (val state = friendsState) {
+                    is Resource.Loading -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    is Resource.Success -> {
+                        FriendsScreen(
+                            navController = navController,
+                            viewModel = viewModel,
+                            friends = state.data
+                        )
+                    }
+                    is Resource.Error -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(text = "Błąd: ${state.message}")
+                        }
+                    }
+                }
+            }
             2 -> InvitationsScreen(navController = navController, viewModel = viewModel)
         }
     }
@@ -70,7 +88,7 @@ fun FriendsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     userToRemove?.let { user ->
-                        viewModel.removeFriend(user.uid, user.username)
+                        viewModel.removeFriend(user.uid)
                     }
                     showDialog = false
                     userToRemove = null

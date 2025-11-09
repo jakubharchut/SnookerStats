@@ -33,7 +33,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.snookerstats.ui.auth.AuthViewModel
 import com.example.snookerstats.ui.auth.NavigationEvent
-import com.example.snookerstats.ui.chat.ChatListScreen
+import com.example.snookerstats.ui.chats.ChatListScreen
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.ui.notifications.NotificationViewModel
 import com.example.snookerstats.ui.profile.ManageProfileScreen
@@ -223,7 +223,7 @@ fun NavigationGraph(navController: NavHostController) {
             val initialTabIndex = backStackEntry.arguments?.getInt("initialTabIndex") ?: 0
             CommunityScreen(navController = navController, initialTabIndex = initialTabIndex)
         }
-        composable("chat_list") { ChatListScreen() }
+        composable("chat_list") { ChatListScreen(navController = navController) }
         composable("notifications") { NotificationsScreen(navController = navController) }
         composable(
             route = "profile?userId={userId}",

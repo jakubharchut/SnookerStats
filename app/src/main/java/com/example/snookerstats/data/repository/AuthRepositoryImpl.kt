@@ -5,6 +5,7 @@ import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +18,9 @@ class AuthRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val prefsManager: EncryptedPrefsManager
 ) : AuthRepository {
+
+    override val currentUser: FirebaseUser?
+        get() = firebaseAuth.currentUser
 
     override suspend fun registerUser(email: String, password: String): Response<Boolean> {
         return try {

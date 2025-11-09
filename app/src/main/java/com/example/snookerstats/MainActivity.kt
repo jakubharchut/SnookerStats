@@ -8,12 +8,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.ui.auth.LoginScreen
 import com.example.snookerstats.ui.auth.RegisterScreen
 import com.example.snookerstats.ui.auth.RegistrationSuccessScreen
+import com.example.snookerstats.ui.chats.ChatListScreen
+import com.example.snookerstats.ui.chats.ConversationScreen
 import com.example.snookerstats.ui.main.MainScreen
 import com.example.snookerstats.ui.main.SnackbarManager
 import com.example.snookerstats.ui.profile.SetupProfileScreen
@@ -26,6 +31,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var snackbarManager: SnackbarManager
+
+    @Inject
+    lateinit var authRepository: AuthRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +61,24 @@ class MainActivity : ComponentActivity() {
                         composable("main") {
                             MainScreen(navController = navController, snackbarManager = snackbarManager)
                         }
-
+                        composable("chat_list") {
+                            ChatListScreen(navController = navController)
+                        }
+                        composable(
+                            route = "conversation/{chatId}/{otherUserName}",
+                            arguments = listOf(
+                                navArgument("chatId") { type = NavType.StringType },
+                                navArgument("otherUserName") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val chatId = backStackEntry.arguments?.getString("chatId")!!
+                            val otherUserName = backStackEntry.arguments?.getString("otherUserName")!!
+                            ConversationScreen(
+                                navController = navController,
+                                otherUserName = otherUserName,
+                                authRepository = authRepository
+                            )
+                        }
                     }
                 }
             }

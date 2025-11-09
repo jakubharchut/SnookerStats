@@ -20,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,16 +29,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.Notification
+import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.ui.notifications.NotificationViewModel
+import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 @Composable
 fun NotificationsScreen(
+    navController: NavController,
     viewModel: NotificationViewModel = hiltViewModel()
 ) {
     val notifications by viewModel.notifications.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.navigationEvent.collectLatest { event ->
+            when (event) {
+                is NotificationViewModel.NavigationEvent.NavigateToCommunity -> {
+                    navController.navigate("community?initialTabIndex=${event.tabIndex}")
+                }
+            }
+        }
+    }
 
     if (notifications.isEmpty()) {
         Box(
@@ -70,10 +85,8 @@ fun NotificationItem(
     onDeleteClick: () -> Unit
 ) {
     val cardColors = if (notification.isRead) {
-        // Stonowany, domyślny kolor dla odczytanych
         CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     } else {
-        // Przywrócenie pierwotnego, niebieskawego koloru dla nieodczytanych
         CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     }
 
@@ -84,7 +97,7 @@ fun NotificationItem(
     ) {
         Row(
             modifier = Modifier
-                .clickable(onClick = onClick)
+                .clickable(enabled = !notification.isRead, onClick = onClick) // Klikalny tylko gdy nieprzeczytany
                 .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

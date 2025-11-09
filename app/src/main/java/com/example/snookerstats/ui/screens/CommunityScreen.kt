@@ -15,8 +15,12 @@ import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.screens.common.UserCard
 
 @Composable
-fun CommunityScreen(navController: NavController, viewModel: CommunityViewModel = hiltViewModel()) {
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+fun CommunityScreen(
+    navController: NavController,
+    viewModel: CommunityViewModel = hiltViewModel(),
+    initialTabIndex: Int = 0
+) {
+    var selectedTabIndex by remember { mutableIntStateOf(initialTabIndex) }
     val tabs = listOf("Szukaj", "Znajomi", "Zaproszenia")
     val uiState = viewModel.uiState
 

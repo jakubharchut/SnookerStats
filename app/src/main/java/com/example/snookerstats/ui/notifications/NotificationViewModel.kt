@@ -3,6 +3,7 @@ package com.example.snookerstats.ui.notifications
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Notification
+import com.example.snookerstats.domain.model.NotificationType
 import com.example.snookerstats.domain.repository.NotificationRepository
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +18,10 @@ class NotificationViewModel @Inject constructor(
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
+    sealed class NavigationEvent {
+        data class NavigateToCommunity(val tabIndex: Int) : NavigationEvent()
+    }
+
     private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
     val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
 
@@ -26,6 +31,9 @@ class NotificationViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = 0
         )
+        
+    private val _navigationEvent = MutableSharedFlow<NavigationEvent>()
+    val navigationEvent = _navigationEvent.asSharedFlow()
 
     private var notificationsJob: Job? = null
 
@@ -52,8 +60,11 @@ class NotificationViewModel @Inject constructor(
     fun onNotificationClicked(notification: Notification) {
         viewModelScope.launch {
             if (!notification.isRead) {
+                if (notification.type == NotificationType.FRIEND_REQUEST) {
+                    _navigationEvent.emit(NavigationEvent.NavigateToCommunity(tabIndex = 2))
+                }
+                
                 notificationRepository.markNotificationAsRead(notification.id)
-                // Stosujemy nasz sprawdzony wzorzec: po zmianie danych, jawnie odświeżamy listę.
                 loadNotifications()
             }
         }
@@ -62,7 +73,6 @@ class NotificationViewModel @Inject constructor(
     fun onDeleteNotificationConfirmed(notification: Notification) {
         viewModelScope.launch {
             notificationRepository.deleteNotification(notification.id)
-            // Stosujemy nasz sprawdzony wzorzec: po usunięciu, jawnie odświeżamy listę.
             loadNotifications()
         }
     }

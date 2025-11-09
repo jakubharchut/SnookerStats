@@ -212,9 +212,18 @@ fun NavigationGraph(navController: NavHostController) {
         composable(BottomNavItem.Play.route) { PlayScreen() }
         composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen() }
         composable(BottomNavItem.Stats.route) { StatsScreen() }
-        composable(BottomNavItem.Community.route) { CommunityScreen(navController = navController) }
+        composable(
+            route = "community?initialTabIndex={initialTabIndex}",
+            arguments = listOf(navArgument("initialTabIndex") {
+                type = NavType.IntType
+                defaultValue = 0
+            })
+        ) { backStackEntry ->
+            val initialTabIndex = backStackEntry.arguments?.getInt("initialTabIndex") ?: 0
+            CommunityScreen(navController = navController, initialTabIndex = initialTabIndex)
+        }
         composable("chat_list") { ChatListScreen() }
-        composable("notifications") { NotificationsScreen() }
+        composable("notifications") { NotificationsScreen(navController = navController) }
         composable(
             route = "profile?userId={userId}",
             arguments = listOf(navArgument("userId") {

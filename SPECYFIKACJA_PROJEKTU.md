@@ -1,6 +1,6 @@
 # Specyfikacja Projektu: Aplikacja "Snooker Stats"
 
-## Wersja: 1.5 (stan na 2024-07-30)
+## Wersja: 1.6 (stan na 2024-07-30)
 
 ---
 
@@ -16,6 +16,7 @@ Stworzenie zaawansowanej, społecznościowej platformy mobilnej dla amatorów sn
 Aplikacja będzie w pełni oparta o ekosystem Google Firebase, co zapewnia skalowalność, funkcje czasu rzeczywistego i bezpieczeństwo.
 *   **Baza Danych:** **Cloud Firestore** jako główne i jedyne źródło prawdy. Będzie przechowywać wszystkie dane użytkowników, mecze, statystyki, turnieje, itp. Jej mechanizmy real-time są kluczowe dla funkcji meczów online.
 *   **Uwierzytelnianie:** **Firebase Authentication** do zarządzania kontami użytkowników (rejestracja, logowanie przez e-mail/hasło, dostawców społecznościowych jak Google).
+*   **Powiadomienia Push:** **Firebase Cloud Messaging (FCM)** do wysyłania powiadomień, np. o nowych zaproszeniach do znajomych. Logika jest obsługiwana przez **Cloud Functions**.
 *   **Weryfikacja E-mail:** Po rejestracji, na adres użytkownika automatycznie wysyłany jest link weryfikacyjny. Dostęp do pełnej funkcjonalności aplikacji będzie możliwy dopiero po potwierdzeniu adresu e-mail.
 *   **Akceptacja Regulaminu:** Proces rejestracji będzie wymagał od użytkownika aktywnego zaznaczenia zgody na regulamin serwisu. Przycisk rejestracji pozostanie nieaktywny do momentu wyrażenia zgody.
 *   **Zapamiętywanie Sesji Logowania:** Aplikacja oferuje opcję "Zapamiętaj mnie" (Checkbox w `LoginScreen`), która pozwala na zapisanie e-maila i hasła w bezpiecznym miejscu na urządzeniu (Encrypted SharedPreferences). Po zaznaczeniu tej opcji i udanym logowaniu, dane uwierzytelniające są zapisywane i automatycznie wypełniane przy kolejnych uruchomieniach aplikacji. Odznaczenie tej opcji usunie wcześniej zapisane dane. Wylogowanie użytkownika nie usuwa zapisanych danych.
@@ -33,7 +34,7 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 ## 3. Kluczowe Funkcjonalności
 
 ### 3.1. Zarządzanie Profilem i Społeczność
-*   **Szczegółowa Specyfikacja:** Dokładny opis modeli danych, przepływów i logiki dla tego modułu znajduje się w osobnym dokumencie: `spolecznosc_i_profil.md`.
+*   **Szczegółowa Specyfikacja:** Dokładny opis modeli danych, przepływów i logiki dla tego modułu znajduje się w osobnym dokumencie: `spolecznosci_i_profil.md`.
 *   **Stopniowe Wdrażanie (Progressive Onboarding):** Po pierwszej, uproszczonej rejestracji (tylko e-mail i hasło), użytkownik jest przekierowywany do ekranu `SetupProfileScreen` w celu jednorazowego uzupełnienia profilu. Wszystkie pola (`username`, `firstName`, `lastName`) są **obowiązkowe**.
 *   **Profile Graczy i Prywatność:**
     *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny** podczas konfiguracji profilu.
@@ -98,7 +99,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 *   **Górny Pasek Aplikacji (`TopAppBar`):** Zawiera tytuł aplikacji. Będzie również zawierał ikony akcji, takie jak **Wiadomości (Czat)**, **Profil** i **Wyloguj**.
 *   **Dolny Pasek Nawigacyjny (`BottomNavigationBar`):** Główna nawigacja między kluczowymi sekcjami (Dashboard, Graj, Historia, Statystyki, Ludzie, Profil).
 *   **Obszar Treści:** Centralna część ekranu, w której wyświetlana jest zawartość.
-*   **Menu Zakładek (`TabRow`):** W przypadku złożonych ekranów (takich jak Społeczność), do dalszej organizacji treści będzie używany system zakładek umieszczony pod `TopAppBar`. Szczegółowy opis tego wzorca znajduje się w odpowiedniej specyfikacji modułu.
+*   **Menu Zakładek (`TabRow`):** W przypadku złożonych ekranów (takich jak Społeczność), do dalszej organizacji treści będzie używany system zakadek umieszczony pod `TopAppBar`. Szczegółowy opis tego wzorca znajduje się w odpowiedniej specyfikacji modułu.
 *   **Potwierdzenia Akcji (Snackbar):** Zaimplementowano globalny `SnackbarManager`, który pozwala na wyświetlanie krótkich komunikatów na dole ekranu, potwierdzających wykonanie akcji (np. "Wysłano zaproszenie").
 
 ### 4.3. Priorytety Projektowe
@@ -174,8 +175,8 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
         *   [x] Wysyłanie zaproszeń z poziomu wyszukiwarki i profilu gracza.
         *   [x] Implementacja zakładki "Zaproszenia" (Otrzymane / Wysłane) z pełną funkcjonalnością.
         *   [x] Logika akceptowania, odrzucania i anulowania zaproszeń.
-    *   [ ] **Lista znajomych:**
-        *   [ ] Implementacja zakładki "Znajomi" do wyświetlania listy połączonych użytkowników.
+    *   [x] **Lista znajomych:**
+        *   [x] Implementacja zakładki "Znajomi" do wyświetlania listy połączonych użytkowników, z ujednoliconym wyglądem i funkcją usuwania (z potwierdzeniem).
     *   [ ] **Ekran porównania statystyk Head-to-Head:**
         *   Wykorzystanie już istniejących lub przyszłych danych meczowych (z Firestore lub Room).
         *   Implementacja UI do prezentacji porównania statystyk.

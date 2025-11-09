@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: Społeczność i Profil
 
-## Wersja: 1.4 (stan na 2024-07-30)
+## Wersja: 1.5 (stan na 2024-07-30)
 
 ---
 
@@ -69,38 +69,26 @@ Zaimplementowano strukturę z trzema zakładkami: "Szukaj", "Znajomi", "Zaprosze
 1.  **Wyszukiwarka Graczy (zakładka "Szukaj"):**
     *   Pole tekstowe do wpisywania frazy.
     *   **Wyszukiwanie odbywa się "na żywo"** (z 500ms opóźnieniem) po wpisaniu co najmniej 3 znaków.
-    *   Mechanizm przeszukuje pola `username`, `firstName` i `lastName`, ignorując wielkość liter.
+    *   **Automatyczne odświeżanie:** Wyniki wyszukiwania są automatycznie odświeżane po każdym powrocie do zakładki, aby zapewnić aktualność statusów relacji.
     *   Wyniki wyświetlane są w `LazyColumn` jako estetyczne karty (`UserCard`).
-    *   **Dynamiczne Akcje:** Karta każdego użytkownika wyświetla odpowiednie ikony akcji (czat, dodaj znajomego, zaproszenie wysłane) w zależności od statusu relacji.
     *   Kliknięcie na wynik nawiguje do ekranu profilu danego użytkownika (`UserProfileScreen`).
 2.  **Zarządzanie Zaproszeniami (zakładka "Zaproszenia"):**
-    *   **Podział na widoki:** Ekran posiada dwie pod-zakładki w stylu `FilterChip`: "Otrzymane" i "Wysłane".
-    *   **Puste listy:** Jeśli którakolwiek z list jest pusta, wyświetlany jest odpowiedni komunikat.
+    *   **Podział na widoki:** Ekran posiada dwie pod-zakładki: "Otrzymane" i "Wysłane".
     *   **Akcje:** Użytkownik może akceptować/odrzucać otrzymane zaproszenia oraz anulować wysłane.
 3.  **Lista Znajomych (zakładka "Znajomi"):**
-    *   Sekcja wyświetlająca listę naszych aktualnych znajomych.
-    *   Każdy element na liście będzie klikalny, prowadząc do profilu gracza.
+    *   Sekcja wyświetla listę aktualnych znajomych użytkownika.
+    *   **Spójny wygląd:** Wygląd listy jest ujednolicony z wynikami wyszukiwania dzięki zastosowaniu reużywalnego komponentu `UserCard`.
+    *   **Usuwanie znajomych:** Każda karta znajomego posiada przycisk do usunięcia go z listy, zabezpieczony dialogiem potwierdzającym.
+    *   Kliknięcie w kartę prowadzi do profilu gracza.
 
 ### Krok 4: Implementacja Logiki Systemu Znajomych (`CommunityRepository`)
 
 **Cel:** Stworzenie logiki backendowej do zarządzania relacjami.
 
-1.  **Wysyłanie Zaproszenia (`sendFriendRequest`):**
-    *   Akcja wykonywana po kliknięciu "Dodaj do znajomych".
-    *   Aktualizuje dwa dokumenty w Firestore:
-        *   Dodaje ID odbiorcy do `friendRequestsSent` u wysyłającego.
-        *   Dodaje ID wysyłającego do `friendRequestsReceived` u odbiorcy.
-2.  **Akceptowanie Zaproszenia (`acceptFriendRequest`):**
-    *   Akcja wykonywana po kliknięciu "Akceptuj".
-    *   Wykonuje transakcję w Firestore, która:
-        *   Dodaje ID obu użytkowników do ich wzajemnych list `friends`.
-        *   Usuwa ID z list `friendRequestsSent` i `friendRequestsReceived`.
-3.  **Odrzucanie Zaproszenia (`rejectFriendRequest`):**
-    *   Akcja wykonywana po kliknięciu "Odrzuć".
-    *   Usuwa ID z list `friendRequestsSent` i `friendRequestsReceived`.
-4.  **Usuwanie Znajomego (`removeFriend`):**
-    *   Akcja dostępna na profilu znajomego.
-    *   Usuwa ID obu użytkowników z ich wzajemnych list `friends`.
+1.  **Wysyłanie Zaproszenia (`sendFriendRequest`):** Aktualizuje pola `friendRequestsSent` u wysyłającego i `friendRequestsReceived` u odbiorcy.
+2.  **Akceptowanie Zaproszenia (`acceptFriendRequest`):** Dodaje ID obu użytkowników do ich wzajemnych list `friends` i usuwa wpisy z list z zaproszeniami.
+3.  **Odrzucanie Zaproszenia (`rejectFriendRequest`):** Usuwa wpisy z list z zaproszeniami.
+4.  **Usuwanie Znajomego (`removeFriend`):** Usuwa ID obu użytkowników z ich wzajemnych list `friends`.
 
 ### Krok 5: Ekran Profilu Użytkownika (`UserProfileScreen`)
 
@@ -111,27 +99,25 @@ Zaimplementowano strukturę z trzema zakładkami: "Szukaj", "Znajomi", "Zaprosze
         *   `isPublicProfile` ma wartość `true`.
         *   **LUB** użytkownik przeglądający profil jest na liście `friends` użytkownika, którego profil ogląda.
         *   **LUB** użytkownik ogląda swój własny profil.
-    *   W przeciwnym wypadku wyświetlane są tylko podstawowe dane (nazwa użytkownika) i komunikat o prywatności wraz z przyciskiem "Dodaj do znajomych".
+    .   W przeciwnym wypadku wyświetlane są tylko podstawowe dane (nazwa użytkownika) i komunikat o prywatności wraz z przyciskiem "Dodaj do znajomych".
 2.  **Widok Własnego Profilu:**
     *   Wyświetla te same dane, co widok publiczny.
-    *   Dodatkowo zawiera przycisk "Edytuj profil", który pozwoli na zmianę `username`, `firstName`, `lastName`, `club`, `profileImageUrl` oraz flagi `isPublicProfile`.
+    *   Dodatkowo zawiera przycisk "Edytuj profil".
 
 ---
 
 ## 4. Wygląd i Interfejs Użytkownika (UI/UX) Modułu Społeczność
 
 ### 4.1. Ekran Społeczność - Styl Menu Zakładek
+*   Ekran `CommunityScreen` wykorzystuje górny pasek zakładek (`TabRow`) do organizacji treści.
+*   **Zakładki:** Trzy główne zakładki: "Szukaj", "Znajomi", "Zaproszenia".
 
-Ekran Społeczności (`CommunityScreen`) wykorzystuje górny pasek zakładek (`TabRow`) do organizacji treści.
+### 4.2. Reużywalny Komponent `UserCard`
+*   **Cel:** Zapewnienie spójnego wyglądu dla każdego elementu listy przedstawiającego użytkownika.
+*   **Implementacja:** Stworzono komponent `@Composable fun UserCard`, który został wydzielony do osobnego pliku (`ui/screens/common/UserCard.kt`).
+*   **Dynamiczne Akcje:** Komponent dynamicznie dostosowuje wyświetlane ikony akcji (dodaj, usuń, czat, zaproszenie wysłane) na podstawie przekazanego statusu relacji (`RelationshipStatus`).
+*   **Zastosowanie:** Używany zarówno w wynikach wyszukiwania, jak i na liście znajomych.
 
-*   **Obecny stan:** Ekran `CommunityScreen` ma zaimplementowaną nawigację opartą o `TabRow`.
-*   **Komponent:** `TabRow` z `Jetpack Compose Material 3`.
-*   **Lokalizacja:** Umieszczony bezpośrednio pod `TopAppBar`.
-*   **Zakładki:** Trzy główne zakładki:
-    1.  **"Szukaj"**: Przeznaczona do wyszukiwania innych użytkowników.
-    2.  **"Znajomi"**: Wyświetla listę aktualnych znajomych użytkownika.
-    3.  **"Zaproszenia"**: Służy do zarządzania otrzymanymi i wysłanymi zaproszeniami.
-*   **Wizualizacja:** Zakładki będą wyraźnie oddzielone wizualnie, a aktywna zakładka zostanie podkreślona. Nawigacja między zakładkami odbywać się będzie poprzez kliknięcie. W przyszłości można rozważyć dodanie `HorizontalPager` do obsługi przesuwania palcem (swiping).
-*   **Interakcja:** Kliknięcie w nazwę zakładki powoduje natychmiastowe przejście do odpowiedniej treści.
-*   **Przykładowy Widok:** Zgodny ze zrzutem ekranu, który był punktem odniesienia dla tego opisu.
-*   **Potwierdzenia Akcji (Snackbar):** Wszystkie akcje w module społecznościowym (wysłanie, akceptacja, odrzucenie zaproszenia) są potwierdzane przez globalny `SnackbarManager`, który wyświetla na dole ekranu krótkie komunikaty informujące o wykonaniu akcji.
+### 4.3. Potwierdzenia Akcji (Snackbar i Dialog)
+*   **Snackbar:** Wszystkie szybkie akcje (wysłanie, akceptacja, odrzucenie zaproszenia) są potwierdzane przez globalny `SnackbarManager`.
+*   **AlertDialog:** Akcje destrukcyjne, takie jak usunięcie znajomego, są dodatkowo zabezpieczone przez dialog z prośbą o potwierdzenie, aby zapobiec przypadkowym działaniom.

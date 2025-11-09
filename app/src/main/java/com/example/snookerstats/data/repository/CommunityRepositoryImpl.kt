@@ -11,12 +11,14 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.google.firebase.firestore.ktx.snapshots // Keep this import for now, if it's still needed in other places, or remove it if not. We'll replace the direct usage of snapshots.
-import com.google.firebase.firestore.SnapshotListenOptions
+import com.google.firebase.firestore.toObject
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.launch
 
 @Singleton
 class CommunityRepositoryImpl @Inject constructor(
@@ -64,7 +66,7 @@ class CommunityRepositoryImpl @Inject constructor(
                 Log.d("CommunityRepo", "Wyniki - Username: ${usernameResults.size}, Imię: ${firstNameResults.size}, Nazwisko: ${lastNameResults.size}")
 
                 val combinedResults = (usernameResults + firstNameResults + lastNameResults).distinctBy { it.uid }
-                
+
                 emit(Response.Success(combinedResults))
             }
         } catch (e: Exception) {
@@ -134,54 +136,121 @@ class CommunityRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getFriends(): Flow<Response<List<User>>> = firestore.collection("users").document(currentUserId)
-        .snapshots()
-        .map { snapshot ->
-            val friendIds = snapshot.toObject(User::class.java)?.friends ?: emptyList()
-            if (friendIds.isEmpty()) {
-                Response.Success(emptyList<User>())
-            } else {
-                try {
-                    val users = firestore.collection("users").whereIn("uid", friendIds).get().await().toObjects(User::class.java)
-                    Response.Success(users)
-                } catch (e: Exception) {
-                    Response.Error(e.message ?: "Unknown error")
-                }
-            }
+    override suspend fun removeFriend(friendId: String): Response<Boolean> {
+        return try {
+            val currentUserRef = firestore.collection("users").document(currentUserId)
+            val friendUserRef = firestore.collection("users").document(friendId)
+            firestore.batch()
+                .update(currentUserRef, "friends", FieldValue.arrayRemove(friendId))
+                .update(friendUserRef, "friends", FieldValue.arrayRemove(currentUserId))
+                .commit().await()
+            Response.Success(true)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "Unknown error")
         }
+    }
 
-    override fun getReceivedFriendRequests(): Flow<Response<List<User>>> = firestore.collection("users").document(currentUserId)
-        .snapshots()
-        .map { snapshot ->
-            val requestIds = snapshot.toObject(User::class.java)?.friendRequestsReceived ?: emptyList()
-            if (requestIds.isEmpty()) {
-                Response.Success(emptyList<User>()) // Jawne określenie typu
-            } else {
-                try {
-                    val users = firestore.collection("users").whereIn("uid", requestIds).get().await().toObjects(User::class.java)
-                    Response.Success(users)
-                } catch (e: Exception) {
-                    Response.Error(e.message ?: "Unknown error")
+    override fun getFriends(): Flow<Response<List<User>>> = channelFlow {
+        val registration = firestore.collection("users").document(currentUserId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Response.Error(error.message ?: "Unknown error"))
+                    return@addSnapshotListener
                 }
-            }
-        }
 
-    override fun getSentFriendRequests(): Flow<Response<List<User>>> = firestore.collection("users").document(currentUserId)
-        .snapshots()
-        .map { snapshot ->
-            val requestIds = snapshot.toObject(User::class.java)?.friendRequestsSent ?: emptyList()
-            Log.d("CommunityRepo", "Znaleziono ID wysłanych zaproszeń: $requestIds")
-            if (requestIds.isEmpty()) {
-                Response.Success(emptyList<User>()) // Jawne określenie typu
-            } else {
-                try {
-                    val users = firestore.collection("users").whereIn("uid", requestIds).get().await().toObjects(User::class.java)
-                    Log.d("CommunityRepo", "Pobrano ${users.size} profili dla wysłanych zaproszeń.")
-                    Response.Success(users)
-                } catch (e: Exception) {
-                    Log.e("CommunityRepo", "Błąd w getSentFriendRequests", e)
-                    Response.Error(e.message ?: "Unknown error")
+                if (snapshot != null && snapshot.exists()) {
+                    val friendIds = snapshot.toObject<User>()?.friends ?: emptyList()
+                    if (friendIds.isEmpty()) {
+                        trySend(Response.Success(emptyList()))
+                    } else {
+                        // Fetch user details for each friend ID within a launched coroutine
+                        launch {
+                            try {
+                                val users = firestore.collection("users")
+                                    .whereIn("uid", friendIds)
+                                    .get().await().toObjects(User::class.java)
+                                trySend(Response.Success(users))
+                            } catch (e: Exception) {
+                                trySend(Response.Error(e.message ?: "Unknown error"))
+                            }
+                        }
+                    }
+                } else {
+                    trySend(Response.Success(emptyList()))
                 }
             }
-        }
+        awaitClose { registration.remove() }
+    }.catch { e ->
+        emit(Response.Error(e.message ?: "Unknown error"))
+    }
+
+    override fun getReceivedFriendRequests(): Flow<Response<List<User>>> = channelFlow {
+        val registration = firestore.collection("users").document(currentUserId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Response.Error(error.message ?: "Unknown error"))
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    val requestIds = snapshot.toObject<User>()?.friendRequestsReceived ?: emptyList()
+                    if (requestIds.isEmpty()) {
+                        trySend(Response.Success(emptyList()))
+                    } else {
+                        launch {
+                            try {
+                                val users = firestore.collection("users")
+                                    .whereIn("uid", requestIds)
+                                    .get().await().toObjects(User::class.java)
+                                trySend(Response.Success(users))
+                            } catch (e: Exception) {
+                                trySend(Response.Error(e.message ?: "Unknown error"))
+                            }
+                        }
+                    }
+                } else {
+                    trySend(Response.Success(emptyList()))
+                }
+            }
+        awaitClose { registration.remove() }
+    }.catch { e ->
+        emit(Response.Error(e.message ?: "Unknown error"))
+    }
+
+    override fun getSentFriendRequests(): Flow<Response<List<User>>> = channelFlow {
+        val registration = firestore.collection("users").document(currentUserId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Response.Error(error.message ?: "Unknown error"))
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    val requestIds = snapshot.toObject<User>()?.friendRequestsSent ?: emptyList()
+                    Log.d("CommunityRepo", "Znaleziono ID wysłanych zaproszeń: $requestIds")
+                    if (requestIds.isEmpty()) {
+                        trySend(Response.Success(emptyList()))
+                    }
+                     else {
+                        launch {
+                            try {
+                                val users = firestore.collection("users")
+                                    .whereIn("uid", requestIds)
+                                    .get().await().toObjects(User::class.java)
+                                Log.d("CommunityRepo", "Pobrano ${users.size} profili dla wysłanych zaproszeń.")
+                                trySend(Response.Success(users))
+                            } catch (e: Exception) {
+                                Log.e("CommunityRepo", "Błąd w getSentFriendRequests", e)
+                                trySend(Response.Error(e.message ?: "Unknown error"))
+                            }
+                        }
+                    }
+                } else {
+                    trySend(Response.Success(emptyList()))
+                }
+            }
+        awaitClose { registration.remove() }
+    }.catch { e ->
+        emit(Response.Error(e.message ?: "Unknown error"))
+    }
 }

@@ -79,7 +79,7 @@ class CommunityViewModel @Inject constructor(
             Log.d("CommunityViewModel", "Rozpoczynanie wyszukiwania dla: '$query'")
 
             val currentUserId = firebaseAuth.currentUser?.uid ?: return@launch
-            
+
             try {
                 val currentUserResponse = authRepository.getUserProfile(currentUserId).first { it !is Response.Loading }
 
@@ -119,7 +119,7 @@ class CommunityViewModel @Inject constructor(
             }
         }
     }
-    
+
     fun sendFriendRequest(toUserId: String, username: String) {
         viewModelScope.launch {
             when (val response = communityRepository.sendFriendRequest(toUserId)) {
@@ -184,6 +184,20 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             if (communityRepository.cancelFriendRequest(toUserId) is Response.Success) {
                 snackbarManager.showMessage("Anulowano zaproszenie do $username")
+            }
+        }
+    }
+
+    fun removeFriend(friendId: String, username: String) {
+        viewModelScope.launch {
+            when (communityRepository.removeFriend(friendId)) {
+                is Response.Success -> {
+                    snackbarManager.showMessage("Usunięto $username ze znajomych")
+                }
+                is Response.Error -> {
+                    snackbarManager.showMessage("Błąd: Nie udało się usunąć znajomego")
+                }
+                else -> {}
             }
         }
     }

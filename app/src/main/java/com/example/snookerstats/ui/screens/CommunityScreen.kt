@@ -1,11 +1,6 @@
 package com.example.snookerstats.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding // Dodano ten import
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -17,13 +12,19 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.User
-import androidx.compose.runtime.mutableIntStateOf // Dodano ten import
+import com.example.snookerstats.ui.screens.common.UserCard
 
 @Composable
 fun CommunityScreen(navController: NavController, viewModel: CommunityViewModel = hiltViewModel()) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("Szukaj", "Znajomi", "Zaproszenia")
     val uiState = viewModel.uiState
+
+    LaunchedEffect(selectedTabIndex) {
+        if (selectedTabIndex == 0) {
+            viewModel.searchUsers()
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTabIndex) {
@@ -38,17 +39,48 @@ fun CommunityScreen(navController: NavController, viewModel: CommunityViewModel 
 
         when (selectedTabIndex) {
             0 -> PlayerSearchScreen(navController = navController, viewModel = viewModel)
-            1 -> FriendsScreen(friends = uiState.friends, onFriendClick = { /* TODO: Nawigacja do profilu */ })
+            1 -> FriendsScreen(
+                navController = navController,
+                viewModel = viewModel,
+                friends = uiState.friends
+            )
             2 -> InvitationsScreen(viewModel = viewModel)
         }
     }
 }
 
 @Composable
-fun FriendsScreen(friends: List<User>, onFriendClick: (String) -> Unit) {
+fun FriendsScreen(
+    navController: NavController,
+    viewModel: CommunityViewModel,
+    friends: List<User>
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    var userToRemove by remember { mutableStateOf<User?>(null) }
+
+    if (showDialog && userToRemove != null) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Potwierdzenie usunięcia znajomego") },
+            text = { Text("Czy na pewno chcesz usunąć ${userToRemove?.username} ze znajomych?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    userToRemove?.let { user ->
+                        viewModel.removeFriend(user.uid, user.username)
+                    }
+                    showDialog = false
+                    userToRemove = null
+                }) { Text("Tak") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false; userToRemove = null }) { Text("Nie") }
+            }
+        )
+    }
+
     if (friends.isEmpty()) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(text = "Nie masz jeszcze żadnych znajomych.", textAlign = TextAlign.Center)
@@ -59,14 +91,16 @@ fun FriendsScreen(friends: List<User>, onFriendClick: (String) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(friends) { user ->
-                // TODO: Użyj UserCard lub podobnego komponentu, gdy będzie dostępny.
-                // Na razie prosta implementacja:
-                Card(
-                    modifier = Modifier.fillMaxSize(),
-                    onClick = { onFriendClick(user.uid) }
-                ) {
-                    Text(text = user.username, modifier = Modifier.padding(16.dp))
-                }
+                UserCard(
+                    user = user,
+                    status = RelationshipStatus.FRIENDS,
+                    onClick = { navController.navigate("user_profile/${user.uid}") },
+                    onActionClick = { // To jest akcja dla przycisku usuwania znajomego
+                        userToRemove = user
+                        showDialog = true
+                    },
+                    onChatClick = { /* TODO: navController.navigate("chat/${user.uid}") */ }
+                )
             }
         }
     }

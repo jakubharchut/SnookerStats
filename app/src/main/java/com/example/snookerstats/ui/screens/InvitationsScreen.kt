@@ -5,9 +5,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -85,12 +85,20 @@ fun ReceivedInvitationsScreen(
             items(invites) { user ->
                 InvitationCard(user = user) {
                     Row {
-                        Button(onClick = { onAccept(user.uid, user.username) }) {
-                            Icon(imageVector = Icons.Default.Check, contentDescription = "Akceptuj zaproszenie")
+                        IconButton(onClick = { onAccept(user.uid, user.username) }) {
+                            Icon(
+                                imageVector = Icons.Default.PersonAdd,
+                                contentDescription = "Akceptuj zaproszenie",
+                                tint = Color(0xFF4CAF50) // Zielony
+                            )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
-                        OutlinedButton(onClick = { onReject(user.uid, user.username) }) {
-                            Icon(imageVector = Icons.Default.Close, contentDescription = "Odrzuć zaproszenie")
+                        IconButton(onClick = { onReject(user.uid, user.username) }) {
+                            Icon(
+                                imageVector = Icons.Default.PersonRemove,
+                                contentDescription = "Odrzuć zaproszenie",
+                                tint = Color(0xFFF44336) // Czerwony
+                            )
                         }
                     }
                 }
@@ -116,7 +124,6 @@ fun SentInvitationsScreen(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Anuluj zaproszenie"
-                            // Usunięto tint, aby użyć domyślnego koloru
                         )
                     }
                 }

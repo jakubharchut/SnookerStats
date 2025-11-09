@@ -53,6 +53,8 @@ class NotificationViewModel @Inject constructor(
         viewModelScope.launch {
             if (!notification.isRead) {
                 notificationRepository.markNotificationAsRead(notification.id)
+                // Stosujemy nasz sprawdzony wzorzec: po zmianie danych, jawnie odświeżamy listę.
+                loadNotifications()
             }
         }
     }
@@ -60,9 +62,7 @@ class NotificationViewModel @Inject constructor(
     fun onDeleteNotificationConfirmed(notification: Notification) {
         viewModelScope.launch {
             notificationRepository.deleteNotification(notification.id)
-            // Po usunięciu nie czekamy, aż strumień sam zareaguje.
-            // Jawnie wywołujemy ponowne załadowanie danych, tak jak w działających częściach aplikacji.
-            // To gwarantuje odświeżenie.
+            // Stosujemy nasz sprawdzony wzorzec: po usunięciu, jawnie odświeżamy listę.
             loadNotifications()
         }
     }

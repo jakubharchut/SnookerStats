@@ -52,7 +52,7 @@ fun NotificationsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(notifications, key = { it.id }) { notification ->
+            items(items = notifications, key = { it.id }) { notification ->
                 NotificationItem(
                     notification = notification,
                     onClick = { viewModel.onNotificationClicked(notification) },
@@ -69,17 +69,17 @@ fun NotificationItem(
     onClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    val backgroundColor = if (notification.isRead) {
-        // Użycie "bielszego" koloru dla odczytanych powiadomień
-        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    val cardColors = if (notification.isRead) {
+        // Stonowany, domyślny kolor dla odczytanych
+        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     } else {
-        // Zachowanie wyróżniającego się koloru dla nieodczytanych
+        // Przywrócenie pierwotnego, niebieskawego koloru dla nieodczytanych
         CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = backgroundColor,
+        colors = cardColors,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(

@@ -42,7 +42,7 @@ fun ChatListScreen(
         viewModel.navigationEvent.collect { event ->
             if (event is NavigationEvent.NavigateToConversation) {
                 showSheet = false // Hide the sheet before navigating
-                navController.navigate("conversation/${event.chatId}/${event.otherUserName}")
+                navController.navigate("conversation/${event.chatId}")
             }
         }
     }
@@ -71,7 +71,7 @@ fun ChatListScreen(
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 items(state.data) { chatWithUser ->
                                     ChatListItem(chatWithUserDetails = chatWithUser, onClick = {
-                                        navController.navigate("conversation/${chatWithUser.chat.id}/${chatWithUser.otherUser.username}")
+                                        navController.navigate("conversation/${chatWithUser.chat.id}")
                                     })
                                 }
                             }

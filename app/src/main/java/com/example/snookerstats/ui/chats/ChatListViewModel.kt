@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class NavigationEvent {
-    data class NavigateToConversation(val chatId: String, val otherUserName: String) : NavigationEvent()
+    data class NavigateToConversation(val chatId: String) : NavigationEvent()
 }
 
 data class ChatWithUserDetails(
@@ -65,10 +65,7 @@ class ChatListViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = chatRepository.createOrGetChat(otherUserId)) {
                 is Resource.Success -> {
-                    val otherUser = userRepository.getUser(otherUserId)
-                    if (otherUser is Resource.Success) {
-                        _navigationEvent.send(NavigationEvent.NavigateToConversation(result.data, otherUser.data.username))
-                    }
+                    _navigationEvent.send(NavigationEvent.NavigateToConversation(result.data))
                 }
                 is Resource.Error -> {
                     // TODO: Handle error, e.g. show a snackbar

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -20,18 +22,36 @@ import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.Message
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.util.Resource
+import java.text.SimpleDateFormat
+import java.util.*
+
+// Helper extension function to group consecutive items by a key
+fun <T, K> List<T>.groupByConsecutive(keySelector: (T) -> K): List<List<T>> {
+    if (this.isEmpty()) return emptyList()
+    val result = mutableListOf<MutableList<T>>()
+    var currentGroup = mutableListOf(this.first())
+    result.add(currentGroup)
+    for (i in 1 until this.size) {
+        if (keySelector(this[i]) == keySelector(this[i - 1])) {
+            currentGroup.add(this[i])
+        } else {
+            currentGroup = mutableListOf(this[i])
+            result.add(currentGroup)
+        }
+    }
+    return result
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationScreen(
     navController: NavController,
-    chatId: String,
-    otherUserName: String,
     viewModel: ConversationViewModel = hiltViewModel(),
     authRepository: AuthRepository
 ) {
     val messagesState by viewModel.messagesState.collectAsState()
     val messageText by viewModel.messageText.collectAsState()
+    val otherUser by viewModel.otherUser.collectAsState()
     val listState = rememberLazyListState()
 
     val currentUserId = authRepository.currentUser?.uid
@@ -48,7 +68,16 @@ fun ConversationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(otherUserName) },
+                title = {
+                    otherUser?.let { user ->
+                        val title = "${user.firstName} ${user.lastName}"
+                        val subtitle = "@${user.username}"
+                        Column {
+                            Text(text = title, fontWeight = FontWeight.Bold)
+                            Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Wróć")
@@ -69,16 +98,20 @@ fun ConversationScreen(
                     }
                 }
                 is Resource.Success -> {
+                    val messageGroups = remember(state.data) {
+                        state.data.groupByConsecutive { it.senderId }
+                    }
                     LazyColumn(
                         state = listState,
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 8.dp)
+                            .padding(horizontal = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(state.data) { message ->
-                            MessageItem(
-                                message = message,
-                                isSentByCurrentUser = message.senderId == currentUserId
+                        items(messageGroups) { group ->
+                            MessageGroup(
+                                messages = group,
+                                isSentByCurrentUser = group.first().senderId == currentUserId
                             )
                         }
                     }
@@ -100,15 +133,52 @@ fun ConversationScreen(
 }
 
 @Composable
-fun MessageItem(message: Message, isSentByCurrentUser: Boolean) {
-    // TODO: Implement different look for sent/received messages
-    Text(
-        text = message.text,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-    )
+fun MessageGroup(messages: List<Message>, isSentByCurrentUser: Boolean) {
+    val alignment = if (isSentByCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
+    val dateFormat = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()) }
+
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = alignment
+    ) {
+        Column(horizontalAlignment = if (isSentByCurrentUser) Alignment.End else Alignment.Start) {
+            messages.forEach { message ->
+                MessageBubble(
+                    message = message,
+                    isSentByCurrentUser = isSentByCurrentUser
+                )
+            }
+            Text(
+                text = dateFormat.format(messages.last().timestamp.toDate()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 4.dp)
+            )
+        }
+    }
 }
+
+@Composable
+fun MessageBubble(message: Message, isSentByCurrentUser: Boolean) {
+    val backgroundColor = if (isSentByCurrentUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+    val bubbleShape = if (isSentByCurrentUser) {
+        RoundedCornerShape(topStart = 16.dp, topEnd = 4.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+    } else {
+        RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
+    }
+
+    Surface(
+        color = backgroundColor,
+        shape = bubbleShape,
+        modifier = Modifier.padding(vertical = 2.dp)
+    ) {
+        Text(
+            text = message.text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        )
+    }
+}
+
 
 @Composable
 fun MessageInput(

@@ -4,7 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Message
+import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
+import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ConversationViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
+    private val userRepository: UserRepository,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -27,8 +32,32 @@ class ConversationViewModel @Inject constructor(
     private val _messageText = MutableStateFlow("")
     val messageText: StateFlow<String> = _messageText.asStateFlow()
 
+    private val _otherUser = MutableStateFlow<User?>(null)
+    val otherUser: StateFlow<User?> = _otherUser.asStateFlow()
+
     init {
         loadMessages()
+        loadOtherUserDetails()
+    }
+
+    private fun loadOtherUserDetails() {
+        viewModelScope.launch {
+            val currentUserId = authRepository.currentUser?.uid
+            val participants = chatId.split("_")
+            val otherUserId = participants.firstOrNull { it != currentUserId }
+
+            if (otherUserId != null) {
+                when (val result = userRepository.getUser(otherUserId)) {
+                    is Resource.Success -> {
+                        _otherUser.value = result.data
+                    }
+                    is Resource.Error -> {
+                        // TODO: Handle error
+                    }
+                    else -> {}
+                }
+            }
+        }
     }
 
     private fun loadMessages() {

@@ -1,9 +1,9 @@
 package com.example.snookerstats.data.repository
 
 import com.example.snookerstats.data.local.preferences.EncryptedPrefsManager
-import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.util.Resource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
@@ -22,71 +22,71 @@ class AuthRepositoryImpl @Inject constructor(
     override val currentUser: FirebaseUser?
         get() = firebaseAuth.currentUser
 
-    override suspend fun registerUser(email: String, password: String): Response<Boolean> {
+    override suspend fun registerUser(email: String, password: String): Resource<Boolean> {
         return try {
             val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
-            val firebaseUser = result.user ?: return Response.Error("Failed to create user.")
+            val firebaseUser = result.user ?: return Resource.Error("Failed to create user.")
             firebaseUser.sendEmailVerification().await()
             val user = User(
                 uid = firebaseUser.uid, email = email, username = "", username_lowercase = "",
                 firstName = "", firstName_lowercase = "", lastName = "", lastName_lowercase = "", publicProfile = true
             )
             firestore.collection("users").document(firebaseUser.uid).set(user).await()
-            Response.Success(true)
+            Resource.Success(true)
         } catch (e: Exception) {
-            Response.Error(e.message ?: "An unknown error occurred.")
+            Resource.Error(e.message ?: "An unknown error occurred.")
         }
     }
 
-    override suspend fun loginUser(email: String, password: String): Response<Boolean> {
+    override suspend fun loginUser(email: String, password: String): Resource<Boolean> {
         return try {
             firebaseAuth.signInWithEmailAndPassword(email, password).await()
-            Response.Success(true)
+            Resource.Success(true)
         } catch (e: Exception) {
-            Response.Error(e.message ?: "An unknown error occurred.")
+            Resource.Error(e.message ?: "An unknown error occurred.")
         }
     }
 
-    override fun getUserProfile(uid: String): Flow<Response<User>> = callbackFlow {
-        trySend(Response.Loading)
+    override fun getUserProfile(uid: String): Flow<Resource<User>> = callbackFlow {
+        trySend(Resource.Loading)
         val listener = firestore.collection("users").document(uid)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    trySend(Response.Error(error.message ?: "An error occurred"))
+                    trySend(Resource.Error(error.message ?: "An error occurred"))
                     return@addSnapshotListener
                 }
                 if (snapshot != null && snapshot.exists()) {
                     val user = snapshot.toObject(User::class.java)
                     if (user != null) {
-                        trySend(Response.Success(user))
+                        trySend(Resource.Success(user))
                     } else {
-                        trySend(Response.Error("Failed to parse user data."))
+                        trySend(Resource.Error("Failed to parse user data."))
                     }
                 } else {
-                    trySend(Response.Error("User profile not found."))
+                    trySend(Resource.Error("User profile not found."))
                 }
             }
         awaitClose { listener.remove() }
     }
 
 
-    override suspend fun updateFcmToken(token: String): Response<Boolean> {
+    override suspend fun updateFcmToken(token: String): Resource<Boolean> {
         return try {
-            val userId = firebaseAuth.currentUser?.uid ?: return Response.Error("User not logged in.")
+            val userId = firebaseAuth.currentUser?.uid ?: return Resource.Error("User not logged in.")
             firestore.collection("users").document(userId).update("fcmToken", token).await()
-            Response.Success(true)
+            Resource.Success(true)
         } catch (e: Exception) {
-            Response.Error(e.message ?: "Failed to update FCM token.")
+            Resource.Error(e.message ?: "Failed to update FCM token.")
         }
     }
 
-    override suspend fun updateProfileVisibility(isPublic: Boolean): Response<Unit> {
+    override suspend fun updateProfileVisibility(isPublic: Boolean): Resource<Unit> {
         return try {
-            val userId = firebaseAuth.currentUser?.uid ?: return Response.Error("User not logged in.")
+            val userId = firebaseAuth.currentUser?.uid ?: return Resource.Error("User not logged in.")
             firestore.collection("users").document(userId).update("publicProfile", isPublic).await()
-            Response.Success(Unit)
+            Resource.Success(Unit)
         } catch (e: Exception) {
-            Response.Error(e.message ?: "Failed to update profile visibility.")
+            Resource.Error(e.message ?: "Failed to update profile visibility.")
         }
     }
 

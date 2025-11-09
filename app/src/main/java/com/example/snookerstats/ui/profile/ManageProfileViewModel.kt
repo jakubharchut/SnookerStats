@@ -2,8 +2,8 @@ package com.example.snookerstats.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.util.Resource
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -37,21 +37,21 @@ class ManageProfileViewModel @Inject constructor(
 
     private fun loadAndObserveUserProfile() {
         viewModelScope.launch {
-            authRepository.getUserProfile(userId).collect { response ->
-                when (response) {
-                    is Response.Success -> {
+            authRepository.getUserProfile(userId).collect { resource ->
+                when (resource) {
+                    is Resource.Success -> {
                         _uiState.value = ManageProfileUiState(
-                            isPublic = response.data.publicProfile,
+                            isPublic = resource.data.publicProfile,
                             isLoading = false
                         )
                     }
-                    is Response.Error -> {
+                    is Resource.Error -> {
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            error = response.message
+                            error = resource.message
                         )
                     }
-                    is Response.Loading -> {
+                    is Resource.Loading -> {
                         _uiState.value = _uiState.value.copy(isLoading = true)
                     }
                 }
@@ -60,11 +60,9 @@ class ManageProfileViewModel @Inject constructor(
     }
 
     fun updateProfileVisibility(isPublic: Boolean) {
-        // Natychmiastowa aktualizacja UI dla płynnego działania przełącznika
         _uiState.value = _uiState.value.copy(isPublic = isPublic)
         
         viewModelScope.launch {
-            // Zapis zmiany w tle
             authRepository.updateProfileVisibility(isPublic)
         }
     }

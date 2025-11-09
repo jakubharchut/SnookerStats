@@ -29,7 +29,9 @@ data class UsernameValidationState(
 
 sealed class ProfileNavigationEvent {
     object NavigateToMain : ProfileNavigationEvent()
+    data class NavigateToChat(val chatId: String, val otherUserName: String) : ProfileNavigationEvent()
 }
+
 
 @HiltViewModel
 class SetupProfileViewModel @Inject constructor(

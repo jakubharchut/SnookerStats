@@ -6,9 +6,7 @@ import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.CommunityRepository
 import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,8 +27,8 @@ class CommunityViewModel @Inject constructor(
     private val _sentRequests = MutableStateFlow<Resource<List<User>>>(Resource.Loading)
     val sentRequests: StateFlow<Resource<List<User>>> = _sentRequests.asStateFlow()
 
-    private val _eventMessage = MutableStateFlow<String?>(null)
-    val eventMessage: StateFlow<String?> = _eventMessage.asStateFlow()
+    private val _eventMessage = MutableSharedFlow<String>()
+    val eventMessage = _eventMessage.asSharedFlow()
 
     fun onSearchQueryChanged(query: String) {
         viewModelScope.launch {
@@ -64,57 +62,19 @@ class CommunityViewModel @Inject constructor(
         }
     }
 
-    fun sendFriendRequest(toUserId: String) {
+    private fun handleAction(action: suspend () -> Resource<Any>, successMessage: String) {
         viewModelScope.launch {
-            when (val response = repository.sendFriendRequest(toUserId)) {
-                is Resource.Success -> _eventMessage.value = "Zaproszenie wysłane!"
-                is Resource.Error -> _eventMessage.value = response.message
-                else -> {}
-            }
-        }
-    }
-    
-    fun cancelFriendRequest(toUserId: String) {
-        viewModelScope.launch {
-            when (val response = repository.cancelFriendRequest(toUserId)) {
-                is Resource.Success -> _eventMessage.value = "Zaproszenie anulowane."
-                is Resource.Error -> _eventMessage.value = response.message
+            when (val response = action()) {
+                is Resource.Success -> _eventMessage.emit(successMessage)
+                is Resource.Error -> _eventMessage.emit("Błąd: ${response.message}")
                 else -> {}
             }
         }
     }
 
-    fun acceptFriendRequest(fromUserId: String) {
-        viewModelScope.launch {
-            when (val response = repository.acceptFriendRequest(fromUserId)) {
-                is Resource.Success -> _eventMessage.value = "Zaproszenie zaakceptowane."
-                is Resource.Error -> _eventMessage.value = response.message
-                else -> {}
-            }
-        }
-    }
-
-    fun rejectFriendRequest(fromUserId: String) {
-        viewModelScope.launch {
-            when (val response = repository.rejectFriendRequest(fromUserId)) {
-                is Resource.Success -> _eventMessage.value = "Zaproszenie odrzucone."
-                is Resource.Error -> _eventMessage.value = response.message
-                else -> {}
-            }
-        }
-    }
-
-    fun removeFriend(friendId: String) {
-        viewModelScope.launch {
-            when (val response = repository.removeFriend(friendId)) {
-                is Resource.Success -> _eventMessage.value = "Znajomy usunięty."
-                is Resource.Error -> _eventMessage.value = response.message
-                else -> {}
-            }
-        }
-    }
-
-    fun clearEventMessage() {
-        _eventMessage.value = null
-    }
+    fun sendFriendRequest(toUserId: String) = handleAction({ repository.sendFriendRequest(toUserId) }, "Zaproszenie wysłane!")
+    fun cancelFriendRequest(toUserId: String) = handleAction({ repository.cancelFriendRequest(toUserId) }, "Zaproszenie anulowane.")
+    fun acceptFriendRequest(fromUserId: String) = handleAction({ repository.acceptFriendRequest(fromUserId) }, "Zaproszenie zaakceptowane.")
+    fun rejectFriendRequest(fromUserId: String) = handleAction({ repository.rejectFriendRequest(fromUserId) }, "Zaproszenie odrzucone.")
+    fun removeFriend(friendId: String) = handleAction({ repository.removeFriend(friendId) }, "Znajomy usunięty.")
 }

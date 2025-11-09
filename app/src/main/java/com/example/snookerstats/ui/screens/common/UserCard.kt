@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.screens.RelationshipStatus
 
 @Composable
@@ -32,12 +33,7 @@ fun UserCard(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.AccountCircle,
-                contentDescription = "User Avatar",
-                modifier = Modifier.size(40.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            UserAvatar(user = user, modifier = Modifier.size(40.dp))
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -52,31 +48,30 @@ fun UserCard(
                 )
             }
             if (status != RelationshipStatus.SELF) {
-                Row {
-                    if (status == RelationshipStatus.FRIENDS) {
-                        IconButton(onClick = onChatClick) {
-                            Icon(imageVector = Icons.Default.Chat, contentDescription = "Chat")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Chat Icon is always visible for others
+                    IconButton(onClick = onChatClick) {
+                        Icon(imageVector = Icons.Default.Chat, contentDescription = "Rozpocznij czat")
+                    }
+
+                    // Action icon depends on the relationship status
+                    when (status) {
+                        RelationshipStatus.FRIENDS -> IconButton(onClick = onActionClick) {
+                            Icon(imageVector = Icons.Default.PersonRemove, contentDescription = "Usuń znajomego")
                         }
-                        IconButton(onClick = onActionClick) {
-                            Icon(imageVector = Icons.Default.PersonRemove, contentDescription = "Remove friend")
+                        RelationshipStatus.NOT_FRIENDS, RelationshipStatus.STRANGER -> IconButton(onClick = onActionClick) {
+                            Icon(imageVector = Icons.Default.PersonAdd, contentDescription = "Dodaj znajomego")
                         }
-                    } else {
-                        IconButton(onClick = onChatClick, enabled = (status == RelationshipStatus.STRANGER || status == RelationshipStatus.REQUEST_SENT) ) {
-                             Icon(imageVector = Icons.Default.Chat, contentDescription = "Chat")
+                        RelationshipStatus.REQUEST_SENT -> IconButton(onClick = onActionClick) {
+                            Icon(imageVector = Icons.Default.Cancel, contentDescription = "Anuluj zaproszenie")
                         }
-                        when (status) {
-                            RelationshipStatus.STRANGER -> {
-                                IconButton(onClick = onActionClick) {
-                                    Icon(imageVector = Icons.Default.PersonAdd, contentDescription = "Add friend")
-                                }
+                        RelationshipStatus.REQUEST_RECEIVED -> Row {
+                             IconButton(onClick = onActionClick) { // You might need two actions here
+                                Icon(Icons.Default.Check, "Akceptuj", tint = Color(0xFF4CAF50))
                             }
-                            RelationshipStatus.REQUEST_SENT -> {
-                                IconButton(onClick = {}, enabled = false) {
-                                    Icon(imageVector = Icons.Default.Check, contentDescription = "Invite sent")
-                                }
-                            }
-                            else -> {}
+                             // Add a reject button if needed
                         }
+                        else -> {}
                     }
                 }
             }

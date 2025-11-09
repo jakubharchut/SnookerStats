@@ -3,14 +3,14 @@ package com.example.snookerstats.ui.profile
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.CommunityRepository
-import com.example.snookerstats.ui.main.SnackbarManager
 import com.example.snookerstats.ui.screens.RelationshipStatus
-import com.google.firebase.auth.FirebaseAuth
+import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,50 +29,88 @@ sealed class ProfileState {
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val communityRepository: CommunityRepository,
-    private val snackbarManager: SnackbarManager,
-    private val firebaseAuth: FirebaseAuth,
+    private val chatRepository: ChatRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Loading)
     val profileState: StateFlow<ProfileState> = _profileState.asStateFlow()
 
-    private var targetUserId: String? = null
-    private var currentUserId: String? = null
+    private val _navigationEvent = Channel<ProfileNavigationEvent>()
+    val navigationEvent = _navigationEvent.receiveAsFlow()
+
+    private val currentUserId: String = authRepository.currentUser!!.uid
+    private val targetUserId: String = savedStateHandle.get<String>("userId") ?: currentUserId
 
     init {
-        targetUserId = savedStateHandle.get<String>("userId") ?: firebaseAuth.currentUser?.uid
-        currentUserId = firebaseAuth.currentUser?.uid
+        loadProfileData()
+    }
 
-        if (targetUserId != null && currentUserId != null) {
-            loadProfileData(targetUserId!!, currentUserId!!)
-        } else {
-            _profileState.value = ProfileState.Error("Użytkownik nie jest zalogowany lub nie znaleziono ID.")
+    fun startChat() {
+        viewModelScope.launch {
+            val state = _profileState.value
+            if (state is ProfileState.Success) {
+                when (val result = chatRepository.createOrGetChat(state.targetUser.uid)) {
+                    is Resource.Success -> {
+                        _navigationEvent.send(ProfileNavigationEvent.NavigateToChat(result.data, state.targetUser.username))
+                    }
+                    is Resource.Error -> {
+                        // TODO: Handle error
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    private fun handleAction(action: suspend () -> Resource<out Any>) {
+        viewModelScope.launch {
+            action()
         }
     }
 
     fun handleFriendAction() {
-        viewModelScope.launch {
-            val currentState = _profileState.value
-            if (currentState is ProfileState.Success) {
-                val targetUser = currentState.targetUser
-                val response = when (currentState.relationshipStatus) {
-                    RelationshipStatus.STRANGER -> communityRepository.sendFriendRequest(targetUser.uid)
-                    RelationshipStatus.FRIENDS -> communityRepository.removeFriend(targetUser.uid)
-                    RelationshipStatus.REQUEST_SENT -> communityRepository.cancelFriendRequest(targetUser.uid)
-                    RelationshipStatus.REQUEST_RECEIVED -> communityRepository.acceptFriendRequest(targetUser.uid)
-                    else -> null
-                }
-                // Logikę snackbarów można dodać tutaj, jeśli potrzeba
+        val currentState = _profileState.value
+        if (currentState is ProfileState.Success) {
+            when (currentState.relationshipStatus) {
+                RelationshipStatus.FRIENDS -> handleAction { communityRepository.removeFriend(currentState.targetUser.uid) }
+                RelationshipStatus.NOT_FRIENDS, RelationshipStatus.STRANGER -> handleAction { communityRepository.sendFriendRequest(currentState.targetUser.uid) }
+                RelationshipStatus.REQUEST_SENT -> handleAction { communityRepository.cancelFriendRequest(currentState.targetUser.uid) }
+                RelationshipStatus.REQUEST_RECEIVED -> handleAction { communityRepository.acceptFriendRequest(currentState.targetUser.uid) }
+                else -> {}
             }
         }
     }
 
     fun rejectFriendRequest() {
+        val currentState = _profileState.value
+        if (currentState is ProfileState.Success && currentState.relationshipStatus == RelationshipStatus.REQUEST_RECEIVED) {
+            handleAction { communityRepository.rejectFriendRequest(currentState.targetUser.uid) }
+        }
+    }
+
+    private fun loadProfileData() {
         viewModelScope.launch {
-            val currentState = _profileState.value
-            if (currentState is ProfileState.Success && currentState.relationshipStatus == RelationshipStatus.REQUEST_RECEIVED) {
-                communityRepository.rejectFriendRequest(currentState.targetUser.uid)
+            authRepository.getUserProfile(targetUserId).combine(authRepository.getUserProfile(currentUserId)) { targetUserResource, currentUserResource ->
+                when {
+                    targetUserResource is Resource.Success && currentUserResource is Resource.Success -> {
+                        val targetUser = targetUserResource.data
+                        val currentUser = currentUserResource.data
+                        val status = when {
+                            targetUser.uid == currentUser.uid -> RelationshipStatus.SELF
+                            currentUser.friends.contains(targetUser.uid) -> RelationshipStatus.FRIENDS
+                            currentUser.friendRequestsSent.contains(targetUser.uid) -> RelationshipStatus.REQUEST_SENT
+                            currentUser.friendRequestsReceived.contains(targetUser.uid) -> RelationshipStatus.REQUEST_RECEIVED
+                            else -> RelationshipStatus.STRANGER
+                        }
+                        ProfileState.Success(targetUser, currentUser, status)
+                    }
+                    targetUserResource is Resource.Error -> ProfileState.Error(targetUserResource.message)
+                    currentUserResource is Resource.Error -> ProfileState.Error(currentUserResource.message)
+                    else -> ProfileState.Loading
+                }
+            }.collect { state ->
+                _profileState.value = state
             }
         }
     }
@@ -81,39 +119,6 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             if (currentUserId == targetUserId) {
                 authRepository.updateProfileVisibility(isPublic)
-            }
-        }
-    }
-
-    private fun loadProfileData(targetUserId: String, currentUserId: String) {
-        viewModelScope.launch {
-            authRepository.getUserProfile(targetUserId).combine(authRepository.getUserProfile(currentUserId)) { targetUserResponse, currentUserResponse ->
-                if (targetUserResponse is Response.Success && currentUserResponse is Response.Success) {
-                    val targetUser = targetUserResponse.data
-                    val currentUser = currentUserResponse.data
-
-                    val status = when {
-                        targetUser.uid == currentUser.uid -> RelationshipStatus.SELF
-                        currentUser.friends.contains(targetUser.uid) -> RelationshipStatus.FRIENDS
-                        currentUser.friendRequestsSent.contains(targetUser.uid) -> RelationshipStatus.REQUEST_SENT
-                        currentUser.friendRequestsReceived.contains(targetUser.uid) -> RelationshipStatus.REQUEST_RECEIVED
-                        else -> RelationshipStatus.STRANGER
-                    }
-
-                    ProfileState.Success(
-                        targetUser = targetUser,
-                        currentUser = currentUser,
-                        relationshipStatus = status
-                    )
-                } else if (targetUserResponse is Response.Error) {
-                    ProfileState.Error(targetUserResponse.message)
-                } else if (currentUserResponse is Response.Error) {
-                    ProfileState.Error(currentUserResponse.message)
-                } else {
-                    ProfileState.Loading
-                }
-            }.collect { state ->
-                _profileState.value = state
             }
         }
     }

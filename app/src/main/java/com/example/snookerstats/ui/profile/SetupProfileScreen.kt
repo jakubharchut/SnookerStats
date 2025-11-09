@@ -43,6 +43,9 @@ fun SetupProfileScreen(
                         popUpTo("setup_profile") { inclusive = true }
                     }
                 }
+                is ProfileNavigationEvent.NavigateToChat -> {
+                    // Not handled here
+                }
             }
         }
     }

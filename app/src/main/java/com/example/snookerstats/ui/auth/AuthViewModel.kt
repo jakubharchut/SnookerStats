@@ -3,18 +3,13 @@ package com.example.snookerstats.ui.auth
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.use_case.ValidateRegisterInputUseCase
+import com.example.snookerstats.util.Resource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -66,15 +61,15 @@ class AuthViewModel @Inject constructor(
     fun registerUser(email: String, password: String, confirmPassword: String) {
         viewModelScope.launch {
             val validationResponse = validateRegisterInput(email, password, confirmPassword)
-            if (validationResponse is Response.Error) {
+            if (validationResponse is Resource.Error) {
                 _authState.value = AuthState.Error(validationResponse.message)
                 return@launch
             }
 
             _authState.value = AuthState.Loading
             when (val repoResponse = repo.registerUser(email.trim(), password.trim())) {
-                is Response.Success -> _navigationEvent.emit(NavigationEvent.NavigateToRegistrationSuccess)
-                is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(repoResponse.message))
+                is Resource.Success -> _navigationEvent.emit(NavigationEvent.NavigateToRegistrationSuccess)
+                is Resource.Error -> _authState.value = AuthState.Error(mapFirebaseError(repoResponse.message))
                 else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd podczas rejestracji.")
             }
         }
@@ -92,17 +87,16 @@ class AuthViewModel @Inject constructor(
 
             _authState.value = AuthState.Loading
             when (val response = repo.loginUser(trimmedEmail, trimmedPassword)) {
-                is Response.Success -> {
+                is Resource.Success -> {
                     val user = firebaseAuth.currentUser
                     if (user != null && user.isEmailVerified) {
                         if (rememberMe) {
                             repo.saveCredentials(trimmedEmail, trimmedPassword)
                         }
                         
-                        // Sprawdź profil użytkownika
                         repo.getUserProfile(user.uid).collectLatest { profileResponse ->
                             when (profileResponse) {
-                                is Response.Success -> {
+                                is Resource.Success -> {
                                     updateFcmToken()
                                     if (profileResponse.data.username.isBlank()) {
                                         _navigationEvent.emit(NavigationEvent.NavigateToSetupProfile)
@@ -110,7 +104,7 @@ class AuthViewModel @Inject constructor(
                                         _navigationEvent.emit(NavigationEvent.NavigateToMain)
                                     }
                                 }
-                                is Response.Error -> _authState.value = AuthState.Error("Nie udało się pobrać profilu.")
+                                is Resource.Error -> _authState.value = AuthState.Error("Nie udało się pobrać profilu.")
                                 else -> {}
                             }
                         }
@@ -118,7 +112,7 @@ class AuthViewModel @Inject constructor(
                         _authState.value = AuthState.Error("Konto nie zostało zweryfikowane. Sprawdź e-mail.")
                     }
                 }
-                is Response.Error -> _authState.value = AuthState.Error(mapFirebaseError(response.message))
+                is Resource.Error -> _authState.value = AuthState.Error(mapFirebaseError(response.message))
                 else -> _authState.value = AuthState.Error("Wystąpił nieznany błąd podczas logowania.")
             }
         }
@@ -128,7 +122,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val token = firebaseMessaging.token.await()
-                Log.d("FCM_TOKEN_DEBUG", "Generated FCM Token: $token") // Dodano tę linię
+                Log.d("FCM_TOKEN_DEBUG", "Generated FCM Token: $token")
                 repo.updateFcmToken(token)
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Failed to get/update FCM token", e)

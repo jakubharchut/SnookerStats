@@ -103,7 +103,6 @@ fun MainScreen(
                 title = { Text(username) },
                 actions = {
                     IconButton(onClick = {
-                        // Używamy WEWNĘTRZNEGO kontrolera do nawigacji wewnątrz MainScreen
                         internalNavController.navigate("chat_list") {
                             popUpTo(internalNavController.graph.findStartDestination().id)
                             launchSingleTop = true
@@ -195,10 +194,11 @@ fun NavigationGraph(mainNavController: NavController, internalNavController: Nav
             CommunityScreen(navController = mainNavController, initialTabIndex = initialTabIndex)
         }
         composable("chat_list") {
-            // Przekazujemy GŁÓWNY NavController, aby umożliwić nawigację do ConversationScreen
             ChatListScreen(navController = mainNavController)
         }
-        composable("notifications") { NotificationsScreen(navController = mainNavController) }
+        composable("notifications") { 
+            NotificationsScreen(navController = internalNavController) 
+        }
         composable(
             route = "profile?userId={userId}",
             arguments = listOf(navArgument("userId") {
@@ -207,12 +207,6 @@ fun NavigationGraph(mainNavController: NavController, internalNavController: Nav
             })
         ) {
             UserProfileScreen(navController = internalNavController)
-        }
-        composable(
-            route = "user_profile/{userId}",
-            arguments = listOf(navArgument("userId") { type = NavType.StringType })
-        ) {
-            UserProfileScreen(navController = mainNavController)
         }
         composable("manage_profile") {
             ManageProfileScreen(navController = internalNavController)

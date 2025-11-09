@@ -27,13 +27,13 @@ fun NotificationsScreen(
     navController: NavController,
     viewModel: NotificationViewModel = hiltViewModel()
 ) {
-    // Collect the state directly here. This is a more stable pattern for LazyColumn.
     val notifications = viewModel.notifications.collectAsState().value
 
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collectLatest { event ->
             when (event) {
                 is NotificationViewModel.NavigationEvent.NavigateToCommunity -> {
+                    // Używamy przekazanego kontrolera do nawigacji wewnątrz MainScreen
                     navController.navigate("community?initialTabIndex=${event.tabIndex}")
                 }
             }
@@ -55,7 +55,7 @@ fun NotificationsScreen(
         ) {
             items(items = notifications, key = { it.id }) { notification ->
                 NotificationItem(
-                    modifier = Modifier.animateContentSize(), // Add animation
+                    modifier = Modifier.animateContentSize(),
                     notification = notification,
                     onClick = { viewModel.onNotificationClicked(notification) },
                     onDeleteClick = { viewModel.onDeleteNotificationConfirmed(notification) }

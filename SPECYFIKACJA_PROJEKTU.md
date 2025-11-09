@@ -1,6 +1,6 @@
 # Specyfikacja Projektu: Aplikacja "Snooker Stats"
 
-## Wersja: 1.6 (stan na 2024-07-30)
+## Wersja: 1.7 (stan na 2024-08-01)
 
 ---
 
@@ -14,7 +14,7 @@ Stworzenie zaawansowanej, społecznościowej platformy mobilnej dla amatorów sn
 
 ### 2.1. Platforma Backendowa: Google Firebase
 Aplikacja będzie w pełni oparta o ekosystem Google Firebase, co zapewnia skalowalność, funkcje czasu rzeczywistego i bezpieczeństwo.
-*   **Baza Danych:** **Cloud Firestore** jako główne i jedyne źródło prawdy. Będzie przechowywać wszystkie dane użytkowników, mecze, statystyki, turnieje, itp. Jej mechanizmy real-time są kluczowe dla funkcji meczów online.
+*   **Baza Danych:** **Cloud Firestore** jako główne i jedyne źródło prawdy. Będzie przechowywać wszystkie dane użytkowników, mecze, statystyki, turnieje, itp. Jej mechanizmy real-time (`addSnapshotListener`) są kluczowe dla funkcji społecznościowych i zapewniają natychmiastową aktualizację danych w UI.
 *   **Uwierzytelnianie:** **Firebase Authentication** do zarządzania kontami użytkowników (rejestracja, logowanie przez e-mail/hasło, dostawców społecznościowych jak Google).
 *   **Powiadomienia Push:** **Firebase Cloud Messaging (FCM)** do wysyłania powiadomień, np. o nowych zaproszeniach do znajomych. Logika jest obsługiwana przez **Cloud Functions**.
 *   **Weryfikacja E-mail:** Po rejestracji, na adres użytkownika automatycznie wysyłany jest link weryfikacyjny. Dostęp do pełnej funkcjonalności aplikacji będzie możliwy dopiero po potwierdzeniu adresu e-mail.
@@ -34,18 +34,22 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
 ## 3. Kluczowe Funkcjonalności
 
 ### 3.1. Zarządzanie Profilem i Społeczność
-*   **Szczegółowa Specyfikacja:** Dokładny opis modeli danych, przepływów i logiki dla tego modułu znajduje się w osobnym dokumencie: `spolecznosci_i_profil.md`.
+*   **Szczegółowa Specyfikacja:** Dokładny opis modeli danych, przepływów i logiki dla tego modułu znajduje się w osobnym dokumencie: `SPOLECZNOSC_I_PROFIL.md`.
 *   **Stopniowe Wdrażanie (Progressive Onboarding):** Po pierwszej, uproszczonej rejestracji (tylko e-mail i hasło), użytkownik jest przekierowywany do ekranu `SetupProfileScreen` w celu jednorazowego uzupełnienia profilu. Wszystkie pola (`username`, `firstName`, `lastName`) są **obowiązkowe**.
 *   **Profile Graczy i Prywatność:**
-    *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny** podczas konfiguracji profilu.
-    *   Profil publiczny jest w pełni widoczny dla wszystkich użytkowników.
-    *   Profil prywatny jest widoczny **tylko dla zaakceptowanych znajomych**. Dla pozostałych użytkowników widoczne są jedynie podstawowe informacje (nazwa użytkownika) oraz komunikat o prywatności.
-*   **Wyszukiwarka Graczy:**
-    *   **Wyszukiwanie po wielu polach:** Funkcja pozwala na odnalezienie innych użytkowników po ich **nazwie użytkownika, imieniu lub nazwisku**.
-    *   **Niewrażliwość na wielkość liter:** Mechanizm wyszukiwania ignoruje wielkość liter.
-    *   **Wyszukiwanie "na żywo":** Wyniki pojawiają się automatycznie po krótkiej przerwie w pisaniu (debouncing), bez potrzeby klikania przycisku.
-    *   **Walidacja:** Pole `username` nie może zawierać spacji, co jest walidowane w czasie rzeczywistym.
-*   **System Sparing Partnerów ("Znajomych"):** Możliwość wysyłania zaproszeń do innych graczy, tworzenia listy znajomych i zarządzania nią.
+    *   Każdy użytkownik posiada profil z możliwością ustawienia go jako **publiczny** lub **prywatny**.
+    *   **Widoczność Profilu Publicznego:** Dostępny dla wszystkich użytkowników, łącznie ze statystykami.
+    *   **Widoczność Profilu Prywatnego:** Dla nieznajomych widoczne są tylko podstawowe informacje (awatar, nazwa, imię i nazwisko). Pełne dane, w tym statystyki, są widoczne **tylko dla zaakceptowanych znajomych**.
+    *   Właściciel profilu zawsze widzi swoje statystyki, niezależnie od ustawień prywatności.
+*   **Ekran Profilu Użytkownika (`UserProfileScreen`):**
+    *   Ekran został gruntownie przebudowany. Nie posiada `TopAppBar`, a jedynie przycisk "Cofnij" zintegrowany z layoutem.
+    *   Zawiera **dynamiczne przyciski akcji**, które zmieniają się w zależności od statusu relacji (np. "Dodaj do znajomych", "Akceptuj/Odrzuć", "Anuluj zaproszenie", "Usuń znajomego").
+    *   Na profilach innych graczy znajduje się karta **"Interakcje"** z przyciskiem **"Rozpocznij mecz"**.
+    *   Opcja wysłania wiadomości jest dostępna dla wszystkich użytkowników, niezależnie od statusu znajomości.
+*   **Ekran Zarządzania Profilem (`ManageProfileScreen`):**
+    *   Na własnym profilu, przycisk "Zarządzaj profilem" prowadzi do dedykowanego ekranu.
+    *   Ekran ten docelowo będzie zawierał wszystkie opcje konfiguracyjne. Obecnie zaimplementowano możliwość zmiany statusu profilu (publiczny/prywatny) za pomocą przełącznika `Switch`.
+*   **System Sparing Partnerów ("Znajomych"):** Możliwość wysyłania, akceptowania, odrzucania i anulowania zaproszeń oraz usuwania znajomych została w pełni zaimplementowana z poziomu ekranu profilu oraz zakładki "Społeczność".
 *   **System Komunikacji (Czat):**
     *   Aplikacja będzie zawierać system wiadomości prywatnych między użytkownikami. Główny dostęp do czatów będzie możliwy przez dedykowaną ikonę w `TopAppBar`.
     *   Możliwość zainicjowania nowej rozmowy będzie dostępna z poziomu listy znajomych oraz profilu innego użytkownika.
@@ -152,7 +156,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 
 ### Etap 4: Modele Danych i Baza Lokalna (ZREALIZOWANO)
 - [x] **Zdefiniowanie Modeli Danych:** Stworzono klasy `data class` dla `User`, `Shot`, `Frame` i `Match` w pakiecie `domain/model`. Zastosowano następujące pola:
-    *   `User`: `uid` (PrimaryKey), `username`, `email`, `club?`, `profileImageUrl?`, `friends: List<String>`, `friendRequestsSent: List<String>`, `friendRequestsReceived: List<String>`.
+    *   `User`: `uid` (PrimaryKey), `username`, `email`, `publicProfile`, `club?`, `profileImageUrl?`, `friends: List<String>`, `friendRequestsSent: List<String>`, `friendRequestsReceived: List<String>`.
     *   `Shot`: `id` (PrimaryKey, autoGenerate), `frameId`, `timestamp`, `ball`, `points`, `isFoul`.
     *   `Frame`: `id` (PrimaryKey, autoGenerate), `matchId`, `frameNumber`, `player1Points`, `player2Points`, `shots: List<Shot>`.
     *   `Match`: `id: String` (unikalny identyfikator), `player1Id: String`, `player2Id: String?` (opcjonalny, np. dla treningu solo), `date: Long`, `matchType: String` (np. "RANKING", "SPARRING"), `numberOfReds: Int`, `status: String` (np. "IN_PROGRESS", "COMPLETED"), `frames: List<Frame>`.
@@ -165,25 +169,23 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 
 ### Etap 5: Funkcje Społecznościowe (W TRAKCIE)
 *   **Cel:** Implementacja kluczowych funkcji społecznościowych, które pozwolą użytkownikom na interakcję i budowanie sieci kontaktów w aplikacji.
-*   **Wymagania:** Dostęp do modeli danych `User` i ich aktualizacji (np. listy znajomych).
-*   **Kolejność prac w ramach etapu:**
+*   **Status:** Główne funkcjonalności zostały zaimplementowane i są w fazie testów/dopracowywania.
+*   **Zrealizowane zadania:**
     *   [x] **Wyszukiwarka graczy i profil publiczny:**
-        *   Implementacja UI dla profilu użytkownika (z możliwością ustawienia jako publiczny/prywatny).
-        *   Implementacja wyszukiwarki graczy (zapytania do Firestore).
-        *   Wyświetlanie publicznych profili.
+        *   [x] Gruntowna przebudowa UI ekranu profilu (`UserProfileScreen`) z dynamicznymi akcjami i nowym layoutem.
+        *   [x] Implementacja wyszukiwarki graczy (zapytania do Firestore).
+        *   [x] Dopracowanie logiki widoczności profili (publiczny/prywatny) i statystyk.
     *   [x] **System zaproszeń do znajomych:**
-        *   [x] Wysyłanie zaproszeń z poziomu wyszukiwarki i profilu gracza.
-        *   [x] Implementacja zakładki "Zaproszenia" (Otrzymane / Wysłane) z pełną funkcjonalnością.
-        *   [x] Logika akceptowania, odrzucania i anulowania zaproszeń.
+        *   [x] Pełna implementacja logiki wysyłania, akceptowania, odrzucania, anulowania zaproszeń i usuwania znajomych.
+        *   [x] Funkcjonalność dostępna zarówno z poziomu zakładki "Zaproszenia", jak i bezpośrednio z ekranu profilu użytkownika.
     *   [x] **Lista znajomych:**
-        *   [x] Implementacja zakładki "Znajomi" do wyświetlania listy połączonych użytkowników, z ujednoliconym wyglądem i funkcją usuwania (z potwierdzeniem).
-    *   [ ] **Ekran porównania statystyk Head-to-Head:**
-        *   Wykorzystanie już istniejących lub przyszłych danych meczowych (z Firestore lub Room).
-        *   Implementacja UI do prezentacji porównania statystyk.
-    *   [ ] **Implementacja systemu czatu:**
-        *   Projekt i implementacja bazy danych Firestore dla wiadomości.
-        *   UI do listy czatów i pojedynczej rozmowy.
-        *   Obsługa wysyłania i odbierania wiadomości w czasie rzeczywistym.
+        *   [x] Implementacja zakładki "Znajomi" do wyświetlania listy połączonych użytkowników.
+    *   [x] **Zarządzanie profilem:**
+        *   [x] Stworzenie dedykowanego ekranu `ManageProfileScreen`.
+        *   [x] Implementacja funkcji zmiany statusu profilu (publiczny/prywatny).
+*   **Pozostałe zadania w ramach etapu:**
+    *   [ ] **Ekran porównania statystyk Head-to-Head.**
+    *   [ ] **Implementacja systemu czatu.**
 
 ### Etap 6: Rdzeń Aplikacji - Zapis Meczu Lokalnego (NOWY ETAP)
 *   **Cel:** Umożliwienie użytkownikom zapisywania wyników meczów lokalnie.
@@ -288,7 +290,7 @@ Etap 3 został w pełni zrealizowany. Wprowadzono następujące elementy:
 
 1.  **Klasa `User` (Użytkownik):**
     *   **Zadanie:** Rozszerzono klasę `User` w `domain/model/User.kt`.
-    *   **Pola:** `uid: String`, `username: String`, `email: String`, `club: String?`, `profileImageUrl: String?`, `friends: List<String>` (lista UID znajomych), `friendRequestsSent: List<String>`, `friendRequestsReceived: List<String>`.
+    *   **Pola:** `uid: String`, `username: String`, `email: String`, `publicProfile: Boolean`, `club: String?`, `profileImageUrl: String?`, `friends: List<String>` (lista UID znajomych), `friendRequestsSent: List<String>`, `friendRequestsReceived: List<String>`.
     *   **Lokalizacja:** `domain/model/User.kt`.
 
 2.  **Klasa `Shot` (Uderzenie):**

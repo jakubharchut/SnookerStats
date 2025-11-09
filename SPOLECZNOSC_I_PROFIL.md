@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: Społeczność i Profil
 
-## Wersja: 1.5 (stan na 2024-07-30)
+## Wersja: 1.6 (stan na 2025-11-09)
 
 ---
 
@@ -69,16 +69,16 @@ Zaimplementowano strukturę z trzema zakładkami: "Szukaj", "Znajomi", "Zaprosze
 1.  **Wyszukiwarka Graczy (zakładka "Szukaj"):**
     *   Pole tekstowe do wpisywania frazy.
     *   **Wyszukiwanie odbywa się "na żywo"** (z 500ms opóźnieniem) po wpisaniu co najmniej 3 znaków.
-    *   **Automatyczne odświeżanie:** Wyniki wyszukiwania są automatycznie odświeżane po każdym powrocie do zakładki, aby zapewnić aktualność statusów relacji.
+    *   **Automatyczne odświeżanie:** Wyniki wyszukiwania są automatycznie odświeżane po każdym powrocie do zakładki, aby zapewnić aktualność statusów relacji. Zastosowano tu wzorzec **"Ręcznego Odświeżania Stanu po Akcji"** (szczegóły w `PODSUMOWANIE_POWIADOMIEN_FCM.md`).
     *   Wyniki wyświetlane są w `LazyColumn` jako estetyczne karty (`UserCard`).
     *   Kliknięcie na wynik nawiguje do ekranu profilu danego użytkownika (`UserProfileScreen`).
 2.  **Zarządzanie Zaproszeniami (zakładka "Zaproszenia"):**
     *   **Podział na widoki:** Ekran posiada dwie pod-zakładki: "Otrzymane" i "Wysłane".
-    *   **Akcje:** Użytkownik może akceptować/odrzucać otrzymane zaproszenia oraz anulować wysłane.
+    *   **Akcje:** Użytkownik może akceptować/odrzucać otrzymane zaproszenia oraz anulować wysłane. Po każdej z tych akcji lista zaproszeń (i wyników wyszukiwania) odświeża się automatycznie dzięki wzorcowi **"Ręcznego Odświeżania Stanu po Akcji"**.
 3.  **Lista Znajomych (zakładka "Znajomi"):**
     *   Sekcja wyświetla listę aktualnych znajomych użytkownika.
     *   **Spójny wygląd:** Wygląd listy jest ujednolicony z wynikami wyszukiwania dzięki zastosowaniu reużywalnego komponentu `UserCard`.
-    *   **Usuwanie znajomych:** Każda karta znajomego posiada przycisk do usunięcia go z listy, zabezpieczony dialogiem potwierdzającym.
+    *   **Usuwanie znajomych:** Każda karta znajomego posiada przycisk do usunięcia go z listy, zabezpieczony dialogiem potwierdzającym. Lista odświeża się automatycznie.
     *   Kliknięcie w kartę prowadzi do profilu gracza.
 
 ### Krok 4: Implementacja Logiki Systemu Znajomych (`CommunityRepository`)
@@ -120,4 +120,12 @@ Zaimplementowano strukturę z trzema zakładkami: "Szukaj", "Znajomi", "Zaprosze
 
 ### 4.3. Potwierdzenia Akcji (Snackbar i Dialog)
 *   **Snackbar:** Wszystkie szybkie akcje (wysłanie, akceptacja, odrzucenie zaproszenia) są potwierdzane przez globalny `SnackbarManager`.
-*   **AlertDialog:** Akcje destrukcyjne, takie jak usunięcie znajomego, są dodatkowo zabezpieczone przez dialog z prośbą o potwierdzenie, aby zapobiec przypadkowym działaniom.
+*   **AlertDialog:** Akcje destrukcyjne, takie takie jak usunięcie znajomego, są dodatkowo zabezpieczone przez dialog z prośbą o potwierdzenie, aby zapobiec przypadkowym działaniom.
+
+### 4.4. Ulepszenia Zakładki "Zaproszenia" (2025-11-09)
+
+- **Problem:** Przyciski akcji (akceptuj/odrzuć) w zaproszeniach były stylistycznie niespójne (jeden pełny, drugi obramowany) i miały mało intuicyjne ikony.
+- **Rozwiązanie:** Zastąpiono poprzednie ikony bardziej czytelnymi z biblioteki Material Design Icons:
+  - Akceptuj: `Icons.Default.PersonAdd` (ikona osoby z plusem), w zielonym kolorze tła.
+  - Odrzuć: `Icons.Default.PersonRemove` (ikona osoby z minusem), w czerwonym kolorze tła.
+- **Interaktywność Kart Zaproszeń:** Cała karta zaproszenia jest teraz klikalna. Kliknięcie w kartę (poza przyciskami akcji) nawiguje do ekranu profilu użytkownika, który wysłał zaproszenie (`user_profile/{userId}`).

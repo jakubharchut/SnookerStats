@@ -65,20 +65,7 @@ Początkowo powiadomienia nie pojawiały się na urządzeniu odbiorcy. Poniżej 
   - Zaimplementowano w `MainScreen.kt` logikę proszącą o zgodę na powiadomienia przy starcie aplikacji za pomocą `rememberLauncherForActivityResult`.
   - Użytkownik ręcznie zweryfikował i włączył uprawnienia w ustawieniach systemowych telefonu.
 
-### Ostateczny Test Diagnostyczny (w toku)
-- **Problem:** Mimo wszystkich powyższych poprawek, błąd `404 Not Found` wciąż występuje w Cloud Function.
-- **Krok:** Sprawdzenie, czy token FCM jest w ogóle ważny, poprzez wysłanie wiadomości testowej bezpośrednio z konsoli Firebase (Messaging -> New campaign -> Send test message).
-- **Wynik:** **Test zakończył się sukcesem!** Powiadomienie wysłane ręcznie dotarło na urządzenie.
-- **Wniosek:** Problem nie leży po stronie aplikacji klienckiej ani tokena, ale **w środowisku wykonawczym Cloud Function lub w sposobie, w jaki Admin SDK komunikuje się z FCM.**
-
-### Aktualne Działanie (w toku)
-- **Problem:** Błąd `404` w Cloud Function.
-- **Rozwiązanie:** Stworzenie dodatkowej, ręcznie wywoływanej funkcji HTTP (`testFcm`) w celu całkowitego odizolowania problemu i sprawdzenia, czy `admin.messaging().sendToDevice()` działa w najprostszej formie w danym projekcie.
-- **Status:** Jesteśmy w trakcie wdrażania i testowania tej funkcji.
-
----
-
-## Ostateczne Rozwiązanie Problemu `404 Not Found`
+### Ostateczne Rozwiązanie Problemu `404 Not Found`
 
 Po potwierdzeniu, że token FCM jest poprawny (dzięki udanemu testowi z konsoli Firebase), problem został ostatecznie rozwiązany poprzez zmianę metody wysyłki w Firebase Admin SDK.
 
@@ -97,3 +84,37 @@ Po potwierdzeniu, że token FCM jest poprawny (dzięki udanemu testowi z konsoli
     ```
 
 - **Wniosek końcowy:** Metoda `send()` okazała się bardziej niezawodna w środowisku Cloud Functions. Ręczna funkcja testowa (`testFcm`) była kluczowa w potwierdzeniu, że ta zmiana rozwiązuje problem, zanim zaimplementowano ją w głównej logice aplikacji. Ten wzorzec powinien być stosowany przy tworzeniu kolejnych funkcji wysyłających powiadomienia.
+
+---
+
+## Dalsze Ulepszenia Systemu Powiadomień (2025-11-09)
+
+Wprowadzone następujące ulepszenia w obsłudze powiadomień po stronie klienta:
+
+### 1. Niezawodne Odświeżanie Listy Powiadomień
+
+- **Problem:** Po usunięciu powiadomienia lub oznaczeniu go jako przeczytane, lista w UI nie odświeżała się automatycznie, co wymagało ręcznego przeładowania zakładki.
+- **Rozwiązanie:** Zastosowano wzorzec **"Ręcznego Odświeżania Stanu po Akcji"**. W `NotificationViewModel.kt`, po każdej operacji modyfikującej (usunięcie, oznaczenie jako przeczytane), jawnie wywoływana jest funkcja `loadNotifications()`, która pobiera najnowszą listę powiadomień z repozytorium. Zapewniono, że subskrypcja do `notificationRepository.getAllNotifications()` jest zawsze aktywna i aktualizuje `_notifications` `MutableStateFlow`.
+- **Kluczowy element:** Utworzono `fun loadNotifications()` w `NotificationViewModel`, która subskrybuje do `notificationRepository.getAllNotifications().collect { ... }`. Funkcja ta jest wywoływana po każdej akcji modyfikującej listę powiadomień.
+
+### 2. Poprawne Odczytywanie Statusu `isRead` z Firestore
+
+- **Problem:** Powiadomienia oznaczone jako przeczytane w bazie danych nadal były wyświetlane jako nieprzeczytane w UI.
+- **Rozwiązanie:** Zidentyfikowano problem z deserializacją pola `isRead` przez Firebase. W `data class Notification` (plik `Notification.kt`) dodano adnotację `@get:PropertyName("isRead")` do pola `val isRead: Boolean = false`. To zapewnia, że Firebase poprawnie mapuje pole `isRead` z dokumentu Firestore na właściwość `isRead` w obiekcie Kotlin.
+
+### 3. Wizualne Rozróżnienie Powiadomień Odczytanych od Nieodczytanych
+
+- **Problem:** Wszystkie powiadomienia na liście miały ten sam kolor, utrudniając szybkie rozróżnienie ich statusu.
+- **Rozwiązanie:** W `NotificationsScreen.kt`, w komponencie `NotificationItem`, dostosowano kolory tła i styl tekstu na podstawie wartości `notification.isRead`:
+  - **Nieodczytane:** Kolor tła `MaterialTheme.colorScheme.secondaryContainer` (oryginalny, bardziej wyrazisty), `FontWeight.Bold` dla tytułu.
+  - **Odczytane:** Kolor tła `MaterialTheme.colorScheme.surfaceVariant` (neutralny, lekko szarawy), `FontWeight.Normal` dla tytułu.
+
+### 4. Interaktywność Powiadomień o Zaproszeniach do Znajomych
+
+- **Problem:** Powiadomienia były statyczne; kliknięcie nie prowadziło do żadnej akcji.
+- **Rozwiązanie:** Zaimplementowano nawigację kontekstową:
+  - Nieprzeczytane powiadomienia typu `NotificationType.FRIEND_REQUEST` (Zaproszenie do znajomych) są teraz klikalne.
+  - Kliknięcie w takie powiadomienie powoduje nawigację do ekranu `CommunityScreen` z aktywną zakładką "Zaproszenia" (indeks 2).
+  - Powiadomienia odczytane są wizualnie "wyłączone" (nieklikalne), a ich jedyną akcją pozostaje usunięcie.
+  - Zmodyfikowano `NotificationsScreen.kt` (dodano `navController` i `LaunchedEffect` do obsługi zdarzeń nawigacyjnych) oraz `NotificationViewModel.kt` (dodano `sealed class NavigationEvent` i emitowanie zdarzenia `NavigateToCommunity` z `tabIndex`).
+  - Zaktualizowano `MainScreen.kt`, aby poprawnie przekazywać `navController` do `NotificationsScreen` oraz obsługiwać argument `initialTabIndex` w trasie do `CommunityScreen`.

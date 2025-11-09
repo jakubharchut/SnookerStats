@@ -138,3 +138,20 @@ Ekran profilu został gruntownie przebudowany w celu uproszczenia wyglądu i dod
   - Akceptuj: `Icons.Default.PersonAdd` (ikona osoby z plusem), w zielonym kolorze tła.
   - Odrzuć: `Icons.Default.PersonRemove` (ikona osoby z minusem), w czerwonym kolorze tła.
 - **Interaktywność Kart Zaproszeń:** Cała karta zaproszenia jest teraz klikalna. Kliknięcie w kartę (poza przyciskami akcji) nawiguje do ekranu profilu użytkownika, który wysłał zaproszenie (`user_profile/{userId}`).
+
+---
+
+## 5. Diagnostyka i Naprawy (Listopad 2025)
+
+### 5.1. Ujednolicenie Obsługi Stanu (`Resource` vs `Response`)
+- **Problem:** W projekcie istniały dwie oddzielne klasy (`Resource` i `Response`) służące do tego samego celu - opakowywania wyników operacji asynchronicznych. Powodowało to konflikty typów i awarie aplikacji, gdy różne moduły (np. Czat i Społeczność) musiały ze sobą współpracować.
+- **Rozwiązanie:** Przeprowadzono refaktoryzację całej aplikacji. Stara klasa `Response` została usunięta, a wszystkie repozytoria, ViewModele i ekrany UI zostały zaktualizowane, aby używać wyłącznie nowej, spójnej klasy `sealed class Resource<out T>`.
+
+### 5.2. Poprawki Reguł Bezpieczeństwa Firebase
+- **Problem:** System znajomych (akceptowanie/odrzucanie zaproszeń) oraz wyszukiwarka graczy przestały działać, zwracając błąd `PERMISSION_DENIED`.
+- **Przyczyna:** Wprowadzone wcześniej reguły bezpieczeństwa dla modułu czatu były zbyt restrykcyjne i przypadkowo zablokowały niezbędne operacje na kolekcji `users`. Reguły zezwalały użytkownikowi na edycję tylko i wyłącznie własnego dokumentu, podczas gdy system znajomych wymaga aktualizacji dokumentów obu użytkowników.
+- **Ostateczne Rozwiązanie:** Zaktualizowano reguły Firestore, aby były bardziej elastyczne. Nowa reguła `allow update: if request.auth != null;` dla ścieżki `/users/{userId}` pozwala każdemu zalogowanemu użytkownikowi na aktualizację dowolnego profilu. Jest to kompromis między bezpieczeństwem a funkcjonalnością po stronie klienta. W przyszłości, dla zwiększenia bezpieczeństwa, ta logika powinna zostać przeniesiona do Cloud Functions.
+
+### 5.3. Poprawki Interfejsu Użytkownika w "Zaproszeniach"
+- **Problem:** W zakładce "Zaproszenia", pod-menu do filtrowania ("Otrzymane" / "Wysłane") zostało błędnie zaimplementowane jako drugi `TabRow` pod głównym, co wyglądało źle i było nieintuicyjne.
+- **Rozwiązanie:** Przywrócono poprawny wygląd. Wewnętrzne menu zostało zaimplementowane przy użyciu komponentu `FilterChip`, co tworzy wizualnie lżejszy i bardziej czytelny interfejs w formie dwóch przycisków-pigułek.

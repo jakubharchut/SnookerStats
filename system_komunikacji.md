@@ -87,3 +87,30 @@ Logika czatu będzie oparta o dedykowaną strukturę w bazie danych Cloud Firest
     *   Implementacja nasłuchiwania na zmiany w czasie rzeczywistym za pomocą `snapshotFlow` z Firestore.
     *   Dodanie logiki statusu "przeczytane/nieprzeczytane".
     *   Integracja z Firebase Cloud Messaging w celu wysyłania powiadomień push o nowych wiadomościach.
+
+---
+## 5. Diagnostyka i Naprawy (Listopad 2025)
+
+### 5.1. Ujednolicenie Obsługi Stanu (`Resource` vs `Response`)
+- **Problem:** W projekcie istniały dwie oddzielne klasy (`Resource` i `Response`) służące do tego samego celu - opakowywania wyników operacji asynchronicznych. Powodowało to konflikty typów i awarie aplikacji, gdy różne moduły (np. Czat i Społeczność) musiały ze sobą współpracować.
+- **Rozwiązanie:** Przeprowadzono refaktoryzację całej aplikacji. Stara klasa `Response` została usunięta, a wszystkie repozytoria, ViewModele i ekrany UI zostały zaktualizowane, aby używać wyłącznie nowej, spójnej klasy `sealed class Resource<out T>`.
+
+### 5.2. Rozwiązane Problemy z Konfiguracją Firebase
+
+Podczas implementacji napotkano dwa kluczowe problemy związane z konfiguracją Firebase:
+
+- **Problem 1: `PERMISSION_DENIED`**
+  - **Objaw:** Aplikacja nie mogła pobrać listy czatów, zwracając błąd o braku uprawnień.
+  - **Przyczyna:** Domyślne reguły bezpieczeństwa Firestore blokowały dostęp do kolekcji `chats`.
+  - **Rozwiązanie:** Zaktualizowano reguły bezpieczeństwa, dodając sekcję, która pozwala zalogowanemu użytkownikowi na odczyt i zapis w dokumencie czatu, **jeśli jego `uid` znajduje się na liście `participants` tego czatu**.
+    ```
+    match /chats/{chatId} {
+      allow read, write: if request.auth != null && request.auth.uid in resource.data.participants;
+      // ... reguły dla subkolekcji messages ...
+    }
+    ```
+
+- **Problem 2: `FAILED_PRECONDITION`**
+  - **Objaw:** Po naprawieniu uprawnień, aplikacja nadal zwracała błąd, tym razem informujący o wymaganym indeksie.
+  - **Przyczyna:** Zapytanie do Firestore było złożone - jednocześnie filtrowało po polu `participants` i sortowało po `lastMessageTimestamp`. Do obsługi takich zapytań Firestore wymaga stworzenia "indeksu złożonego" (composite index).
+  - **Rozwiązanie:** Wykorzystano link wygenerowany w komunikacie błędu (w Logcat). Otwarcie linku przeniosło do konsoli Firebase z automatycznie wypełnionym formularzem tworzenia indeksu. Po kliknięciu "Create Index" i odczekaniu kilku minut na jego zbudowanie, problem został rozwiązany.

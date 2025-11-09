@@ -4,26 +4,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Notification
 import com.example.snookerstats.domain.repository.NotificationRepository
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class NotificationViewModel @Inject constructor(
-    private val notificationRepository: NotificationRepository
+    private val notificationRepository: NotificationRepository,
+    private val auth: FirebaseAuth
 ) : ViewModel() {
 
-    // Ekran będzie bezpośrednio obserwował strumień danych z repozytorium.
-    // To jest najbardziej niezawodny sposób na odzwierciedlenie stanu bazy danych.
-    val notifications: StateFlow<List<Notification>> = notificationRepository.getAllNotifications()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    private val _notifications = MutableStateFlow<List<Notification>>(emptyList())
+    val notifications: StateFlow<List<Notification>> = _notifications.asStateFlow()
 
     val unreadNotificationCount: StateFlow<Int> = notificationRepository.getUnreadNotificationsCount()
         .stateIn(
@@ -32,22 +27,43 @@ class NotificationViewModel @Inject constructor(
             initialValue = 0
         )
 
+    private var notificationsJob: Job? = null
+
+    init {
+        auth.addAuthStateListener { firebaseAuth ->
+            if (firebaseAuth.currentUser != null) {
+                loadNotifications()
+            } else {
+                notificationsJob?.cancel()
+                _notifications.value = emptyList()
+            }
+        }
+    }
+
+    private fun loadNotifications() {
+        notificationsJob?.cancel()
+        notificationsJob = viewModelScope.launch {
+            notificationRepository.getAllNotifications().collect { notificationList ->
+                _notifications.value = notificationList
+            }
+        }
+    }
+
     fun onNotificationClicked(notification: Notification) {
-        // Jeśli powiadomienie jest nieprzeczytane, wysyłamy polecenie do bazy.
-        // UI zaktualizuje się automatycznie, gdy tylko baza danych potwierdzi zapis.
         viewModelScope.launch {
             if (!notification.isRead) {
                 notificationRepository.markNotificationAsRead(notification.id)
             }
-            // TODO: Dodać logikę nawigacji w zależności od typu powiadomienia
         }
     }
 
     fun onDeleteNotificationConfirmed(notification: Notification) {
-        // Polecenie usunięcia jest wysyłane do bazy.
-        // UI zaktualizuje się automatycznie, gdy baza potwierdzi usunięcie.
         viewModelScope.launch {
             notificationRepository.deleteNotification(notification.id)
+            // Po usunięciu nie czekamy, aż strumień sam zareaguje.
+            // Jawnie wywołujemy ponowne załadowanie danych, tak jak w działających częściach aplikacji.
+            // To gwarantuje odświeżenie.
+            loadNotifications()
         }
     }
 }

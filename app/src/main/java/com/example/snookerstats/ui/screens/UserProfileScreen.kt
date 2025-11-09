@@ -26,6 +26,27 @@ fun UserProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val state by viewModel.profileState.collectAsState()
+    var showRemoveFriendDialog by remember { mutableStateOf(false) }
+
+    if (showRemoveFriendDialog && state is ProfileState.Success) {
+        val targetUser = (state as ProfileState.Success).targetUser
+        AlertDialog(
+            onDismissRequest = { showRemoveFriendDialog = false },
+            title = { Text("Potwierdzenie") },
+            text = { Text("Czy na pewno chcesz usunąć ${targetUser.username} ze znajomych?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.handleFriendAction()
+                        showRemoveFriendDialog = false
+                    }
+                ) { Text("Tak, usuń") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveFriendDialog = false }) { Text("Anuluj") }
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -65,10 +86,10 @@ fun UserProfileScreen(
                         user = profileState.targetUser,
                         status = profileState.relationshipStatus,
                         onActionClick = {
-                            if (profileState.relationshipStatus == RelationshipStatus.SELF) {
-                                navController.navigate("manage_profile")
-                            } else {
-                                viewModel.handleFriendAction()
+                            when (profileState.relationshipStatus) {
+                                RelationshipStatus.SELF -> navController.navigate("manage_profile")
+                                RelationshipStatus.FRIENDS -> showRemoveFriendDialog = true
+                                else -> viewModel.handleFriendAction()
                             }
                         },
                         onRejectClick = { viewModel.rejectFriendRequest() }

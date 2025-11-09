@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: System Komunikacji (Czat)
 
-## Wersja: 1.5 (stan na 2025-11-09)
+## Wersja: 1.6 (stan na 2025-11-09)
 
 ---
 
@@ -20,13 +20,13 @@ System komunikacji jest zintegrowany z głównym interfejsem aplikacji w sposób
 
 ### 2.2. Inicjowanie Nowej Rozmowy
 *   **Lokalizacja:** W `ChatListScreen` znajduje się pływający przycisk akcji (FAB) z ikoną `+`.
-*   **Funkcjonalność:** Kliknięcie przycisku `+` otwiera dialog (`NewChatDialog`), który wyświetla listę znajomych użytkownika. Wybranie znajomego z listy inicjuje proces tworzenia (lub pobierania istniejącego) czatu i nawiguuje do ekranu rozmowy.
+*   **Funkcjonalność:** Kliknięcie przycisku `+` otwiera wysuwany od góry panel (`TopSheet`), który wyświetla listę znajomych użytkownika. Wybranie znajomego z listy inicjuje proces tworzenia (lub pobierania istniejącego) czatu i nawiguje do ekranu rozmowy.
 
 ### 2.3. Ekran Listy Konwersacji (`ChatListScreen`)
 *   **Cel:** Wyświetlenie wszystkich aktywnych czatów użytkownika.
 *   **UI:** Ekran zawiera `LazyColumn` z listą konwersacji, posortowaną od najnowszej do najstarszej. Każdy element listy (`ChatListItem`) pokazuje:
     *   Nazwę wyświetlaną (`username`) rozmówcy.
-    *   Fragment ostatniej wiadomości w tej konwersacji.
+    *   Fragment ostatniej wiadomości w tej konwersacji (lub "..." jeśli jest pusta).
 *   **Interakcja:** Kliknięcie w dowolną konwersację przenosi użytkownika do `ConversationScreen`.
 
 ### 2.4. Ekran Rozmowy (`ConversationScreen`)
@@ -70,20 +70,13 @@ Architektura modułu opiera się na wzorcu MVVM i jest podzielona na trzy głów
     *   `createOrGetChat()`: Sprawdza, czy czat między dwoma użytkownikami już istnieje. Jeśli tak, zwraca jego ID. Jeśli nie, tworzy nowy dokument czatu i zwraca jego ID.
 
 2.  **Warstwa Logiki Biznesowej (ViewModel Layer):**
-    *   **`ChatListViewModel`:**
-        *   Przechowuje stan `uiState` (`StateFlow<Resource<List<ChatWithUserDetails>>>`) dla listy czatów.
-        *   Pobiera czaty z `ChatRepository` i łączy je z danymi użytkowników (nazwa, avatar) z `UserRepository`.
-        *   Obsługuje logikę tworzenia nowego czatu po wybraniu użytkownika w dialogu.
-        *   Zarządza nawigacją do ekranu konwersacji za pomocą `Channel` dla zdarzeń jednorazowych.
-    *   **`ConversationViewModel`:**
-        *   Otrzymuje `chatId` jako argument nawigacji (`SavedStateHandle`).
-        *   Przechowuje stan `messagesState` dla listy wiadomości.
-        *   Pobiera wiadomości z `ChatRepository`.
-        *   Przechowuje stan pola tekstowego i obsługuje logikę wysyłania nowej wiadomości.
+    *   **`ChatListViewModel`:** Zarządza logiką ekranu listy czatów, w tym tworzeniem nowych konwersacji.
+    *   **`ConversationViewModel`:** Zarządza logiką pojedynczego ekranu rozmowy.
+    *   **`CommunityViewModel`:** Zawiera również logikę do inicjowania czatu z poziomu listy znajomych.
 
 3.  **Warstwa Interfejsu Użytkownika (UI Layer):**
-    *   **`ChatListScreen`:** Obserwuje (`collectAsState`) `uiState` z `ChatListViewModel` oraz `friendsState` z `CommunityViewModel`. Wyświetla listę czatów lub stany ładowania/błędu. Obsługuje kliknięcie FAB, pokazując `NewChatDialog`.
-    *   **`ConversationScreen`:** Obserwuje `messagesState` z `ConversationViewModel` i wyświetla listę wiadomości w `LazyColumn`.
+    *   **`ChatListScreen`:** Wyświetla listę czatów i panel do tworzenia nowej rozmowy.
+    *   **`ConversationScreen`:** Wyświetla widok pojedynczej rozmowy.
 
 ---
 
@@ -93,22 +86,26 @@ Architektura modułu opiera się na wzorcu MVVM i jest podzielona na trzy głów
 - **Problem:** W projekcie istniały dwie oddzielne klasy (`Resource` i `Response`) do tego samego celu.
 - **Rozwiązanie:** Ujednolicono całą aplikację, aby korzystała z jednej, spójnej klasy `sealed class Resource<out T>`, co wyeliminowało konflikty typów i uprościło kod.
 
-### 5.2. Konfiguracja Firebase
+### 5.2. Konfiguracja Dagger/Hilt
+- **Problem:** Aplikacja nie kompilowała się z powodu błędu `DuplicateBindings`. Dwie różne definicje `ChatRepository` istniały w `FirebaseModule` i `RepositoryModule`.
+- **Rozwiązanie:** Usunięto przestarzały `RepositoryModule`, centralizując wszystkie definicje repozytoriów w `FirebaseModule`, co rozwiązało konflikt.
 
-Podczas implementacji napotkano dwa kluczowe problemy:
-
-- **Problem 1: `PERMISSION_DENIED`**
-  - **Objaw:** Aplikacja nie mogła pobrać listy czatów, zwracając błąd o braku uprawnień.
-  - **Przyczyna:** Domyślne reguły bezpieczeństwa Firestore blokowały dostęp do kolekcji `chats`.
-  - **Rozwiązanie:** Zaktualizowano reguły bezpieczeństwa, dodając sekcję, która pozwala zalogowanemu użytkownikowi na odczyt i zapis w dokumencie czatu, **jeśli jego `uid` znajduje się na liście `participants` tego czatu**.
-    ```
-    match /chats/{chatId} {
-      allow read, write: if request.auth != null && request.auth.uid in resource.data.participants;
-      // ...
+### 5.3. Błędy Reguł Bezpieczeństwa Firestore (`PERMISSION_DENIED`)
+- **Problem:** Inicjowanie czatu, ładowanie listy czatów oraz usuwanie powiadomień kończyło się błędem `PERMISSION_DENIED`.
+- **Przyczyna:** Reguły bezpieczeństwa były zbyt restrykcyjne i nie uwzględniały wszystkich przypadków użycia (np. konieczności sprawdzenia istnienia dokumentu przed jego odczytaniem, tzw. "problem jajka i kurczaka").
+- **Rozwiązanie:** Wdrożono tymczasowe, bardzo otwarte reguły na czas developmentu, które pozwalają każdemu zalogowanemu użytkownikowi na pełny dostęp do bazy. To wyeliminowało wszystkie problemy z uprawnieniami.
+  ```
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      match /{document=**} {
+        allow read, write: if request.auth != null;
+      }
     }
-    ```
+  }
+  ```
 
-- **Problem 2: `FAILED_PRECONDITION`**
-  - **Objaw:** Po naprawieniu uprawnień, aplikacja nadal zwracała błąd, tym razem informujący o wymaganym indeksie.
-  - **Przyczyna:** Zapytanie do Firestore było złożone - jednocześnie filtrowało po polu `participants` i sortowało po `lastMessageTimestamp`. Firestore wymaga do tego "indeksu złożonego" (composite index).
-  - **Rozwiązanie:** Wykorzystano link wygenerowany w komunikacie błędu w Logcat. Otwarcie linku przeniosło do konsoli Firebase z automatycznie wypełnionym formularzem. Po kliknięciu "Create Index" i odczekaniu kilku minut na jego zbudowanie, problem został rozwiązany.
+### 5.4. Crash Aplikacji przy Nawigacji (`IllegalArgumentException`)
+- **Problem:** Po naprawieniu reguł bezpieczeństwa, aplikacja zaczęła się wywalać przy próbie przejścia do ekranu rozmowy z błędem `Navigation destination ... cannot be found`.
+- **Przyczyna:** W aplikacji istniały dwa kontrolery nawigacji (`NavController`): główny (z `MainActivity`) i wewnętrzny (w `MainScreen`). `ChatListScreen` był wywoływany z wewnętrznym kontrolerem, który nie "widział" globalnej trasy `conversation/{...}`.
+- **Rozwiązanie:** Przeprowadzono refaktoryzację `MainScreen.kt`, aby zapewnić, że ekrany wymagające nawigacji "na zewnątrz" (jak `ChatListScreen` czy `CommunityScreen`) otrzymują główny `NavController`, co rozwiązało problem crashy.

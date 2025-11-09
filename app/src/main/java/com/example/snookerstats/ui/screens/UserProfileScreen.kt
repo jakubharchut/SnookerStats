@@ -70,13 +70,15 @@ fun UserProfileScreen(
                             } else {
                                 viewModel.handleFriendAction()
                             }
-                        }
+                        },
+                        onRejectClick = { viewModel.rejectFriendRequest() }
                     )
                 } else {
                     PrivateProfileContent(
                         user = profileState.targetUser,
                         status = profileState.relationshipStatus,
                         onActionClick = { viewModel.handleFriendAction() },
+                        onRejectClick = { viewModel.rejectFriendRequest() },
                         onChatClick = { /* TODO: Nawigacja do czatu */ }
                     )
                 }
@@ -87,7 +89,12 @@ fun UserProfileScreen(
 
 
 @Composable
-private fun UserProfileContent(user: User, status: RelationshipStatus, onActionClick: () -> Unit) {
+private fun UserProfileContent(
+    user: User,
+    status: RelationshipStatus,
+    onActionClick: () -> Unit,
+    onRejectClick: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize(),
@@ -111,7 +118,7 @@ private fun UserProfileContent(user: User, status: RelationshipStatus, onActionC
         Spacer(modifier = Modifier.height(24.dp))
 
         // Action Buttons Section
-        ActionButtons(status = status, onActionClick = onActionClick)
+        ActionButtons(status = status, onActionClick = onActionClick, onRejectClick = onRejectClick)
         Spacer(modifier = Modifier.height(24.dp))
 
         // Stats Card - widoczna dla profili publicznych, znajomych LUB właściciela
@@ -146,7 +153,11 @@ private fun UserProfileContent(user: User, status: RelationshipStatus, onActionC
 }
 
 @Composable
-private fun ActionButtons(status: RelationshipStatus, onActionClick: () -> Unit) {
+private fun ActionButtons(
+    status: RelationshipStatus,
+    onActionClick: () -> Unit,
+    onRejectClick: () -> Unit
+) {
     when (status) {
         RelationshipStatus.SELF -> Button(onClick = onActionClick) { Text("Zarządzaj profilem") }
         RelationshipStatus.REQUEST_RECEIVED -> {
@@ -160,7 +171,7 @@ private fun ActionButtons(status: RelationshipStatus, onActionClick: () -> Unit)
                         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                         Text("Akceptuj")
                     }
-                    OutlinedButton(onClick = { /* TODO: Handle reject */ }) {
+                    OutlinedButton(onClick = onRejectClick) {
                         Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                         Text("Odrzuć")
@@ -214,6 +225,7 @@ private fun PrivateProfileContent(
     user: User,
     status: RelationshipStatus,
     onActionClick: () -> Unit,
+    onRejectClick: () -> Unit,
     onChatClick: () -> Unit
 ) {
     Column(
@@ -264,7 +276,7 @@ private fun PrivateProfileContent(
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                             Text("Akceptuj")
                         }
-                        OutlinedButton(onClick = { /* TODO: Handle reject */ }) {
+                        OutlinedButton(onClick = onRejectClick) {
                             Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                             Text("Odrzuć")

@@ -6,14 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.CommunityRepository
+import com.example.snookerstats.ui.main.SnackbarManager
 import com.example.snookerstats.ui.screens.RelationshipStatus
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -30,6 +28,8 @@ sealed class ProfileState {
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val communityRepository: CommunityRepository,
+    private val snackbarManager: SnackbarManager,
     private val firebaseAuth: FirebaseAuth,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -55,34 +55,39 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = _profileState.value
             if (currentState is ProfileState.Success) {
-                // Tutaj można dodać logikę w zależności od statusu
-                // Na razie zostawiam to puste, ale funkcja już istnieje
+                val targetUser = currentState.targetUser
+                val response = when (currentState.relationshipStatus) {
+                    RelationshipStatus.STRANGER -> communityRepository.sendFriendRequest(targetUser.uid)
+                    RelationshipStatus.FRIENDS -> communityRepository.removeFriend(targetUser.uid)
+                    RelationshipStatus.REQUEST_SENT -> communityRepository.cancelFriendRequest(targetUser.uid)
+                    RelationshipStatus.REQUEST_RECEIVED -> communityRepository.acceptFriendRequest(targetUser.uid)
+                    else -> null
+                }
+                // Logikę snackbarów można dodać tutaj, jeśli potrzeba
+            }
+        }
+    }
+
+    fun rejectFriendRequest() {
+        viewModelScope.launch {
+            val currentState = _profileState.value
+            if (currentState is ProfileState.Success && currentState.relationshipStatus == RelationshipStatus.REQUEST_RECEIVED) {
+                communityRepository.rejectFriendRequest(currentState.targetUser.uid)
             }
         }
     }
 
     fun toggleProfileVisibility(isPublic: Boolean) {
         viewModelScope.launch {
-            if (currentUserId == targetUserId) { // Upewnij się, że tylko właściciel profilu może go zmienić
-                when (authRepository.updateProfileVisibility(isPublic)) {
-                    is Response.Success -> {
-                        // Dane odświeżą się automatycznie dzięki listenerowi
-                    }
-                    is Response.Error -> {
-                        // TODO: Pokaż błąd użytkownikowi, np. za pomocą SnackBar
-                    }
-                    else -> {}
-                }
+            if (currentUserId == targetUserId) {
+                authRepository.updateProfileVisibility(isPublic)
             }
         }
     }
 
     private fun loadProfileData(targetUserId: String, currentUserId: String) {
         viewModelScope.launch {
-            val targetUserFlow = authRepository.getUserProfile(targetUserId)
-            val currentUserFlow = authRepository.getUserProfile(currentUserId)
-
-            targetUserFlow.combine(currentUserFlow) { targetUserResponse, currentUserResponse ->
+            authRepository.getUserProfile(targetUserId).combine(authRepository.getUserProfile(currentUserId)) { targetUserResponse, currentUserResponse ->
                 if (targetUserResponse is Response.Success && currentUserResponse is Response.Success) {
                     val targetUser = targetUserResponse.data
                     val currentUser = currentUserResponse.data

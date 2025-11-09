@@ -36,6 +36,7 @@ import com.example.snookerstats.ui.auth.NavigationEvent
 import com.example.snookerstats.ui.chat.ChatListScreen
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.ui.notifications.NotificationViewModel
+import com.example.snookerstats.ui.profile.ManageProfileScreen
 import com.example.snookerstats.ui.screens.*
 import kotlinx.coroutines.flow.collectLatest
 
@@ -224,15 +225,26 @@ fun NavigationGraph(navController: NavHostController) {
         }
         composable("chat_list") { ChatListScreen() }
         composable("notifications") { NotificationsScreen(navController = navController) }
-        composable("profile") {
+        composable(
+            route = "profile?userId={userId}",
+            arguments = listOf(navArgument("userId") {
+                type = NavType.StringType
+                nullable = true
+            })
+        ) {
             UserProfileScreen(navController = navController)
         }
         composable(
             route = "user_profile/{userId}",
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
         ) { backStackEntry ->
-             val userId = backStackEntry.arguments?.getString("userId")
+             // Usunięto wadliwe przekierowanie
+             // ViewModel dla UserProfileScreen zostanie automatycznie
+             // utworzony z poprawnym userId dzięki Hilt i SavedStateHandle
             UserProfileScreen(navController = navController)
+        }
+        composable("manage_profile") {
+            ManageProfileScreen(navController = navController)
         }
     }
 }

@@ -9,6 +9,7 @@ interface AuthRepository {
     suspend fun loginUser(email: String, password: String): Response<Boolean>
     fun getUserProfile(uid: String): Flow<Response<User>>
     suspend fun updateFcmToken(token: String): Response<Boolean>
+    suspend fun updateProfileVisibility(isPublic: Boolean): Response<Unit>
     fun saveCredentials(email: String, password: String)
     fun getSavedCredentials(): Pair<String, String>?
     fun clearCredentials()

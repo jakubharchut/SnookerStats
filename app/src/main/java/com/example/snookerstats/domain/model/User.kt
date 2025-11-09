@@ -2,6 +2,7 @@ package com.example.snookerstats.domain.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.google.firebase.firestore.PropertyName
 
 @Entity(tableName = "users")
 data class User(
@@ -10,12 +11,11 @@ data class User(
     val username: String = "",
     val username_lowercase: String = "",
     val email: String = "",
-    // Zmiana na pola obowiązkowe
     val firstName: String = "",
     val firstName_lowercase: String = "",
     val lastName: String = "",
     val lastName_lowercase: String = "",
-    val isPublicProfile: Boolean = true,
+    val publicProfile: Boolean = true, // Zmiana nazwy z isPublicProfile
     val club: String? = null,
     val profileImageUrl: String? = null,
     val friends: List<String> = emptyList(),

@@ -22,8 +22,7 @@ sealed class ProfileState {
     data class Success(
         val targetUser: User,
         val currentUser: User,
-        val relationshipStatus: RelationshipStatus,
-        val canViewProfile: Boolean
+        val relationshipStatus: RelationshipStatus
     ) : ProfileState()
     data class Error(val message: String) : ProfileState()
 }
@@ -62,6 +61,22 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun toggleProfileVisibility(isPublic: Boolean) {
+        viewModelScope.launch {
+            if (currentUserId == targetUserId) { // Upewnij się, że tylko właściciel profilu może go zmienić
+                when (authRepository.updateProfileVisibility(isPublic)) {
+                    is Response.Success -> {
+                        // Dane odświeżą się automatycznie dzięki listenerowi
+                    }
+                    is Response.Error -> {
+                        // TODO: Pokaż błąd użytkownikowi, np. za pomocą SnackBar
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
+
     private fun loadProfileData(targetUserId: String, currentUserId: String) {
         viewModelScope.launch {
             val targetUserFlow = authRepository.getUserProfile(targetUserId)
@@ -79,13 +94,11 @@ class ProfileViewModel @Inject constructor(
                         currentUser.friendRequestsReceived.contains(targetUser.uid) -> RelationshipStatus.REQUEST_RECEIVED
                         else -> RelationshipStatus.STRANGER
                     }
-                    val canViewProfile = targetUser.isPublicProfile || status == RelationshipStatus.FRIENDS || status == RelationshipStatus.SELF
 
                     ProfileState.Success(
                         targetUser = targetUser,
                         currentUser = currentUser,
-                        relationshipStatus = status,
-                        canViewProfile = canViewProfile
+                        relationshipStatus = status
                     )
                 } else if (targetUserResponse is Response.Error) {
                     ProfileState.Error(targetUserResponse.message)

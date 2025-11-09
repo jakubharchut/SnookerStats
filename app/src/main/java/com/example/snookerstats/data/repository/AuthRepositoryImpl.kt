@@ -6,8 +6,9 @@ import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
@@ -24,7 +25,7 @@ class AuthRepositoryImpl @Inject constructor(
             firebaseUser.sendEmailVerification().await()
             val user = User(
                 uid = firebaseUser.uid, email = email, username = "", username_lowercase = "",
-                firstName = "", firstName_lowercase = "", lastName = "", lastName_lowercase = "", isPublicProfile = true
+                firstName = "", firstName_lowercase = "", lastName = "", lastName_lowercase = "", publicProfile = true
             )
             firestore.collection("users").document(firebaseUser.uid).set(user).await()
             Response.Success(true)
@@ -42,15 +43,28 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getUserProfile(uid: String): Flow<Response<User>> = flow {
-        emit(Response.Loading)
-        val user = firestore.collection("users").document(uid).get().await().toObject(User::class.java)
-        if (user != null) {
-            emit(Response.Success(user))
-        } else {
-            emit(Response.Error("User profile not found."))
-        }
+    override fun getUserProfile(uid: String): Flow<Response<User>> = callbackFlow {
+        trySend(Response.Loading)
+        val listener = firestore.collection("users").document(uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Response.Error(error.message ?: "An error occurred"))
+                    return@addSnapshotListener
+                }
+                if (snapshot != null && snapshot.exists()) {
+                    val user = snapshot.toObject(User::class.java)
+                    if (user != null) {
+                        trySend(Response.Success(user))
+                    } else {
+                        trySend(Response.Error("Failed to parse user data."))
+                    }
+                } else {
+                    trySend(Response.Error("User profile not found."))
+                }
+            }
+        awaitClose { listener.remove() }
     }
+
 
     override suspend fun updateFcmToken(token: String): Response<Boolean> {
         return try {
@@ -59,6 +73,16 @@ class AuthRepositoryImpl @Inject constructor(
             Response.Success(true)
         } catch (e: Exception) {
             Response.Error(e.message ?: "Failed to update FCM token.")
+        }
+    }
+
+    override suspend fun updateProfileVisibility(isPublic: Boolean): Response<Unit> {
+        return try {
+            val userId = firebaseAuth.currentUser?.uid ?: return Response.Error("User not logged in.")
+            firestore.collection("users").document(userId).update("publicProfile", isPublic).await()
+            Response.Success(Unit)
+        } catch (e: Exception) {
+            Response.Error(e.message ?: "Failed to update profile visibility.")
         }
     }
 

@@ -26,7 +26,7 @@ class ProfileRepositoryImpl @Inject constructor(
                 "firstName_lowercase" to user.firstName.lowercase(),
                 "lastName" to user.lastName,
                 "lastName_lowercase" to user.lastName.lowercase(),
-                "isPublicProfile" to user.isPublicProfile // Poprawiono nazwę pola
+                "publicProfile" to user.publicProfile
             )
 
             userRef.update(updates).await()

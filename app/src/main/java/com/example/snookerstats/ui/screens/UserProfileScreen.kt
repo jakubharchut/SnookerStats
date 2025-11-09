@@ -6,9 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,16 +56,28 @@ fun UserProfileScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
             is ProfileState.Success -> {
-                if (profileState.canViewProfile) {
+                val canViewFullProfile = profileState.targetUser.publicProfile ||
+                        profileState.relationshipStatus == RelationshipStatus.FRIENDS ||
+                        profileState.relationshipStatus == RelationshipStatus.SELF
+
+                if (canViewFullProfile) {
                     UserProfileContent(
                         user = profileState.targetUser,
                         status = profileState.relationshipStatus,
-                        onActionClick = { viewModel.handleFriendAction() }
+                        onActionClick = {
+                            if (profileState.relationshipStatus == RelationshipStatus.SELF) {
+                                navController.navigate("manage_profile")
+                            } else {
+                                viewModel.handleFriendAction()
+                            }
+                        }
                     )
                 } else {
                     PrivateProfileContent(
                         user = profileState.targetUser,
-                        onAddFriendClick = { viewModel.handleFriendAction() }
+                        status = profileState.relationshipStatus,
+                        onActionClick = { viewModel.handleFriendAction() },
+                        onChatClick = { /* TODO: Nawigacja do czatu */ }
                     )
                 }
             }
@@ -104,26 +114,31 @@ private fun UserProfileContent(user: User, status: RelationshipStatus, onActionC
         ActionButtons(status = status, onActionClick = onActionClick)
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Stats Card
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Statystyki", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-                StatRow(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = "0")
-                StatRow(icon = Icons.Default.Star, label = "Najwyższy break", value = "0")
-                StatRow(icon = Icons.Default.Leaderboard, label = "Wygrane mecze", value = "0%")
+        // Stats Card - widoczna dla profili publicznych, znajomych LUB właściciela
+        if (user.publicProfile || status == RelationshipStatus.FRIENDS || status == RelationshipStatus.SELF) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Statystyki", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    StatRow(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = "0")
+                    StatRow(icon = Icons.Default.Star, label = "Najwyższy break", value = "0")
+                    StatRow(icon = Icons.Default.Leaderboard, label = "Wygrane mecze", value = "0%")
+                }
             }
+            Spacer(modifier = Modifier.height(16.dp))
         }
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // Info Card
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Informacje", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-                InfoRow(icon = Icons.Default.Shield, label = "Profil", value = if (user.isPublicProfile) "Publiczny" else "Prywatny")
-                user.club?.let {
-                    InfoRow(icon = Icons.Default.Groups, label = "Klub", value = it)
+        // Interactions Card - widoczna tylko na profilach innych użytkowników
+        if (status != RelationshipStatus.SELF) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Interakcje", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { /* TODO: Nawigacja do ekranu rozpoczynania meczu */ }) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text("Rozpocznij mecz")
+                    }
                 }
             }
         }
@@ -133,7 +148,7 @@ private fun UserProfileContent(user: User, status: RelationshipStatus, onActionC
 @Composable
 private fun ActionButtons(status: RelationshipStatus, onActionClick: () -> Unit) {
     when (status) {
-        RelationshipStatus.SELF -> Button(onClick = onActionClick) { Text("Edytuj profil") }
+        RelationshipStatus.SELF -> Button(onClick = onActionClick) { Text("Zarządzaj profilem") }
         RelationshipStatus.REQUEST_RECEIVED -> {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -195,7 +210,12 @@ private fun ActionButtons(status: RelationshipStatus, onActionClick: () -> Unit)
 }
 
 @Composable
-private fun PrivateProfileContent(user: User, onAddFriendClick: () -> Unit) {
+private fun PrivateProfileContent(
+    user: User,
+    status: RelationshipStatus,
+    onActionClick: () -> Unit,
+    onChatClick: () -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -216,10 +236,48 @@ private fun PrivateProfileContent(user: User, onAddFriendClick: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onAddFriendClick) {
-            Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-            Text("Dodaj do znajomych")
+        
+        // Dynamiczne przyciski akcji
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            when(status) {
+                RelationshipStatus.STRANGER -> {
+                    Button(onClick = onActionClick) {
+                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text("Dodaj do znajomych")
+                    }
+                }
+                RelationshipStatus.REQUEST_SENT -> {
+                    OutlinedButton(onClick = onActionClick) {
+                        Icon(Icons.Default.Cancel, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text("Anuluj zaproszenie")
+                    }
+                }
+                RelationshipStatus.REQUEST_RECEIVED -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = onActionClick) {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Akceptuj")
+                        }
+                        OutlinedButton(onClick = { /* TODO: Handle reject */ }) {
+                            Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Odrzuć")
+                        }
+                    }
+                }
+                else -> {} // Inne statusy nie powinny tu wystąpić
+            }
+            OutlinedButton(onClick = onChatClick) {
+                Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                Text("Wiadomość")
+            }
         }
     }
 }

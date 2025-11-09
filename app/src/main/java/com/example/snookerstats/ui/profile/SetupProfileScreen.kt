@@ -127,7 +127,7 @@ fun SetupProfileScreen(
                     username = username.trim(),
                     firstName = firstName.trim(),
                     lastName = lastName.trim(),
-                    isPublicProfile = isPublicProfile
+                    publicProfile = isPublicProfile
                 )
                 viewModel.saveUserProfile(user)
             },

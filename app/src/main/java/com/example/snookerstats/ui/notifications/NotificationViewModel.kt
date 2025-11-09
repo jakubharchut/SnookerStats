@@ -52,23 +52,24 @@ class NotificationViewModel @Inject constructor(
         viewModelScope.launch {
             if (!notification.isRead) {
                 notificationRepository.markNotificationAsRead(notification.id)
-                
+                // Let the snapshot listener handle the UI update automatically
                 if (notification.type == NotificationType.FRIEND_REQUEST) {
                     _navigationEvent.emit(NavigationEvent.NavigateToCommunity(tabIndex = 2))
                 }
-                loadNotifications()
             }
         }
     }
 
     fun onDeleteNotificationConfirmed(notification: Notification) {
         viewModelScope.launch {
-            // If this is the last notification, clear the list immediately for better UX
-            if (_notifications.value.size == 1) {
-                _notifications.value = emptyList()
-            }
+            // First, perform the delete operation on the repository
             notificationRepository.deleteNotification(notification.id)
-            loadNotifications()
+            
+            // Then, manually update the local list to reflect the change immediately
+            // This is a more robust pattern against race conditions with snapshot listeners.
+            _notifications.update { currentList ->
+                currentList.filterNot { it.id == notification.id }
+            }
         }
     }
 }

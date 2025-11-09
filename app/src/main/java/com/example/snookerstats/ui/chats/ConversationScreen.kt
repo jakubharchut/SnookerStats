@@ -17,12 +17,12 @@ import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.Message
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.util.Resource
-import javax.inject.Inject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationScreen(
     navController: NavController,
+    chatId: String,
     otherUserName: String,
     viewModel: ConversationViewModel = hiltViewModel(),
     authRepository: AuthRepository

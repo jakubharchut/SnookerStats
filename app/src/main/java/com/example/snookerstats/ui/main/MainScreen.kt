@@ -43,19 +43,18 @@ import kotlinx.coroutines.flow.collectLatest
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    navController: NavController,
+    navController: NavController, // Główny NavController z MainActivity
     snackbarManager: SnackbarManager,
     authViewModel: AuthViewModel = hiltViewModel(),
     mainViewModel: MainViewModel = hiltViewModel(),
     notificationViewModel: NotificationViewModel = hiltViewModel()
 ) {
-    val internalNavController = rememberNavController()
+    val internalNavController = rememberNavController() // Wewnętrzny NavController dla dolnego paska
     val username by mainViewModel.username.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val unreadNotificationsCount by notificationViewModel.unreadNotificationCount.collectAsState()
 
-    // Efekt do obsługi nawigacji (w tym wylogowania)
     LaunchedEffect(Unit) {
         authViewModel.navigationEvent.collectLatest { event ->
             if (event is NavigationEvent.NavigateToLogin) {
@@ -66,22 +65,19 @@ fun MainScreen(
         }
     }
 
-    // Prośba o uprawnienia do powiadomień na Android 13+
     val requestPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted: Boolean ->
             if (isGranted) {
-                // Uprawnienie przyznane
                 snackbarManager.showMessage("Zgoda na powiadomienia udzielona.")
             } else {
-                // Uprawnienie odrzucone
                 snackbarManager.showMessage("Powiadomienia mogą nie działać bez zgody.")
             }
         }
     )
 
     LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // TIRAMISU to Android 13
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     context,
                     Manifest.permission.POST_NOTIFICATIONS
@@ -101,34 +97,13 @@ fun MainScreen(
     }
 
     Scaffold(
-        snackbarHost = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                SnackbarHost(hostState = snackbarHostState) { data ->
-                    Snackbar(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ) {
-                        Text(
-                            text = data.visuals.message,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(username) },
                 actions = {
                     IconButton(onClick = {
+                        // Używamy WEWNĘTRZNEGO kontrolera do nawigacji wewnątrz MainScreen
                         internalNavController.navigate("chat_list") {
                             popUpTo(internalNavController.graph.findStartDestination().id)
                             launchSingleTop = true
@@ -142,17 +117,13 @@ fun MainScreen(
                             launchSingleTop = true
                         }
                     }) {
-                        BadgedBox(
-                            badge = {
-                                if (unreadNotificationsCount > 0) {
-                                    Badge(
-                                        modifier = Modifier.offset(x = (-12).dp, y = (-4).dp)
-                                    ) {
-                                        Text(text = unreadNotificationsCount.toString())
-                                    }
+                        BadgedBox(badge = {
+                            if (unreadNotificationsCount > 0) {
+                                Badge(modifier = Modifier.offset(x = (-12).dp, y = (-4).dp)) {
+                                    Text(text = unreadNotificationsCount.toString())
                                 }
                             }
-                        ) {
+                        }) {
                             Icon(imageVector = Icons.Default.Notifications, contentDescription = "Powiadomienia")
                         }
                     }
@@ -173,7 +144,7 @@ fun MainScreen(
         bottomBar = { BottomNavigationBar(navController = internalNavController) }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            NavigationGraph(navController = internalNavController)
+            NavigationGraph(mainNavController = navController, internalNavController = internalNavController)
         }
     }
 }
@@ -207,8 +178,8 @@ fun BottomNavigationBar(navController: NavController) {
 }
 
 @Composable
-fun NavigationGraph(navController: NavHostController) {
-    NavHost(navController, startDestination = BottomNavItem.Home.route) {
+fun NavigationGraph(mainNavController: NavController, internalNavController: NavHostController) {
+    NavHost(internalNavController, startDestination = BottomNavItem.Home.route) {
         composable(BottomNavItem.Home.route) { HomeScreen() }
         composable(BottomNavItem.Play.route) { PlayScreen() }
         composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen() }
@@ -221,10 +192,13 @@ fun NavigationGraph(navController: NavHostController) {
             })
         ) { backStackEntry ->
             val initialTabIndex = backStackEntry.arguments?.getInt("initialTabIndex") ?: 0
-            CommunityScreen(navController = navController, initialTabIndex = initialTabIndex)
+            CommunityScreen(navController = mainNavController, initialTabIndex = initialTabIndex)
         }
-        composable("chat_list") { ChatListScreen(navController = navController) }
-        composable("notifications") { NotificationsScreen(navController = navController) }
+        composable("chat_list") {
+            // Przekazujemy GŁÓWNY NavController, aby umożliwić nawigację do ConversationScreen
+            ChatListScreen(navController = mainNavController)
+        }
+        composable("notifications") { NotificationsScreen(navController = mainNavController) }
         composable(
             route = "profile?userId={userId}",
             arguments = listOf(navArgument("userId") {
@@ -232,19 +206,16 @@ fun NavigationGraph(navController: NavHostController) {
                 nullable = true
             })
         ) {
-            UserProfileScreen(navController = navController)
+            UserProfileScreen(navController = internalNavController)
         }
         composable(
             route = "user_profile/{userId}",
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
-        ) { backStackEntry ->
-             // Usunięto wadliwe przekierowanie
-             // ViewModel dla UserProfileScreen zostanie automatycznie
-             // utworzony z poprawnym userId dzięki Hilt i SavedStateHandle
-            UserProfileScreen(navController = navController)
+        ) {
+            UserProfileScreen(navController = mainNavController)
         }
         composable("manage_profile") {
-            ManageProfileScreen(navController = navController)
+            ManageProfileScreen(navController = internalNavController)
         }
     }
 }

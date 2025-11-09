@@ -17,7 +17,6 @@ import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.ui.auth.LoginScreen
 import com.example.snookerstats.ui.auth.RegisterScreen
 import com.example.snookerstats.ui.auth.RegistrationSuccessScreen
-import com.example.snookerstats.ui.chats.ChatListScreen
 import com.example.snookerstats.ui.chats.ConversationScreen
 import com.example.snookerstats.ui.main.MainScreen
 import com.example.snookerstats.ui.main.SnackbarManager
@@ -61,9 +60,8 @@ class MainActivity : ComponentActivity() {
                         composable("main") {
                             MainScreen(navController = navController, snackbarManager = snackbarManager)
                         }
-                        composable("chat_list") {
-                            ChatListScreen(navController = navController)
-                        }
+                        // ChatListScreen został przeniesiony do wewnętrznego grafu w MainScreen
+                        // composable("chat_list") { ... } 
                         composable(
                             route = "conversation/{chatId}/{otherUserName}",
                             arguments = listOf(
@@ -75,6 +73,7 @@ class MainActivity : ComponentActivity() {
                             val otherUserName = backStackEntry.arguments?.getString("otherUserName")!!
                             ConversationScreen(
                                 navController = navController,
+                                chatId = chatId,
                                 otherUserName = otherUserName,
                                 authRepository = authRepository
                             )

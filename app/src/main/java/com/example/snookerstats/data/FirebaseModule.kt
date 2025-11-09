@@ -2,11 +2,13 @@ package com.example.snookerstats.data
 
 import com.example.snookerstats.data.local.preferences.EncryptedPrefsManager
 import com.example.snookerstats.data.repository.AuthRepositoryImpl
+import com.example.snookerstats.data.repository.ChatRepositoryImpl
 import com.example.snookerstats.data.repository.CommunityRepositoryImpl
 import com.example.snookerstats.data.repository.NotificationRepositoryImpl
 import com.example.snookerstats.data.repository.ProfileRepositoryImpl
 import com.example.snookerstats.data.repository.UserRepositoryImpl
 import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.CommunityRepository
 import com.example.snookerstats.domain.repository.NotificationRepository
 import com.example.snookerstats.domain.repository.ProfileRepository
@@ -26,21 +28,15 @@ object FirebaseModule {
 
     @Provides
     @Singleton
-    fun provideFirebaseAuth(): FirebaseAuth {
-        return FirebaseAuth.getInstance()
-    }
+    fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
 
     @Provides
     @Singleton
-    fun provideFirestore(): FirebaseFirestore {
-        return FirebaseFirestore.getInstance()
-    }
+    fun provideFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
 
     @Provides
     @Singleton
-    fun provideFirebaseMessaging(): FirebaseMessaging {
-        return FirebaseMessaging.getInstance()
-    }
+    fun provideFirebaseMessaging(): FirebaseMessaging = FirebaseMessaging.getInstance()
 
     @Provides
     @Singleton
@@ -48,34 +44,41 @@ object FirebaseModule {
         firebaseAuth: FirebaseAuth,
         firestore: FirebaseFirestore,
         prefsManager: EncryptedPrefsManager
-    ): AuthRepository {
-        return AuthRepositoryImpl(firebaseAuth, firestore, prefsManager)
-    }
+    ): AuthRepository = AuthRepositoryImpl(firebaseAuth, firestore, prefsManager)
 
     @Provides
     @Singleton
     fun provideCommunityRepository(
         firestore: FirebaseFirestore,
         auth: FirebaseAuth
-    ): CommunityRepository {
-        return CommunityRepositoryImpl(firestore, auth)
-    }
+    ): CommunityRepository = CommunityRepositoryImpl(firestore, auth)
 
     @Provides
     @Singleton
     fun provideProfileRepository(
         firestore: FirebaseFirestore,
         auth: FirebaseAuth
-    ): ProfileRepository {
-        return ProfileRepositoryImpl(firestore, auth)
-    }
+    ): ProfileRepository = ProfileRepositoryImpl(firestore, auth)
 
     @Provides
     @Singleton
     fun provideNotificationRepository(
         firestore: FirebaseFirestore,
         auth: FirebaseAuth
-    ): NotificationRepository {
-        return NotificationRepositoryImpl(firestore, auth)
-    }
+    ): NotificationRepository = NotificationRepositoryImpl(firestore, auth)
+
+    @Provides
+    @Singleton
+    fun provideUserRepository(
+        firestore: FirebaseFirestore,
+        authRepository: AuthRepository
+    ): UserRepository = UserRepositoryImpl(firestore, authRepository)
+
+    @Provides
+    @Singleton
+    fun provideChatRepository(
+        firestore: FirebaseFirestore,
+        authRepository: AuthRepository,
+        userRepository: UserRepository
+    ): ChatRepository = ChatRepositoryImpl(firestore, authRepository, userRepository)
 }

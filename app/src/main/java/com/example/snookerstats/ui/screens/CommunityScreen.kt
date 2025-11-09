@@ -12,10 +12,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.ui.community.CommunityNavigationEvent
 import com.example.snookerstats.ui.community.CommunityViewModel
 import com.example.snookerstats.ui.screens.common.UserCard
 import com.example.snookerstats.util.Resource
+import kotlinx.coroutines.flow.collectLatest
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityScreen(
     navController: NavController,
@@ -25,6 +28,13 @@ fun CommunityScreen(
     var selectedTabIndex by remember { mutableIntStateOf(initialTabIndex) }
     val tabs = listOf("Szukaj", "Znajomi", "Zaproszenia")
     val friendsState by viewModel.friends.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(key1 = true) {
+        viewModel.eventMessage.collectLatest { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
     LaunchedEffect(selectedTabIndex) {
         if (selectedTabIndex == 1) {
@@ -32,41 +42,53 @@ fun CommunityScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = selectedTabIndex) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { selectedTabIndex = index },
-                    text = { Text(text = title) }
-                )
+    LaunchedEffect(Unit) {
+        viewModel.navigationEvent.collect { event ->
+            if (event is CommunityNavigationEvent.NavigateToConversation) {
+                navController.navigate("conversation/${event.chatId}/${event.otherUserName}")
             }
         }
+    }
 
-        when (selectedTabIndex) {
-            0 -> PlayerSearchScreen(navController = navController, viewModel = viewModel)
-            1 -> {
-                when (val state = friendsState) {
-                    is Resource.Loading -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(text = title) }
+                    )
+                }
+            }
+
+            when (selectedTabIndex) {
+                0 -> PlayerSearchScreen(navController = navController, viewModel = viewModel)
+                1 -> {
+                    when (val state = friendsState) {
+                        is Resource.Loading -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
                         }
-                    }
-                    is Resource.Success -> {
-                        FriendsScreen(
-                            navController = navController,
-                            viewModel = viewModel,
-                            friends = state.data
-                        )
-                    }
-                    is Resource.Error -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = "Błąd: ${state.message}")
+                        is Resource.Success -> {
+                            FriendsScreen(
+                                navController = navController,
+                                viewModel = viewModel,
+                                friends = state.data
+                            )
+                        }
+                        is Resource.Error -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(text = "Błąd: ${state.message}")
+                            }
                         }
                     }
                 }
+                2 -> InvitationsScreen(navController = navController, viewModel = viewModel)
             }
-            2 -> InvitationsScreen(navController = navController, viewModel = viewModel)
         }
     }
 }
@@ -121,7 +143,7 @@ fun FriendsScreen(
                         userToRemove = user
                         showDialog = true
                     },
-                    onChatClick = { /* TODO: navController.navigate("chat/${user.uid}") */ }
+                    onChatClick = { viewModel.startChatWithUser(user) }
                 )
             }
         }

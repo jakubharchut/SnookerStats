@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -212,7 +213,7 @@ fun MessageGroup(messages: List<Message>, isSentByCurrentUser: Boolean) {
 
 @Composable
 fun MessageBubble(message: Message, isSentByCurrentUser: Boolean) {
-    val backgroundColor = if (isSentByCurrentUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+    val backgroundColor = if (isSentByCurrentUser) Color(0xFFD0E4FF) else Color(0xFFEBEBEB)
     val bubbleShape = if (isSentByCurrentUser) {
         RoundedCornerShape(topStart = 16.dp, topEnd = 4.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
     } else {
@@ -226,7 +227,8 @@ fun MessageBubble(message: Message, isSentByCurrentUser: Boolean) {
     ) {
         Text(
             text = message.text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            color = Color.Black
         )
     }
 }

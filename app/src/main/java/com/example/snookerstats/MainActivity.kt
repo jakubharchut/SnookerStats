@@ -20,8 +20,8 @@ import com.example.snookerstats.ui.auth.RegistrationSuccessScreen
 import com.example.snookerstats.ui.chats.ConversationScreen
 import com.example.snookerstats.ui.main.MainScreen
 import com.example.snookerstats.ui.main.SnackbarManager
+import com.example.snookerstats.ui.profile.ManageProfileScreen
 import com.example.snookerstats.ui.profile.SetupProfileScreen
-import com.example.snookerstats.ui.screens.UserProfileScreen
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -61,6 +61,9 @@ class MainActivity : ComponentActivity() {
                         composable("main") {
                             MainScreen(navController = navController, snackbarManager = snackbarManager)
                         }
+                        composable("manage_profile") {
+                            ManageProfileScreen(navController = navController)
+                        }
                         composable(
                             route = "conversation/{chatId}",
                             arguments = listOf(
@@ -71,12 +74,6 @@ class MainActivity : ComponentActivity() {
                                 navController = navController,
                                 authRepository = authRepository
                             )
-                        }
-                        composable(
-                            route = "user_profile/{userId}",
-                            arguments = listOf(navArgument("userId") { type = NavType.StringType })
-                        ) {
-                            UserProfileScreen(navController = navController)
                         }
                     }
                 }

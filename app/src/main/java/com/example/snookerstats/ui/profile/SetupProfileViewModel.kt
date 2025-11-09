@@ -27,12 +27,6 @@ data class UsernameValidationState(
     val isAvailable: Boolean? = null // null = nie sprawdzono, true = dostępna, false = zajęta
 )
 
-sealed class ProfileNavigationEvent {
-    object NavigateToMain : ProfileNavigationEvent()
-    data class NavigateToChat(val chatId: String, val otherUserName: String) : ProfileNavigationEvent()
-}
-
-
 @HiltViewModel
 class SetupProfileViewModel @Inject constructor(
     private val repository: ProfileRepository

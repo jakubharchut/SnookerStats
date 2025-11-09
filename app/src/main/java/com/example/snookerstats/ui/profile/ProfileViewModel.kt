@@ -52,7 +52,7 @@ class ProfileViewModel @Inject constructor(
             if (state is ProfileState.Success) {
                 when (val result = chatRepository.createOrGetChat(state.targetUser.uid)) {
                     is Resource.Success -> {
-                        _navigationEvent.send(ProfileNavigationEvent.NavigateToChat(result.data, state.targetUser.username))
+                        _navigationEvent.send(ProfileNavigationEvent.NavigateToChat(result.data))
                     }
                     is Resource.Error -> {
                         // TODO: Handle error

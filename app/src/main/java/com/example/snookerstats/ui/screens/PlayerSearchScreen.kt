@@ -15,7 +15,6 @@ import androidx.navigation.NavController
 import com.example.snookerstats.ui.community.CommunityViewModel
 import com.example.snookerstats.ui.screens.common.UserCard
 import com.example.snookerstats.util.Resource
-import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun PlayerSearchScreen(
@@ -25,9 +24,7 @@ fun PlayerSearchScreen(
     var searchQuery by remember { mutableStateOf("") }
     val searchResultsState by viewModel.searchResults.collectAsState()
 
-    // A coroutine that launches the search when the user stops typing
     LaunchedEffect(searchQuery) {
-        // Debounce logic can be added here if needed
         viewModel.onSearchQueryChanged(searchQuery)
     }
 
@@ -52,7 +49,7 @@ fun PlayerSearchScreen(
 
         when (val state = searchResultsState) {
             is Resource.Loading -> {
-                if (searchQuery.length >= 3) { // Show indicator only when searching
+                if (searchQuery.length >= 3) {
                     CircularProgressIndicator()
                 }
             }
@@ -62,14 +59,12 @@ fun PlayerSearchScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.data) { user ->
-                        // Assuming RelationshipStatus can be determined or is passed differently
-                        // For now, defaulting to NOT_FRIENDS for demonstration
                         UserCard(
                             user = user,
                             status = RelationshipStatus.NOT_FRIENDS, // This needs to be dynamic
-                            onClick = { navController.navigate("user_profile/${user.uid}") },
+                            onClick = { navController.navigate("profile/${user.uid}") },
                             onActionClick = { viewModel.sendFriendRequest(user.uid) },
-                            onChatClick = { /* TODO */ }
+                            onChatClick = { viewModel.startChatWithUser(user) }
                         )
                     }
                 }

@@ -45,7 +45,7 @@ fun CommunityScreen(
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collect { event ->
             if (event is CommunityNavigationEvent.NavigateToConversation) {
-                navController.navigate("conversation/${event.chatId}/${event.otherUserName}")
+                navController.navigate("conversation/${event.chatId}")
             }
         }
     }
@@ -138,8 +138,8 @@ fun FriendsScreen(
                 UserCard(
                     user = user,
                     status = RelationshipStatus.FRIENDS,
-                    onClick = { navController.navigate("user_profile/${user.uid}") },
-                    onActionClick = { // To jest akcja dla przycisku usuwania znajomego
+                    onClick = { navController.navigate("profile/${user.uid}") },
+                    onActionClick = { 
                         userToRemove = user
                         showDialog = true
                     },

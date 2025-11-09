@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class CommunityNavigationEvent {
-    data class NavigateToConversation(val chatId: String, val otherUserName: String) : CommunityNavigationEvent()
+    data class NavigateToConversation(val chatId: String) : CommunityNavigationEvent()
 }
 
 @HiltViewModel
@@ -86,7 +86,7 @@ class CommunityViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = chatRepository.createOrGetChat(user.uid)) {
                 is Resource.Success -> {
-                    _navigationEvent.send(CommunityNavigationEvent.NavigateToConversation(result.data, user.username))
+                    _navigationEvent.send(CommunityNavigationEvent.NavigateToConversation(result.data))
                 }
                 is Resource.Error -> {
                     _eventMessage.emit("Błąd rozpoczynania czatu: ${result.message}")

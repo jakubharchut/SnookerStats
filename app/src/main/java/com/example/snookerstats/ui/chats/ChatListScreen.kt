@@ -29,15 +29,21 @@ fun ChatListScreen(
     val friendsState by communityViewModel.friends.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
 
+    // Fetch friends when the FAB is clicked and dialog is about to be shown
+    LaunchedEffect(showDialog) {
+        if (showDialog) {
+            communityViewModel.fetchFriends()
+        }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collect { event ->
-            when (event) {
-                is NavigationEvent.NavigateToConversation -> {
-                    navController.navigate("conversation/${event.chatId}/${event.otherUserName}")
-                }
+            if (event is NavigationEvent.NavigateToConversation) {
+                // Close the dialog before navigating
+                showDialog = false
+                navController.navigate("conversation/${event.chatId}/${event.otherUserName}")
             }
         }
-        communityViewModel.fetchFriends()
     }
 
     Scaffold(
@@ -79,20 +85,14 @@ fun ChatListScreen(
     }
 
     if (showDialog) {
-        when(val friendsResponse = friendsState) {
-            is Resource.Success -> {
-                NewChatDialog(
-                    friends = friendsResponse.data,
-                    onDismiss = { showDialog = false },
-                    onUserSelected = { userId ->
-                        viewModel.onUserClicked(userId)
-                        showDialog = false
-                    }
-                )
+        NewChatDialog(
+            friendsState = friendsState,
+            onDismiss = { showDialog = false },
+            onUserSelected = { userId ->
+                viewModel.onUserClicked(userId)
+                // Navigation is now handled by LaunchedEffect
             }
-            // TODO: Handle Loading and Error states for friends list in Dialog
-            else -> {}
-        }
+        )
     }
 }
 

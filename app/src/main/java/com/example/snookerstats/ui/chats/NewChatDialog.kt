@@ -12,10 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.util.Resource
 
 @Composable
 fun NewChatDialog(
-    friends: List<User>,
+    friendsState: Resource<List<User>>,
     onDismiss: () -> Unit,
     onUserSelected: (String) -> Unit
 ) {
@@ -23,20 +24,26 @@ fun NewChatDialog(
         onDismissRequest = onDismiss,
         title = { Text("Rozpocznij nowy czat") },
         text = {
-            if (friends.isEmpty()) {
-                Text("Nie masz jeszcze żadnych znajomych.")
-            } else {
-                LazyColumn {
-                    items(friends) { friend ->
-                        Text(
-                            text = friend.username,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onUserSelected(friend.uid) }
-                                .padding(vertical = 12.dp)
-                        )
+            when (friendsState) {
+                is Resource.Success -> {
+                    if (friendsState.data.isEmpty()) {
+                        Text("Nie masz jeszcze żadnych znajomych.")
+                    } else {
+                        LazyColumn {
+                            items(friendsState.data) { friend ->
+                                Text(
+                                    text = friend.username,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onUserSelected(friend.uid) }
+                                        .padding(vertical = 12.dp)
+                                )
+                            }
+                        }
                     }
                 }
+                is Resource.Error -> Text("Błąd ładowania listy znajomych: ${friendsState.message}")
+                is Resource.Loading -> Text("Ładowanie znajomych...")
             }
         },
         confirmButton = {

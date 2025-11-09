@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: System Komunikacji (Czat)
 
-## Wersja: 1.1 (stan na 2024-07-29)
+## Wersja: 1.5 (stan na 2025-11-09)
 
 ---
 
@@ -12,50 +12,45 @@ Celem tego modułu jest stworzenie w pełni funkcjonalnego, prywatnego systemu w
 
 ## 2. Architektura UI i Nawigacja
 
-System komunikacji będzie zintegrowany z głównym interfejsem aplikacji w sposób intuicyjny, zapewniając łatwy dostęp z wielu miejsc.
+System komunikacji jest zintegrowany z głównym interfejsem aplikacji w sposób intuicyjny, zapewniając łatwy dostęp z wielu miejsc.
 
 ### 2.1. Główny Punkt Dostępu (`TopAppBar`)
-*   **Lokalizacja:** W głównym `TopAppBar` aplikacji (`MainScreen.kt`), obok ikony profilu, została dodana ikona **kilku dymków czatu** (`Icons.Filled.Forum`).
-*   **Wizualizacja Badge'a:** Ikona wiadomości posiada nałożony badge (czerwone kółko z licznikiem nieprzeczytanych wiadomości), umiejscowiony z przesunięciem `Modifier.offset(x = (-12).dp, y = (-4).dp)`, aby zapewnić jego pełną widoczność i prawidłowe pozycjonowanie względem ikony.
-*   **Funkcjonalność:** Kliknięcie tej ikony przeniesie użytkownika bezpośrednio do głównego ekranu z listą wszystkich jego konwersacji (`ChatListScreen`). Ekran `ChatListScreen.kt` został wstępnie utworzony jako placeholder z tekstem "Chat List Screen Content".
+*   **Lokalizacja:** W głównym `TopAppBar` aplikacji (`MainScreen.kt`), obok ikony profilu, znajduje się ikona wiadomości (`Icons.Filled.Forum`).
+*   **Funkcjonalność:** Kliknięcie tej ikony przenosi użytkownika bezpośrednio do głównego ekranu z listą wszystkich jego konwersacji (`ChatListScreen`).
 
-### 2.2. Inicjowanie Rozmowy (Kontekstowe)
-*   **Lokalizacja:** Możliwość rozpoczęcia nowej rozmowy będzie dostępna z poziomu modułu społeczności:
-    *   Na liście **znajomych** (`FriendsTab` w `CommunityScreen`).
-    *   Na publicznym **profilu innego użytkownika** (`ProfileScreen` oglądany dla innego gracza).
-*   **Funkcjonalność:** Obok nazwy użytkownika znajdzie się przycisk lub ikona "Napisz wiadomość". Jego kliknięcie przeniesie użytkownika bezpośrednio do ekranu rozmowy z wybraną osobą (`ConversationScreen`).
+### 2.2. Inicjowanie Nowej Rozmowy
+*   **Lokalizacja:** W `ChatListScreen` znajduje się pływający przycisk akcji (FAB) z ikoną `+`.
+*   **Funkcjonalność:** Kliknięcie przycisku `+` otwiera dialog (`NewChatDialog`), który wyświetla listę znajomych użytkownika. Wybranie znajomego z listy inicjuje proces tworzenia (lub pobierania istniejącego) czatu i nawiguuje do ekranu rozmowy.
 
 ### 2.3. Ekran Listy Konwersacji (`ChatListScreen`)
 *   **Cel:** Wyświetlenie wszystkich aktywnych czatów użytkownika.
-*   **UI:** Ekran będzie zawierał `LazyColumn` z listą konwersacji, posortowaną od najnowszej do najstarszej. Każdy element listy będzie pokazywał:
+*   **UI:** Ekran zawiera `LazyColumn` z listą konwersacji, posortowaną od najnowszej do najstarszej. Każdy element listy (`ChatListItem`) pokazuje:
     *   Nazwę wyświetlaną (`username`) rozmówcy.
     *   Fragment ostatniej wiadomości w tej konwersacji.
-    *   Datę lub godzinę ostatniej wiadomości.
-    *   Wskaźnik nieprzeczytanych wiadomości.
-*   **Interakcja:** Kliknięcie w dowolną konwersację przeniesie użytkownika do `ConversationScreen`.
+*   **Interakcja:** Kliknięcie w dowolną konwersację przenosi użytkownika do `ConversationScreen`.
 
 ### 2.4. Ekran Rozmowy (`ConversationScreen`)
 *   **Cel:** Prowadzenie rozmowy z jednym, wybranym użytkownikiem.
 *   **UI:**
-    *   `TopAppBar` z nazwą wyświetlaną rozmówcy.
-    *   `LazyColumn` wyświetlający historię wiadomości w formie "dymków czatu" (inne tło dla wiadomości wysłanych i otrzymanych).
+    *   `TopAppBar` z nazwą wyświetlaną rozmówcy i przyciskiem powrotu.
+    *   `LazyColumn` wyświetlający historię wiadomości w formie "dymków czatu".
     *   Na dole ekranu, `OutlinedTextField` do wpisywania nowej wiadomości oraz przycisk "Wyślij".
 
 ---
 
 ## 3. Model Danych (Firestore)
 
-Logika czatu będzie oparta o dedykowaną strukturę w bazie danych Cloud Firestore, zoptymalizowaną pod kątem wydajności i skalowalności.
+Logika czatu jest oparta o dedykowaną strukturę w bazie danych Cloud Firestore, zoptymalizowaną pod kątem wydajności i skalowalności.
 
 *   **Kolekcja główna: `chats`**
-    *   Każdy dokument w tej kolekcji będzie reprezentował jedną, unikalną konwersację między dwoma użytkownikami.
-    *   **ID Dokumentu:** Aby zapewnić unikalność i łatwość wyszukiwania, ID dokumentu będzie konkatenacją `uid` obu użytkowników, posortowanych alfabetycznie (np. `uidA_uidB`).
+    *   Każdy dokument w tej kolekcji reprezentuje jedną, unikalną konwersację między dwoma użytkownikami.
+    *   **ID Dokumentu:** Aby zapewnić unikalność i łatwość wyszukiwania, ID dokumentu jest konkatenacją `uid` obu użytkowników, posortowanych alfabetycznie i połączonych znakiem `_` (np. `uidA_uidB`).
     *   **Pola Dokumentu:**
         *   `participants: List<String>` - Lista `uid` dwóch uczestników czatu.
-        *   `lastMessage: String` - Treść ostatniej wiadomości (do wyświetlania na liście konwersacji).
-        *   `lastMessageTimestamp: Timestamp` - Czas ostatniej wiadomości (do sortowania).
+        *   `lastMessage: String?` - Treść ostatniej wiadomości (do wyświetlania na liście konwersacji).
+        *   `lastMessageTimestamp: Timestamp?` - Czas ostatniej wiadomości (do sortowania).
 *   **Subkolekcja: `messages`**
-    *   Wewnątrz każdego dokumentu czatu (`chats/{chatId}`) będzie istniała subkolekcja `messages`.
+    *   Wewnątrz każdego dokumentu czatu (`chats/{chatId}`) istnieje subkolekcja `messages`.
     *   Każdy dokument w tej subkolekcji to pojedyncza wiadomość.
     *   **Pola Dokumentu Wiadomości:**
         *   `senderId: String` - `uid` użytkownika, który wysłał wiadomość.
@@ -64,40 +59,43 @@ Logika czatu będzie oparta o dedykowaną strukturę w bazie danych Cloud Firest
 
 ---
 
-## 4. Plan Implementacji
+## 4. Przepływ Danych (Architektura Kodu)
 
-1.  **Etap 1: Fundamenty**
-    *   Stworzenie modeli danych (`data class Chat`, `data class Message`).
-    *   Stworzenie `ChatRepository` (interfejs i implementacja) z funkcjami do:
-        *   Pobierania listy konwersacji użytkownika (`getChats`).
-        *   Pobierania wiadomości z konkretnej konwersacji (`getMessages`).
-        *   Wysyłania nowej wiadomości (`sendMessage`).
-    *   Stworzenie `ChatViewModel` do zarządzania stanem.
+Architektura modułu opiera się na wzorcu MVVM i jest podzielona na trzy główne warstwy:
 
-2.  **Etap 2: Implementacja UI**
-    *   Dodanie ikony wiadomości do `TopAppBar` w `MainScreen.kt`.
-    *   Zbudowanie UI dla `ChatListScreen` i `ConversationScreen`.
-    *   Podłączenie ekranów do `ChatViewModel`.
+1.  **Warstwa Danych (Data Layer):**
+    *   **`ChatRepository` / `ChatRepositoryImpl`:** Odpowiada za całą komunikację z Firestore.
+    *   `getChats()` i `getMessages()`: Używają `callbackFlow`, aby nasłuchiwać na zmiany w Firestore w czasie rzeczywistym (`addSnapshotListener`) i emitować je jako `Flow<Resource<List<...>>>`. To zapewnia automatyczne odświeżanie UI.
+    *   `sendMessage()`: Zapisuje nową wiadomość i aktualizuje pola `lastMessage` i `lastMessageTimestamp` w głównym dokumencie czatu w ramach jednej transakcji (`batch write`).
+    *   `createOrGetChat()`: Sprawdza, czy czat między dwoma użytkownikami już istnieje. Jeśli tak, zwraca jego ID. Jeśli nie, tworzy nowy dokument czatu i zwraca jego ID.
 
-3.  **Etap 3: Integracja**
-    *   Dodanie przycisków "Napisz wiadomość" w module społeczności.
-    *   Zaimplementowanie nawigacji do odpowiednich ekranów czatu.
+2.  **Warstwa Logiki Biznesowej (ViewModel Layer):**
+    *   **`ChatListViewModel`:**
+        *   Przechowuje stan `uiState` (`StateFlow<Resource<List<ChatWithUserDetails>>>`) dla listy czatów.
+        *   Pobiera czaty z `ChatRepository` i łączy je z danymi użytkowników (nazwa, avatar) z `UserRepository`.
+        *   Obsługuje logikę tworzenia nowego czatu po wybraniu użytkownika w dialogu.
+        *   Zarządza nawigacją do ekranu konwersacji za pomocą `Channel` dla zdarzeń jednorazowych.
+    *   **`ConversationViewModel`:**
+        *   Otrzymuje `chatId` jako argument nawigacji (`SavedStateHandle`).
+        *   Przechowuje stan `messagesState` dla listy wiadomości.
+        *   Pobiera wiadomości z `ChatRepository`.
+        *   Przechowuje stan pola tekstowego i obsługuje logikę wysyłania nowej wiadomości.
 
-4.  **Etap 4: Funkcje Zaawansowane (w przyszłości)**
-    *   Implementacja nasłuchiwania na zmiany w czasie rzeczywistym za pomocą `snapshotFlow` z Firestore.
-    *   Dodanie logiki statusu "przeczytane/nieprzeczytane".
-    *   Integracja z Firebase Cloud Messaging w celu wysyłania powiadomień push o nowych wiadomościach.
+3.  **Warstwa Interfejsu Użytkownika (UI Layer):**
+    *   **`ChatListScreen`:** Obserwuje (`collectAsState`) `uiState` z `ChatListViewModel` oraz `friendsState` z `CommunityViewModel`. Wyświetla listę czatów lub stany ładowania/błędu. Obsługuje kliknięcie FAB, pokazując `NewChatDialog`.
+    *   **`ConversationScreen`:** Obserwuje `messagesState` z `ConversationViewModel` i wyświetla listę wiadomości w `LazyColumn`.
 
 ---
-## 5. Diagnostyka i Naprawy (Listopad 2025)
 
-### 5.1. Ujednolicenie Obsługi Stanu (`Resource` vs `Response`)
-- **Problem:** W projekcie istniały dwie oddzielne klasy (`Resource` i `Response`) służące do tego samego celu - opakowywania wyników operacji asynchronicznych. Powodowało to konflikty typów i awarie aplikacji, gdy różne moduły (np. Czat i Społeczność) musiały ze sobą współpracować.
-- **Rozwiązanie:** Przeprowadzono refaktoryzację całej aplikacji. Stara klasa `Response` została usunięta, a wszystkie repozytoria, ViewModele i ekrany UI zostały zaktualizowane, aby używać wyłącznie nowej, spójnej klasy `sealed class Resource<out T>`.
+## 5. Implementacja i Rozwiązane Problemy
 
-### 5.2. Rozwiązane Problemy z Konfiguracją Firebase
+### 5.1. Ujednolicenie Obsługi Stanu
+- **Problem:** W projekcie istniały dwie oddzielne klasy (`Resource` i `Response`) do tego samego celu.
+- **Rozwiązanie:** Ujednolicono całą aplikację, aby korzystała z jednej, spójnej klasy `sealed class Resource<out T>`, co wyeliminowało konflikty typów i uprościło kod.
 
-Podczas implementacji napotkano dwa kluczowe problemy związane z konfiguracją Firebase:
+### 5.2. Konfiguracja Firebase
+
+Podczas implementacji napotkano dwa kluczowe problemy:
 
 - **Problem 1: `PERMISSION_DENIED`**
   - **Objaw:** Aplikacja nie mogła pobrać listy czatów, zwracając błąd o braku uprawnień.
@@ -106,11 +104,11 @@ Podczas implementacji napotkano dwa kluczowe problemy związane z konfiguracją 
     ```
     match /chats/{chatId} {
       allow read, write: if request.auth != null && request.auth.uid in resource.data.participants;
-      // ... reguły dla subkolekcji messages ...
+      // ...
     }
     ```
 
 - **Problem 2: `FAILED_PRECONDITION`**
   - **Objaw:** Po naprawieniu uprawnień, aplikacja nadal zwracała błąd, tym razem informujący o wymaganym indeksie.
-  - **Przyczyna:** Zapytanie do Firestore było złożone - jednocześnie filtrowało po polu `participants` i sortowało po `lastMessageTimestamp`. Do obsługi takich zapytań Firestore wymaga stworzenia "indeksu złożonego" (composite index).
-  - **Rozwiązanie:** Wykorzystano link wygenerowany w komunikacie błędu (w Logcat). Otwarcie linku przeniosło do konsoli Firebase z automatycznie wypełnionym formularzem tworzenia indeksu. Po kliknięciu "Create Index" i odczekaniu kilku minut na jego zbudowanie, problem został rozwiązany.
+  - **Przyczyna:** Zapytanie do Firestore było złożone - jednocześnie filtrowało po polu `participants` i sortowało po `lastMessageTimestamp`. Firestore wymaga do tego "indeksu złożonego" (composite index).
+  - **Rozwiązanie:** Wykorzystano link wygenerowany w komunikacie błędu w Logcat. Otwarcie linku przeniosło do konsoli Firebase z automatycznie wypełnionym formularzem. Po kliknięciu "Create Index" i odczekaniu kilku minut na jego zbudowanie, problem został rozwiązany.

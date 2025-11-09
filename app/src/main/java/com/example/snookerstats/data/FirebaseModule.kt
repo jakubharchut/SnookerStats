@@ -3,9 +3,11 @@ package com.example.snookerstats.data
 import com.example.snookerstats.data.local.preferences.EncryptedPrefsManager
 import com.example.snookerstats.data.repository.AuthRepositoryImpl
 import com.example.snookerstats.data.repository.CommunityRepositoryImpl
+import com.example.snookerstats.data.repository.NotificationRepositoryImpl
 import com.example.snookerstats.data.repository.ProfileRepositoryImpl
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.CommunityRepository
+import com.example.snookerstats.domain.repository.NotificationRepository
 import com.example.snookerstats.domain.repository.ProfileRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -52,9 +54,9 @@ object FirebaseModule {
     @Singleton
     fun provideCommunityRepository(
         firestore: FirebaseFirestore,
-        auth: FirebaseAuth // Dodano FirebaseAuth
+        auth: FirebaseAuth
     ): CommunityRepository {
-        return CommunityRepositoryImpl(firestore, auth) // Przekazano FirebaseAuth
+        return CommunityRepositoryImpl(firestore, auth)
     }
 
     @Provides
@@ -64,5 +66,14 @@ object FirebaseModule {
         auth: FirebaseAuth
     ): ProfileRepository {
         return ProfileRepositoryImpl(firestore, auth)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationRepository(
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth
+    ): NotificationRepository {
+        return NotificationRepositoryImpl(firestore, auth)
     }
 }

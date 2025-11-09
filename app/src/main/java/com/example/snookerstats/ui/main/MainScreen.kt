@@ -7,12 +7,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +35,7 @@ import com.example.snookerstats.ui.auth.AuthViewModel
 import com.example.snookerstats.ui.auth.NavigationEvent
 import com.example.snookerstats.ui.chat.ChatListScreen
 import com.example.snookerstats.ui.navigation.BottomNavItem
+import com.example.snookerstats.ui.notifications.NotificationViewModel
 import com.example.snookerstats.ui.screens.*
 import kotlinx.coroutines.flow.collectLatest
 
@@ -42,12 +45,14 @@ fun MainScreen(
     navController: NavController,
     snackbarManager: SnackbarManager,
     authViewModel: AuthViewModel = hiltViewModel(),
-    mainViewModel: MainViewModel = hiltViewModel()
+    mainViewModel: MainViewModel = hiltViewModel(),
+    notificationViewModel: NotificationViewModel = hiltViewModel()
 ) {
     val internalNavController = rememberNavController()
     val username by mainViewModel.username.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val unreadNotificationsCount by notificationViewModel.unreadNotificationCount.collectAsState()
 
     // Efekt do obsługi nawigacji (w tym wylogowania)
     LaunchedEffect(Unit) {
@@ -131,6 +136,26 @@ fun MainScreen(
                         Icon(imageVector = Icons.Filled.Forum, contentDescription = "Wiadomości")
                     }
                     IconButton(onClick = {
+                        internalNavController.navigate("notifications") {
+                            popUpTo(internalNavController.graph.findStartDestination().id)
+                            launchSingleTop = true
+                        }
+                    }) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadNotificationsCount > 0) {
+                                    Badge(
+                                        modifier = Modifier.offset(x = (-12).dp, y = (-4).dp)
+                                    ) {
+                                        Text(text = unreadNotificationsCount.toString())
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(imageVector = Icons.Default.Notifications, contentDescription = "Powiadomienia")
+                        }
+                    }
+                    IconButton(onClick = {
                         internalNavController.navigate("profile") {
                             popUpTo(internalNavController.graph.findStartDestination().id)
                             launchSingleTop = true
@@ -189,11 +214,12 @@ fun NavigationGraph(navController: NavHostController) {
         composable(BottomNavItem.Stats.route) { StatsScreen() }
         composable(BottomNavItem.Community.route) { CommunityScreen(navController = navController) }
         composable("chat_list") { ChatListScreen() }
+        composable("notifications") { NotificationsScreen() }
         composable(
             route = "profile?userId={userId}",
-            arguments = listOf(navArgument("userId") { 
+            arguments = listOf(navArgument("userId") {
                 type = NavType.StringType
-                nullable = true 
+                nullable = true
             })
         ) {
             UserProfileScreen()

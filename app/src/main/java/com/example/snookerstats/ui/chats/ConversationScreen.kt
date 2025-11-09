@@ -9,6 +9,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,6 +56,10 @@ fun ConversationScreen(
     val otherUser by viewModel.otherUser.collectAsState()
     val listState = rememberLazyListState()
 
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+
     val currentUserId = authRepository.currentUser?.uid
 
     LaunchedEffect(messagesState) {
@@ -63,6 +69,30 @@ fun ConversationScreen(
                 listState.animateScrollToItem(index = messages.size - 1)
             }
         }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Potwierdź usunięcie") },
+            text = { Text("Czy na pewno chcesz trwale usunąć tę konwersację? Ta operacja jest nieodwracalna.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteChat()
+                        showDeleteDialog = false
+                        navController.popBackStack()
+                    }
+                ) {
+                    Text("Usuń")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Anuluj")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -81,6 +111,28 @@ fun ConversationScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Wróć")
+                    }
+                },
+                actions = {
+                    otherUser?.let { user ->
+                        IconButton(onClick = { navController.navigate("user_profile/${user.uid}") }) {
+                            Icon(Icons.Default.Person, contentDescription = "Zobacz profil")
+                        }
+                    }
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Więcej opcji")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Usuń czat") },
+                            onClick = {
+                                showMenu = false
+                                showDeleteDialog = true
+                            }
+                        )
                     }
                 }
             )

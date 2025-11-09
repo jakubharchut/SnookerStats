@@ -76,7 +76,7 @@ class ConversationViewModel @Inject constructor(
         val text = _messageText.value.trim()
         if (text.isNotBlank()) {
             viewModelScope.launch {
-                when (val result = chatRepository.sendMessage(chatId, text)) {
+                when (chatRepository.sendMessage(chatId, text)) {
                     is Resource.Success -> {
                         _messageText.value = ""
                     }
@@ -86,6 +86,13 @@ class ConversationViewModel @Inject constructor(
                     else -> {}
                 }
             }
+        }
+    }
+
+    fun deleteChat() {
+        viewModelScope.launch {
+            chatRepository.deleteChat(chatId)
+            // Navigation is handled in the view
         }
     }
 }

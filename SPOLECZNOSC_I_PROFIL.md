@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: Społeczność i Profil
 
-## Wersja: 1.6 (stan na 2025-11-09)
+## Wersja: 1.7 (stan na 2024-08-01)
 
 ---
 
@@ -23,7 +23,7 @@ Centralnym modelem danych dla tego modułu jest klasa `User`. Będzie ona przech
 *   `firstName_lowercase: String` - Wersja `firstName` z małymi literami, do wyszukiwania.
 *   `lastName: String` - **(Obowiązkowe)** Nazwisko użytkownika.
 *   `lastName_lowercase: String` - Wersja `lastName` z małymi literami, do wyszukiwania.
-*   `isPublicProfile: Boolean` - Flaga prywatności. Jeśli `true`, profil jest publiczny. Domyślnie `true`.
+*   `publicProfile: Boolean` - Flaga prywatności. Jeśli `true`, profil jest publiczny. Domyślnie `true`.
 *   `club: String?` - **(Opcjonalne)** Nazwa klubu, do którego należy gracz.
 *   `profileImageUrl: String?` - **(Opcjonalne)** URL do zdjęcia profilowego.
 *   `friends: List<String>` - Lista `uid` użytkowników, którzy są znajomymi.
@@ -75,6 +75,7 @@ Zaimplementowano strukturę z trzema zakładkami: "Szukaj", "Znajomi", "Zaprosze
 2.  **Zarządzanie Zaproszeniami (zakładka "Zaproszenia"):**
     *   **Podział na widoki:** Ekran posiada dwie pod-zakładki: "Otrzymane" i "Wysłane".
     *   **Akcje:** Użytkownik może akceptować/odrzucać otrzymane zaproszenia oraz anulować wysłane. Po każdej z tych akcji lista zaproszeń (i wyników wyszukiwania) odświeża się automatycznie dzięki wzorcowi **"Ręcznego Odświeżania Stanu po Akcji"**.
+    *   **Interaktywność:** Karty z zaproszeniami są teraz klikalne (poza przyciskami akcji), co pozwala na bezpośrednie przejście do profilu osoby zapraszającej.
 3.  **Lista Znajomych (zakładka "Znajomi"):**
     *   Sekcja wyświetla listę aktualnych znajomych użytkownika.
     *   **Spójny wygląd:** Wygląd listy jest ujednolicony z wynikami wyszukiwania dzięki zastosowaniu reużywalnego komponentu `UserCard`.
@@ -94,15 +95,23 @@ Zaimplementowano strukturę z trzema zakładkami: "Szukaj", "Znajomi", "Zaprosze
 
 **Cel:** Stworzenie publicznej wizytówki gracza oraz miejsca do edycji własnych danych.
 
-1.  **Logika Widoczności:**
-    *   Pełne dane profilu (statystyki itp.) są widoczne, jeśli:
-        *   `isPublicProfile` ma wartość `true`.
-        *   **LUB** użytkownik przeglądający profil jest na liście `friends` użytkownika, którego profil ogląda.
-        *   **LUB** użytkownik ogląda swój własny profil.
-    .   W przeciwnym wypadku wyświetlane są tylko podstawowe dane (nazwa użytkownika) i komunikat o prywatności wraz z przyciskiem "Dodaj do znajomych".
-2.  **Widok Własnego Profilu:**
-    *   Wyświetla te same dane, co widok publiczny.
-    *   Dodatkowo zawiera przycisk "Edytuj profil".
+**Przebudowa UI i Logiki (stan na 2024-08-01):**
+
+Ekran profilu został gruntownie przebudowany w celu uproszczenia wyglądu i dodania nowych funkcji.
+*   **Layout:** Usunięto `TopAppBar` na rzecz "lekkiego" przycisku "Cofnij" (szewron z tekstem), umieszczonego bezpośrednio na ekranie dla zachowania spójności z innymi ekranami drugiego poziomu.
+*   **Dynamiczne przyciski:** Centralnym elementem są dynamiczne przyciski akcji, które zmieniają się w zależności od relacji z oglądanym użytkownikiem (np. "Dodaj do znajomych", "Akceptuj/Odrzuć", "Usuń znajomego", "Zarządzaj profilem"). Cała logika jest zaimplementowana i działa z poziomu `ProfileViewModel`.
+*   **Logika Widoczności:** Doprecyzowano logikę widoczności. Główna treść profilu jest dostępna, jeśli profil jest publiczny, użytkownik jest znajomym lub ogląda własny profil. W przeciwnym razie wyświetlany jest ekran profilu prywatnego.
+    *   **Karta 'Statystyki'** jest widoczna tylko, gdy profil jest publiczny, gdy przeglądający jest znajomym, lub gdy użytkownik ogląda własny profil (nawet jeśli jest on prywatny).
+*   **Nowe Funkcje:**
+    *   Usunięto zbędną kartę "Informacje".
+    *   Wprowadzono nową kartę **"Interakcje"** z przyciskiem **"Rozpocznij mecz"**, widoczną na profilach wszystkich innych użytkowników.
+    *   Ekran dla profili prywatnych (`PrivateProfileContent`) również wyświetla teraz dynamiczne przyciski akcji (np. 'Akceptuj', 'Anuluj zaproszenie') oraz opcję wysłania wiadomości.
+
+### Krok 6: Dedykowany Ekran Zarządzania Profilem (`ManageProfileScreen`)
+
+*   Zrezygnowano z prostego dialogu na rzecz dedykowanego ekranu dostępnego po kliknięciu "Zarządzaj profilem" na własnym profilu.
+*   Ekran posiada spójny z `UserProfileScreen` przycisk "Cofnij".
+*   Pierwszą zaimplementowaną opcją jest możliwość zmiany statusu profilu (publiczny/prywatny) za pomocą przełącznika `Switch`. Zmiana jest zapisywana w bazie danych w czasie rzeczywistym i od razu widoczna w UI.
 
 ---
 

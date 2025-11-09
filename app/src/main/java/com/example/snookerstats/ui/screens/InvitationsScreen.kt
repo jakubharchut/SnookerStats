@@ -1,5 +1,6 @@
 package com.example.snookerstats.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,11 +18,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.User
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InvitationsScreen(viewModel: CommunityViewModel = hiltViewModel()) {
+fun InvitationsScreen(navController: NavController, viewModel: CommunityViewModel = hiltViewModel()) {
     val uiState = viewModel.uiState
     var selectedFilter by remember { mutableStateOf("Otrzymane") }
 
@@ -57,11 +59,13 @@ fun InvitationsScreen(viewModel: CommunityViewModel = hiltViewModel()) {
         } else {
             when (selectedFilter) {
                 "Otrzymane" -> ReceivedInvitationsScreen(
+                    navController = navController,
                     invites = uiState.receivedInvites,
                     onAccept = { userId, username -> viewModel.acceptInvite(userId, username) },
                     onReject = { userId, username -> viewModel.rejectInvite(userId, username) }
                 )
                 "Wysłane" -> SentInvitationsScreen(
+                    navController = navController,
                     invites = uiState.sentInvites,
                     onCancel = { userId, username -> viewModel.cancelInvite(userId, username) }
                 )
@@ -72,6 +76,7 @@ fun InvitationsScreen(viewModel: CommunityViewModel = hiltViewModel()) {
 
 @Composable
 fun ReceivedInvitationsScreen(
+    navController: NavController,
     invites: List<User>,
     onAccept: (String, String) -> Unit,
     onReject: (String, String) -> Unit
@@ -83,7 +88,7 @@ fun ReceivedInvitationsScreen(
     } else {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(invites) { user ->
-                InvitationCard(user = user) {
+                InvitationCard(user = user, navController = navController) {
                     Row {
                         IconButton(onClick = { onAccept(user.uid, user.username) }) {
                             Icon(
@@ -109,6 +114,7 @@ fun ReceivedInvitationsScreen(
 
 @Composable
 fun SentInvitationsScreen(
+    navController: NavController,
     invites: List<User>,
     onCancel: (String, String) -> Unit
 ) {
@@ -119,7 +125,7 @@ fun SentInvitationsScreen(
     } else {
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(invites) { user ->
-                InvitationCard(user = user) {
+                InvitationCard(user = user, navController = navController) {
                     IconButton(onClick = { onCancel(user.uid, user.username) }) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -135,10 +141,13 @@ fun SentInvitationsScreen(
 @Composable
 private fun InvitationCard(
     user: User,
+    navController: NavController,
     actions: @Composable () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { navController.navigate("user_profile/${user.uid}") }, // Dodano kliknięcie na kartę
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -152,7 +161,7 @@ private fun InvitationCard(
                 tint = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) { // Dodano wagę, aby tekst zajmował dostępne miejsce
                 Text(
                     text = user.username,
                     style = MaterialTheme.typography.bodyLarge,
@@ -164,7 +173,7 @@ private fun InvitationCard(
                     color = Color.Gray
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
+            // Spacer(modifier = Modifier.weight(1f)) // Usunięto, ponieważ Column ma już weight
             actions()
         }
     }

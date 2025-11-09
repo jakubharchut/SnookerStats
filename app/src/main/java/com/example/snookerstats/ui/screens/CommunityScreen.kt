@@ -48,7 +48,7 @@ fun CommunityScreen(
                 viewModel = viewModel,
                 friends = uiState.friends
             )
-            2 -> InvitationsScreen(viewModel = viewModel)
+            2 -> InvitationsScreen(navController = navController, viewModel = viewModel)
         }
     }
 }

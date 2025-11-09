@@ -3,6 +3,7 @@ package com.example.snookerstats.ui.chats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Chat
+import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
@@ -18,7 +19,7 @@ sealed class NavigationEvent {
 
 data class ChatWithUserDetails(
     val chat: Chat,
-    val otherUserName: String
+    val otherUser: User
 )
 
 @HiltViewModel
@@ -46,7 +47,7 @@ class ChatListViewModel @Inject constructor(
                             val otherUserId = chat.participants.firstOrNull { it != userRepository.getCurrentUserId() }
                             if (otherUserId != null) {
                                 when(val userResource = userRepository.getUser(otherUserId)) {
-                                    is Resource.Success -> ChatWithUserDetails(chat, userResource.data.username)
+                                    is Resource.Success -> ChatWithUserDetails(chat, userResource.data)
                                     else -> null
                                 }
                             } else null

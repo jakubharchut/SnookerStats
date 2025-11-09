@@ -54,6 +54,9 @@ dependencies {
     implementation("androidx.compose.material3:material3-window-size-class:1.2.1") // Dodana zależność
     implementation(libs.androidx.compose.material.icons.extended) // Dodana zależność do ikon
 
+    // Coil for image loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
     // AndroidX Security Crypto
     implementation(libs.androidx.security.crypto)
 

@@ -61,7 +61,7 @@ fun UserCard(
                             Icon(imageVector = Icons.Default.PersonRemove, contentDescription = "Remove friend")
                         }
                     } else {
-                        IconButton(onClick = onChatClick, enabled = (status == RelationshipStatus.STRANGER || status == RelationshipStatus.INVITE_SENT) ) {
+                        IconButton(onClick = onChatClick, enabled = (status == RelationshipStatus.STRANGER || status == RelationshipStatus.REQUEST_SENT) ) {
                              Icon(imageVector = Icons.Default.Chat, contentDescription = "Chat")
                         }
                         when (status) {
@@ -70,7 +70,7 @@ fun UserCard(
                                     Icon(imageVector = Icons.Default.PersonAdd, contentDescription = "Add friend")
                                 }
                             }
-                            RelationshipStatus.INVITE_SENT -> {
+                            RelationshipStatus.REQUEST_SENT -> {
                                 IconButton(onClick = {}, enabled = false) {
                                     Icon(imageVector = Icons.Default.Check, contentDescription = "Invite sent")
                                 }

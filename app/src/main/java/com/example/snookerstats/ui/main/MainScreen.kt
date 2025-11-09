@@ -224,20 +224,15 @@ fun NavigationGraph(navController: NavHostController) {
         }
         composable("chat_list") { ChatListScreen() }
         composable("notifications") { NotificationsScreen(navController = navController) }
-        composable(
-            route = "profile?userId={userId}",
-            arguments = listOf(navArgument("userId") {
-                type = NavType.StringType
-                nullable = true
-            })
-        ) {
-            UserProfileScreen()
+        composable("profile") {
+            UserProfileScreen(navController = navController)
         }
         composable(
             route = "user_profile/{userId}",
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
         ) { backStackEntry ->
-            navController.navigate("profile?userId=${backStackEntry.arguments?.getString("userId")}")
+             val userId = backStackEntry.arguments?.getString("userId")
+            UserProfileScreen(navController = navController)
         }
     }
 }

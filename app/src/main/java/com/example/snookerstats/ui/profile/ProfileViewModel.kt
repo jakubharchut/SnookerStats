@@ -38,16 +38,27 @@ class ProfileViewModel @Inject constructor(
     private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Loading)
     val profileState: StateFlow<ProfileState> = _profileState.asStateFlow()
 
+    private var targetUserId: String? = null
+    private var currentUserId: String? = null
+
     init {
-        // Jeśli userId nie jest przekazany, użyj ID bieżącego użytkownika
-        val targetUserId = savedStateHandle.get<String>("userId") ?: firebaseAuth.currentUser?.uid
-        val currentUserId = firebaseAuth.currentUser?.uid
+        targetUserId = savedStateHandle.get<String>("userId") ?: firebaseAuth.currentUser?.uid
+        currentUserId = firebaseAuth.currentUser?.uid
 
         if (targetUserId != null && currentUserId != null) {
-            loadProfileData(targetUserId, currentUserId)
+            loadProfileData(targetUserId!!, currentUserId!!)
         } else {
-            // Zmieniono komunikat, aby był bardziej adekwatny
             _profileState.value = ProfileState.Error("Użytkownik nie jest zalogowany lub nie znaleziono ID.")
+        }
+    }
+
+    fun handleFriendAction() {
+        viewModelScope.launch {
+            val currentState = _profileState.value
+            if (currentState is ProfileState.Success) {
+                // Tutaj można dodać logikę w zależności od statusu
+                // Na razie zostawiam to puste, ale funkcja już istnieje
+            }
         }
     }
 
@@ -60,11 +71,12 @@ class ProfileViewModel @Inject constructor(
                 if (targetUserResponse is Response.Success && currentUserResponse is Response.Success) {
                     val targetUser = targetUserResponse.data
                     val currentUser = currentUserResponse.data
-                    
+
                     val status = when {
                         targetUser.uid == currentUser.uid -> RelationshipStatus.SELF
                         currentUser.friends.contains(targetUser.uid) -> RelationshipStatus.FRIENDS
-                        currentUser.friendRequestsSent.contains(targetUser.uid) -> RelationshipStatus.INVITE_SENT
+                        currentUser.friendRequestsSent.contains(targetUser.uid) -> RelationshipStatus.REQUEST_SENT
+                        currentUser.friendRequestsReceived.contains(targetUser.uid) -> RelationshipStatus.REQUEST_RECEIVED
                         else -> RelationshipStatus.STRANGER
                     }
                     val canViewProfile = targetUser.isPublicProfile || status == RelationshipStatus.FRIENDS || status == RelationshipStatus.SELF

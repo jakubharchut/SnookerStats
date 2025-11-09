@@ -19,12 +19,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class RelationshipStatus {
-    FRIENDS,
-    INVITE_SENT,
-    STRANGER,
-    SELF
-}
+// Usunięto lokalną definicję enum class RelationshipStatus
 
 data class UserSearchResult(
     val user: User,
@@ -99,7 +94,8 @@ class CommunityViewModel @Inject constructor(
                                 val status = when {
                                     user.uid == currentUserId -> RelationshipStatus.SELF
                                     currentUser.friends.contains(user.uid) -> RelationshipStatus.FRIENDS
-                                    currentUser.friendRequestsSent.contains(user.uid) -> RelationshipStatus.INVITE_SENT
+                                    currentUser.friendRequestsSent.contains(user.uid) -> RelationshipStatus.REQUEST_SENT // Zmieniono INVITE_SENT na REQUEST_SENT
+                                    currentUser.friendRequestsReceived.contains(user.uid) -> RelationshipStatus.REQUEST_RECEIVED // Dodano brakujący status
                                     else -> RelationshipStatus.STRANGER
                                 }
                                 UserSearchResult(user, status)
@@ -126,7 +122,7 @@ class CommunityViewModel @Inject constructor(
                 is Response.Success -> {
                     snackbarManager.showMessage("Wysłano zaproszenie do $username")
                     val updatedResults = uiState.searchResults.map {
-                        if (it.user.uid == toUserId) it.copy(status = RelationshipStatus.INVITE_SENT) else it
+                        if (it.user.uid == toUserId) it.copy(status = RelationshipStatus.REQUEST_SENT) else it // Zmieniono INVITE_SENT na REQUEST_SENT
                     }
                     uiState = uiState.copy(searchResults = updatedResults)
                 }

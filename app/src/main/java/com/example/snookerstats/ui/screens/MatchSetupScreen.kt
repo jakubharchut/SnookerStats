@@ -40,7 +40,7 @@ fun MatchSetupScreen(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Konfiguracja Meczu", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 24.dp))
+                Text("Konfiguracja Meczu", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(top = 32.dp, bottom = 24.dp))
 
                 // Opponent Info Section
                 when (val opponent = uiState.opponentType) {
@@ -48,7 +48,8 @@ fun MatchSetupScreen(
                     is OpponentType.PLAYER -> {
                         UserAvatar(user = opponent.user, modifier = Modifier.size(80.dp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = opponent.user.username, style = MaterialTheme.typography.titleLarge)
+                        Text(text = "${opponent.user.firstName} ${opponent.user.lastName}", style = MaterialTheme.typography.titleLarge)
+                        Text(text = "@${opponent.user.username}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     is OpponentType.GUEST -> {
                         Text("Mecz z Gościem", style = MaterialTheme.typography.titleLarge)

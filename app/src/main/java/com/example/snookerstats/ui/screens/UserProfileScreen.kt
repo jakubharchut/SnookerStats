@@ -1,7 +1,6 @@
 package com.example.snookerstats.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.*
@@ -9,7 +8,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -97,6 +95,7 @@ fun UserProfileScreen(
 
                 if (canViewFullProfile) {
                     UserProfileContent(
+                        navController = navController,
                         user = profileState.targetUser,
                         status = profileState.relationshipStatus,
                         onActionClick = {
@@ -125,6 +124,7 @@ fun UserProfileScreen(
 
 @Composable
 private fun UserProfileContent(
+    navController: NavController,
     user: User,
     status: RelationshipStatus,
     onActionClick: () -> Unit,
@@ -143,33 +143,30 @@ private fun UserProfileContent(
         Text(text = "${user.firstName} ${user.lastName}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(24.dp))
 
-        ActionButtons(status = status, onActionClick = onActionClick, onRejectClick = onRejectClick, onChatClick = onChatClick)
+        ActionButtons(status = status, onActionClick = onActionClick, onRejectClick = onRejectClick, onChatClick = onChatClick, onPlayClick = {
+            navController.navigate("match_setup/${user.uid}")
+        })
         Spacer(modifier = Modifier.height(24.dp))
 
         if (user.publicProfile || status == RelationshipStatus.FRIENDS || status == RelationshipStatus.SELF) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Statystyki", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Podstawowe Informacje", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
                     StatRow(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = "0")
                     StatRow(icon = Icons.Default.Star, label = "Najwyższy break", value = "0")
                     StatRow(icon = Icons.Default.Leaderboard, label = "Wygrane mecze", value = "0%")
+                    StatRow(icon = Icons.Default.Groups, label = "Klub", value = user.club ?: "Brak klubu")
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        if (status != RelationshipStatus.SELF) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Interakcje", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { /* TODO */ }) {
-                        Icon(Icons.Default.PlayArrow, null)
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Rozpocznij mecz")
-                    }
-                }
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Trofea", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Wkrótce dostępne...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             }
         }
     }
@@ -180,55 +177,69 @@ private fun ActionButtons(
     status: RelationshipStatus,
     onActionClick: () -> Unit,
     onRejectClick: () -> Unit,
-    onChatClick: () -> Unit
+    onChatClick: () -> Unit,
+    onPlayClick: () -> Unit
 ) {
-    when (status) {
-        RelationshipStatus.SELF -> Button(onClick = onActionClick) { Text("Zarządzaj profilem") }
-        RelationshipStatus.REQUEST_RECEIVED -> {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onActionClick) {
-                        Icon(Icons.Default.Check, null)
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Akceptuj")
-                    }
-                    OutlinedButton(onClick = onRejectClick) {
-                        Icon(Icons.Default.Close, null)
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Odrzuć")
-                    }
-                }
-                OutlinedButton(onClick = onChatClick) {
-                    Icon(Icons.Default.Chat, null)
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text("Wiadomość")
-                }
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (status != RelationshipStatus.SELF) {
+            Button(
+                onClick = onPlayClick,
+                modifier = Modifier.fillMaxWidth(0.7f)
+            ) {
+                Icon(Icons.Default.PlayArrow, null)
+                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                Text("Zagraj")
             }
         }
-        else -> {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                when (status) {
-                    RelationshipStatus.FRIENDS -> Button(onClick = onActionClick) {
-                        Icon(Icons.Default.PersonRemove, null)
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Usuń znajomego")
+
+        when (status) {
+            RelationshipStatus.SELF -> Button(onClick = onActionClick) { Text("Zarządzaj profilem") }
+            RelationshipStatus.REQUEST_RECEIVED -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = onActionClick) {
+                            Icon(Icons.Default.Check, null)
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Akceptuj")
+                        }
+                        OutlinedButton(onClick = onRejectClick) {
+                            Icon(Icons.Default.Close, null)
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Odrzuć")
+                        }
                     }
-                    RelationshipStatus.STRANGER, RelationshipStatus.NOT_FRIENDS -> Button(onClick = onActionClick) {
-                        Icon(Icons.Default.PersonAdd, null)
+                    OutlinedButton(onClick = onChatClick) {
+                        Icon(Icons.Default.Chat, null)
                         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Dodaj do znajomych")
+                        Text("Wiadomość")
                     }
-                    RelationshipStatus.REQUEST_SENT -> OutlinedButton(onClick = onActionClick) {
-                        Icon(Icons.Default.Cancel, null)
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Anuluj zaproszenie")
-                    }
-                    else -> {}
                 }
-                OutlinedButton(onClick = onChatClick) {
-                    Icon(Icons.Default.Chat, null)
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text("Wiadomość")
+            }
+            else -> {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    when (status) {
+                        RelationshipStatus.FRIENDS -> Button(onClick = onActionClick) {
+                            Icon(Icons.Default.PersonRemove, null)
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Usuń znajomego")
+                        }
+                        RelationshipStatus.STRANGER, RelationshipStatus.NOT_FRIENDS -> Button(onClick = onActionClick) {
+                            Icon(Icons.Default.PersonAdd, null)
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Dodaj do znajomych")
+                        }
+                        RelationshipStatus.REQUEST_SENT -> OutlinedButton(onClick = onActionClick) {
+                            Icon(Icons.Default.Cancel, null)
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Anuluj zaproszenie")
+                        }
+                        else -> {}
+                    }
+                    OutlinedButton(onClick = onChatClick) {
+                        Icon(Icons.Default.Chat, null)
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text("Wiadomość")
+                    }
                 }
             }
         }

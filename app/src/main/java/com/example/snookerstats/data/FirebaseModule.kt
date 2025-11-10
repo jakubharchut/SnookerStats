@@ -1,18 +1,8 @@
 package com.example.snookerstats.data
 
 import com.example.snookerstats.data.local.preferences.EncryptedPrefsManager
-import com.example.snookerstats.data.repository.AuthRepositoryImpl
-import com.example.snookerstats.data.repository.ChatRepositoryImpl
-import com.example.snookerstats.data.repository.CommunityRepositoryImpl
-import com.example.snookerstats.data.repository.NotificationRepositoryImpl
-import com.example.snookerstats.data.repository.ProfileRepositoryImpl
-import com.example.snookerstats.data.repository.UserRepositoryImpl
-import com.example.snookerstats.domain.repository.IAuthRepository
-import com.example.snookerstats.domain.repository.ChatRepository
-import com.example.snookerstats.domain.repository.CommunityRepository
-import com.example.snookerstats.domain.repository.NotificationRepository
-import com.example.snookerstats.domain.repository.ProfileRepository
-import com.example.snookerstats.domain.repository.UserRepository
+import com.example.snookerstats.data.repository.*
+import com.example.snookerstats.domain.repository.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
@@ -52,6 +42,13 @@ object FirebaseModule {
         firestore: FirebaseFirestore,
         auth: FirebaseAuth
     ): CommunityRepository = CommunityRepositoryImpl(firestore, auth)
+        
+    @Provides
+    @Singleton
+    fun provideMatchRepository(
+        firestore: FirebaseFirestore,
+        authRepository: IAuthRepository
+    ): MatchRepository = MatchRepositoryImpl(firestore, authRepository)
 
     @Provides
     @Singleton

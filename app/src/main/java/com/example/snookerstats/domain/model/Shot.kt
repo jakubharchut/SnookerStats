@@ -1,14 +1,20 @@
 package com.example.snookerstats.domain.model
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+import com.google.firebase.Timestamp
 
-@Entity(tableName = "shots")
+enum class ShotType {
+    POT, // Wbicie
+    FOUL,
+    MISS,
+    SAFETY,
+    END_BREAK // Specjalny typ oznaczający koniec podejścia
+}
+
 data class Shot(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val frameId: Long, // Klucz obcy do Frame
-    val timestamp: Long,
-    val ball: String,
-    val points: Int,
-    val isFoul: Boolean
+    val playerId: String = "",
+    val points: Int = 0,
+    val type: ShotType = ShotType.POT,
+    val timestamp: Timestamp = Timestamp.now()
+    // Możemy tu dodać więcej szczegółów, np. która bila, jeśli to wbicie
+    // val ball: Ball? = null 
 )

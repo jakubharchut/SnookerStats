@@ -58,13 +58,21 @@ fun PlayerSearchScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(state.data) { user ->
+                    items(state.data) { userWithStatus ->
                         UserCard(
-                            user = user,
-                            status = RelationshipStatus.NOT_FRIENDS, // This needs to be dynamic
-                            onClick = { navController.navigate("profile/${user.uid}") },
-                            onActionClick = { viewModel.sendFriendRequest(user.uid) },
-                            onChatClick = { viewModel.startChatWithUser(user) }
+                            user = userWithStatus.user,
+                            status = userWithStatus.relationshipStatus,
+                            onClick = { navController.navigate("user_profile/${userWithStatus.user.uid}") },
+                            onActionClick = {
+                                when (userWithStatus.relationshipStatus) {
+                                    RelationshipStatus.NOT_FRIENDS, RelationshipStatus.STRANGER -> viewModel.sendFriendRequest(userWithStatus.user.uid)
+                                    RelationshipStatus.FRIENDS -> viewModel.removeFriend(userWithStatus.user.uid)
+                                    RelationshipStatus.REQUEST_SENT -> viewModel.cancelFriendRequest(userWithStatus.user.uid)
+                                    RelationshipStatus.REQUEST_RECEIVED -> viewModel.acceptFriendRequest(userWithStatus.user.uid)
+                                    else -> {} // Obsłuż inne stany, jeśli to konieczne
+                                }
+                            },
+                            onChatClick = { viewModel.startChatWithUser(userWithStatus.user) }
                         )
                     }
                 }

@@ -47,6 +47,8 @@ class ScoringViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ScoringState())
     val uiState: StateFlow<ScoringState> = _uiState.asStateFlow()
 
+    private val stateHistory = mutableListOf<ScoringState>()
+
     init {
         val matchId = "test_match_123"
         val numberOfReds = savedStateHandle.get<Int>("numberOfReds") ?: 15
@@ -94,6 +96,7 @@ class ScoringViewModel @Inject constructor(
     }
 
     fun onBallClicked(ball: SnookerBall) {
+        stateHistory.add(uiState.value)
         _uiState.update { currentState ->
             if (currentState.isFrameOver) return@update currentState
 
@@ -109,7 +112,11 @@ class ScoringViewModel @Inject constructor(
                     else ball is SnookerBall.Red
                 }
             }
-            if (!isValid) return@update currentState
+            if (!isValid) {
+                stateHistory.removeLast() // remove invalid state change
+                return@update currentState
+            }
+
 
             val pointsToAdd = if (currentState.isFreeBall && currentState.redsRemaining > 0) 1 else ball.points
             val activePlayerState = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player1 else currentState.player2
@@ -175,6 +182,7 @@ class ScoringViewModel @Inject constructor(
     fun onDismissFoulDialog() { _uiState.update { it.copy(showFoulDialog = false) } }
 
     fun onFoulConfirmed(foulPoints: Int, isFreeBall: Boolean, redsPotted: Int) {
+        stateHistory.add(uiState.value)
         _uiState.update { currentState ->
             val opponentState = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player2 else currentState.player1
             if (opponentState == null) return@update currentState
@@ -208,6 +216,7 @@ class ScoringViewModel @Inject constructor(
     fun onMissClicked() { endTurn() }
 
     private fun endTurn() {
+        stateHistory.add(uiState.value)
         _uiState.update { currentState ->
             val nextPlayerId = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player2?.user?.uid else currentState.player1?.user?.uid
             val nextColorOn = if(currentState.redsRemaining == 0) currentState.nextColorBallOn ?: SnookerBall.Yellow else null
@@ -222,7 +231,12 @@ class ScoringViewModel @Inject constructor(
         }
     }
 
-    fun onUndoClicked() { /* TODO */ }
+    fun onUndoClicked() {
+        if (stateHistory.isNotEmpty()) {
+            val lastState = stateHistory.removeLast()
+            _uiState.value = lastState
+        }
+    }
     fun onEndFrameClicked() { /* TODO */ }
     fun onRepeatFrameClicked() { /* TODO */ }
     fun onEndMatchClicked() { /* TODO */ }

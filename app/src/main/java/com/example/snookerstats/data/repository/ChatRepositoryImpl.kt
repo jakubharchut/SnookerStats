@@ -111,4 +111,15 @@ class ChatRepositoryImpl @Inject constructor(
             Resource.Error(e.message ?: "Błąd usuwania czatu")
         }
     }
+
+    override suspend fun updateUserPresenceInChat(chatId: String, userId: String?): Resource<Unit> {
+        return try {
+            firestore.collection("chats").document(chatId)
+                .update("userPresentInChat", userId)
+                .await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Błąd aktualizacji obecności")
+        }
+    }
 }

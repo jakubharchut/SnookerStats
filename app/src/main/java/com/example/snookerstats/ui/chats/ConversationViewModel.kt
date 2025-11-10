@@ -25,6 +25,7 @@ class ConversationViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val chatId: String = savedStateHandle.get<String>("chatId")!!
+    private val currentUserId: String? = authRepository.currentUser?.uid
 
     private val _messagesState = MutableStateFlow<Resource<List<Message>>>(Resource.Loading)
     val messagesState: StateFlow<Resource<List<Message>>> = _messagesState.asStateFlow()
@@ -39,10 +40,15 @@ class ConversationViewModel @Inject constructor(
         loadMessages()
         loadOtherUserDetails()
     }
+    
+    fun setUserPresence(isPresent: Boolean) {
+        viewModelScope.launch {
+            chatRepository.updateUserPresenceInChat(chatId, if (isPresent) currentUserId else null)
+        }
+    }
 
     private fun loadOtherUserDetails() {
         viewModelScope.launch {
-            val currentUserId = authRepository.currentUser?.uid
             val participants = chatId.split("_")
             val otherUserId = participants.firstOrNull { it != currentUserId }
 

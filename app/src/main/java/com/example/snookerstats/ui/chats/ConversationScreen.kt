@@ -63,6 +63,13 @@ fun ConversationScreen(
 
     val currentUserId = authRepository.currentUser?.uid
 
+    DisposableEffect(Unit) {
+        viewModel.setUserPresence(true)
+        onDispose {
+            viewModel.setUserPresence(false)
+        }
+    }
+
     LaunchedEffect(messagesState) {
         if (messagesState is Resource.Success) {
             val messages = (messagesState as Resource.Success<List<Message>>).data

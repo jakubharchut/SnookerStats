@@ -7,5 +7,6 @@ data class Chat(
     @DocumentId val id: String = "",
     val participants: List<String> = emptyList(),
     val lastMessage: String? = null,
-    val lastMessageTimestamp: Timestamp? = null
+    val lastMessageTimestamp: Timestamp? = null,
+    val userPresentInChat: String? = null // Nowe pole do śledzenia obecności
 )

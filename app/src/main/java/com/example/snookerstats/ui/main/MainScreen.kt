@@ -210,11 +210,11 @@ fun NavigationGraph(internalNavController: NavHostController) {
             MatchSetupScreen(navController = internalNavController)
         }
         composable(
-            route = "scoring/{numberOfReds}",
-            arguments = listOf(navArgument("numberOfReds") {
-                type = NavType.IntType
-                defaultValue = 15
-            })
+            route = "scoring/{matchId}/{numberOfReds}",
+            arguments = listOf(
+                navArgument("matchId") { type = NavType.StringType },
+                navArgument("numberOfReds") { type = NavType.IntType }
+            )
         ) { 
             ScoringScreen(navController = internalNavController) 
         }

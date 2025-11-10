@@ -7,11 +7,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import com.example.snookerstats.ui.common.UserAvatar
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,6 +24,15 @@ fun MatchSetupScreen(
     viewModel: MatchSetupViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(Unit) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.navigationEvent.collectLatest { route ->
+                navController.navigate(route)
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Back Button
@@ -101,7 +114,7 @@ fun MatchSetupScreen(
             }
 
             Button(
-                onClick = { navController.navigate("scoring/${uiState.matchFormat.reds}") },
+                onClick = viewModel::onStartMatchClicked,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),

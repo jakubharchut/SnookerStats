@@ -62,6 +62,8 @@ Jest to centralny punkt konfiguracji gry, niezależnie od ścieżki, którą wyb
 - **Synchronizacja na Żywo:** Mecz musi być w pełni synchronizowany w czasie rzeczywistym między dwoma urządzeniami graczy. Każda akcja wykonana przez jednego gracza jest natychmiast widoczna u drugiego.
 - **Zasady Snookera:** Logika aplikacji musi uwzględniać kluczowe zasady gry, takie jak sekwencja wbijania bil (czerwona -> kolor), faule, `miss` oraz `free ball`.
 - **Statystyki w Czasie Rzeczywistym:** Aplikacja musi na bieżąco obliczać i wyświetlać kluczowe dane, takie jak: aktualny break, punkty pozostałe na stole, liczba czerwonych na stole, informacja o potrzebie snookera.
+- **Wizualizacja Brejka:** Oprócz numerycznej wartości brejka, aplikacja powinna graficznie przedstawiać bile, które tworzą aktualny brejk. Jeśli w brejku znajduje się wiele bil tego samego koloru (np. dwie czerwone), reprezentacja graficzna powinna to odzwierciedlać (np. jedna czerwona kula z cyfrą '2' w środku lub obok).
+- **Zegar Czasu Rozbicia (Break Timer):** Na ekranie powinien być wyświetlany zegar, który rozpoczyna odliczanie czasu od momentu wykonania pierwszego uderzenia (rozbicia) w danym podejściu. Zegar powinien pokazywać aktualny czas trwania podejścia.
 - **Powrót do Gry:** Użytkownik musi mieć możliwość powrotu do niedokończonego meczu po przypadkowym zamknięciu aplikacji.
 - **Wizualizacja:** Zebrane dane muszą być wystarczająco szczegółowe, aby w przyszłości umożliwić stworzenie wizualizacji przebiegu frejma (np. w formie histogramu).
 
@@ -85,6 +87,8 @@ Jest to centralny punkt konfiguracji gry, niezależnie od ścieżki, którą wyb
     - Implementacja panelu statystyk bieżących (break, punkty na stole itp.).
     - Dodanie wszystkich przycisków akcji (bile, faule, koniec podejścia).
     - Stworzenie UI dla okna dialogowego faulu.
+    - **Implementacja wizualizacji brejka.**
+    - **Dodanie komponentu zegara czasu rozbicia.**
 - **Szacowany czas:** ok. 16 godzin.
 
 ### Dzień 4-5: Ożywienie Logiki w `ScoringViewModel`
@@ -94,6 +98,8 @@ Jest to centralny punkt konfiguracji gry, niezależnie od ścieżki, którą wyb
     - Implementacja logiki dodawania uderzeń (`addShot`).
     - Zaimplementowanie walidacji ruchów (które bile są teraz aktywne).
     - Implementacja pełnej logiki fauli, w tym `miss` i `free ball`.
+    - **Implementacja logiki dla zegara czasu rozbicia.**
+    - **Implementacja logiki aktualizacji wizualizacji brejka.**
 - **Szacowany czas:** ok. 16 godzin.
 
 ### Dzień 6: Synchronizacja, Powiadomienia i Finalizacja

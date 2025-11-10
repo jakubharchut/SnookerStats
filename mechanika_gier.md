@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: Mechanika Gry
 
-## Wersja: 1.1 (stan na 2025-11-10)
+## Wersja: 1.2 (stan na 2025-11-10)
 
 ---
 
@@ -24,52 +24,85 @@ Jest to najszybsza, kontekstowa metoda rozpoczęcia gry z konkretnym przeciwniki
 
 ### 2.2. Ścieżka 2: Inicjowanie z Zakładki "Graj"
 
-Jest to główna, centralna ścieżka, która obsługuje wszystkie możliwe scenariusze gry.
+Jest to główna, centralna ścieżka, która obsługuje wszystkie możliwe scenariusze gry. Ekran "Graj" został zaimplementowany w formie zakładek, aby zapewnić spójność z innymi częściami aplikacji.
 
-1.  Użytkownik wchodzi w zakładkę **"Graj"** na dolnym pasku nawigacyjnym.
-2.  Widzi interfejs oparty na zakładkach: "Gracze", "Gość", "Trening", "Turniej".
-3.  Wybór opcji przenosi go do `MatchSetupScreen` w odpowiednim trybie.
+- **Zakładka "Gracze":**
+    1.  Wyświetla pogrupowaną listę potencjalnych przeciwników: "Ulubieni", "Klubowicze", "Pozostali znajomi".
+    2.  Umożliwia dodawanie/usuwanie graczy do/z "Ulubionych" za pomocą ikony gwiazdki.
+    3.  Zawiera przycisk "Szukaj gracza", który przenosi do pełnej wyszukiwarki w module "Społeczność".
+    4.  Po wybraniu gracza z listy, użytkownik przechodzi do `MatchSetupScreen`.
 
-### 2.3. Podsumowanie i Spójność Architektury
+- **Zakładka "Gość":**
+    1.  Pozwala na rozpoczęcie gry z przeciwnikiem, który nie ma konta w aplikacji.
+    2.  Przenosi do `MatchSetupScreen`, gdzie należy wpisać imię gościa.
 
-Podejście to zapewnia:
-- **Wiele punktów wejścia** do rozpoczęcia meczu, co zwiększa wygodę.
-- **Współdzielony i reużywalny ekran `MatchSetupScreen`**, który jest centralnym punktem konfiguracji gry, niezależnie od ścieżki.
-- **Obsługę wszystkich kluczowych scenariuszy**: gra ze znajomym, gra z osobą spoza aplikacji oraz trening solo.
+- **Zakładka "Trening":**
+    1.  Umożliwia rozpoczęcie gry solo.
+    2.  Przenosi do `MatchSetupScreen` w trybie treningu.
+    
+- **Zakładka "Turniej":**
+    1.  Placeholder dla przyszłej funkcjonalności turniejowej.
 
----
+### 2.3. Ekran Konfiguracji Meczu (`MatchSetupScreen`)
+Jest to centralny punkt konfiguracji gry, niezależnie od ścieżki, którą wybrał użytkownik.
 
-## 3. Ulepszenia Interfejsu Inicjacji Meczu (Listopad 2025)
-
-Wprowadzono szereg ulepszeń w interfejsie użytkownika modułu gry, aby był on bardziej spójny z resztą aplikacji i bardziej funkcjonalny.
-
-### 3.1. Ekran "Graj" w Stylu Zakładek
-- **Problem:** Początkowa wersja ekranu "Graj" z trzema przyciskami była niespójna z resztą aplikacji.
-- **Rozwiązanie:** Ekran `PlayScreen` został gruntownie przebudowany. Główna nawigacja opiera się teraz na komponencie `TabRow` (zakładki), spójnym z ekranem "Społeczność".
-- **Zakładki:**
-    - **Gracze:** Do rozpoczynania meczu z zarejestrowanymi użytkownikami.
-    - **Gość:** Do gry z przeciwnikiem bez konta.
-    - **Trening:** Do gry solo.
-    - **Turniej:** Zakładka-placeholder, zarezerwowana dla przyszłej funkcjonalności turniejów.
-
-### 3.2. Grupowana Lista Przeciwników z Ulubionymi
-- **Problem:** Prosta lista znajomych była nieefektywna przy większej liczbie kontaktów.
-- **Rozwiązanie:** W zakładce "Gracze" zaimplementowano zaawansowaną, grupowaną i rozwijaną listę przeciwników.
-    - **System Ulubionych:** Użytkownik może oznaczać graczy jako "ulubionych" za pomocą ikony gwiazdki, co przenosi ich do dedykowanej grupy na górze listy.
-    - **Grupowanie:** Lista jest podzielona na rozwijane sekcje: "Ulubieni", "Klubowicze" i "Pozostali znajomi". Zapewnia to przejrzystość i przygotowuje aplikację pod pełną funkcjonalność klubów.
-    - **Wyszukiwarka:** Poniżej listy znajduje się przycisk "Szukaj gracza", który przenosi do pełnej wyszukiwarki w module "Społeczność".
-
-### 3.3. Ulepszenia Ekranu Konfiguracji Meczu
-- **Dodano format "3 Czerwone":** Rozszerzono opcje formatu meczu o popularny wariant treningowy.
-- **Przycisk Wstecz:** Dodano przycisk "Wstecz", aby umożliwić użytkownikowi łatwy powrót do ekranu wyboru przeciwnika.
-- **Spójny Wygląd:** Zaktualizowano sposób wyświetlania informacji o graczu, aby był spójny z innymi częściami aplikacji (Imię Nazwisko + @username).
+- **Wyświetlanie Przeciwnika:** Pokazuje, z kim gramy (profil gracza, pole na imię gościa, lub informacja o treningu solo).
+- **Przycisk Wstecz:** Umożliwia łatwy powrót do poprzedniego ekranu.
+- **Konfiguracja:**
+    - **Rodzaj Meczu:** Sparingowy / Rankingowy.
+    - **Format Meczu:** Liczba czerwonych bil (15, 10, 6, 3).
+- **Rozpoczęcie Gry:** Przycisk "Rozpocznij Mecz" przenosi do `ScoringScreen`.
 
 ---
 
-## 4. Plan Implementacji (Etap 6)
+## 3. Mechanika Ekranu Wprowadzania Wyniku (`ScoringScreen`) - WIZJA
 
-Realizacja powyższego przepływu wymaga stworzenia i połączenia nawigacją następujących ekranów:
+### 3.1. Kluczowe Założenia
+- **Rejestracja Każdego Ruchu:** Aplikacja musi zapisywać każde uderzenie (`Shot`) jako osobny obiekt, zawierający typ (wbicie, faul, miss), wartość punktową oraz `timestamp`.
+- **Synchronizacja na Żywo:** Mecz musi być w pełni synchronizowany w czasie rzeczywistym między dwoma urządzeniami graczy. Każda akcja wykonana przez jednego gracza jest natychmiast widoczna u drugiego.
+- **Zasady Snookera:** Logika aplikacji musi uwzględniać kluczowe zasady gry, takie jak sekwencja wbijania bil (czerwona -> kolor), faule, `miss` oraz `free ball`.
+- **Statystyki w Czasie Rzeczywistym:** Aplikacja musi na bieżąco obliczać i wyświetlać kluczowe dane, takie jak: aktualny break, punkty pozostałe na stole, liczba czerwonych na stole, informacja o potrzebie snookera.
+- **Powrót do Gry:** Użytkownik musi mieć możliwość powrotu do niedokończonego meczu po przypadkowym zamknięciu aplikacji.
+- **Wizualizacja:** Zebrane dane muszą być wystarczająco szczegółowe, aby w przyszłości umożliwić stworzenie wizualizacji przebiegu frejma (np. w formie histogramu).
 
-1.  **`PlayScreen`**: Zaimplementowany z zakładkami i listą graczy.
-2.  **`MatchSetupScreen`**: Zaimplementowany szkielet UI i ViewModel.
-3.  **`ScoringScreen`**: Główny ekran do wprowadzania wyniku uderzenie po uderzeniu (do zrobienia).
+---
+
+## 4. Harmonogram Wdrożenia (Etap 6)
+
+### Dzień 1: Fundamenty i Szkielet Danych
+- **Cel:** Przygotowanie całej architektury pod logikę gry.
+- **Zadania:**
+    - Rozszerzenie modeli danych (`Match`, `Frame`, `Shot`).
+    - Stworzenie interfejsu `MatchRepository`.
+    - Stworzenie podstawowej implementacji `MatchRepositoryImpl`.
+    - Stworzenie szkieletu `ScoringViewModel`.
+- **Szacowany czas:** ok. 7-8 godzin.
+
+### Dzień 2-3: Implementacja `ScoringScreen` (UI)
+- **Cel:** Zbudowanie kompletnego, ale jeszcze "głupiego" (bez pełnej logiki) interfejsu użytkownika.
+- **Zadania:**
+    - Stworzenie górnego panelu z wynikami i informacjami o graczach.
+    - Implementacja panelu statystyk bieżących (break, punkty na stole itp.).
+    - Dodanie wszystkich przycisków akcji (bile, faule, koniec podejścia).
+    - Stworzenie UI dla okna dialogowego faulu.
+- **Szacowany czas:** ok. 16 godzin.
+
+### Dzień 4-5: Ożywienie Logiki w `ScoringViewModel`
+- **Cel:** Zaimplementowanie wszystkich zasad snookera i logiki biznesowej gry.
+- **Zadania:**
+    - Połączenie `ScoringViewModel` z `MatchRepository` i nasłuchiwanie na `matchStream`.
+    - Implementacja logiki dodawania uderzeń (`addShot`).
+    - Zaimplementowanie walidacji ruchów (które bile są teraz aktywne).
+    - Implementacja pełnej logiki fauli, w tym `miss` i `free ball`.
+- **Szacowany czas:** ok. 16 godzin.
+
+### Dzień 6: Synchronizacja, Powiadomienia i Finalizacja
+- **Cel:** Sprawienie, by mecz działał w czasie rzeczywistym między dwoma graczami.
+- **Zadania:**
+    - Implementacja Cloud Function `sendMatchInvitationNotification`.
+    - Pełna implementacja `startNewMatch` w repozytorium (tworzenie dokumentu w Firestore).
+    - Implementacja mechanizmu "Wróć do gry".
+    - Testy end-to-end i poprawki.
+- **Szacowany czas:** ok. 8 godzin.
+
+**Całkowity szacowany czas:** ok. 6-7 dni roboczych.

@@ -9,6 +9,7 @@ import com.example.snookerstats.domain.repository.CommunityRepository
 import com.example.snookerstats.ui.screens.RelationshipStatus
 import com.example.snookerstats.ui.screens.UserWithStatus
 import com.example.snookerstats.util.Resource
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -23,8 +24,12 @@ sealed class CommunityNavigationEvent {
 class CommunityViewModel @Inject constructor(
     private val repository: CommunityRepository,
     private val chatRepository: ChatRepository,
-    private val authRepository: IAuthRepository // Zmiana na IAuthRepository
+    private val authRepository: IAuthRepository,
+    private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     private val _searchResults = MutableStateFlow<Resource<List<UserWithStatus>>>(Resource.Success(emptyList()))
     val searchResults: StateFlow<Resource<List<UserWithStatus>>> = _searchResults.asStateFlow()
@@ -44,21 +49,28 @@ class CommunityViewModel @Inject constructor(
     private val _navigationEvent = Channel<CommunityNavigationEvent>()
     val navigationEvent = _navigationEvent.receiveAsFlow()
 
-    private val _currentUser = MutableStateFlow<User?>(null) // StateFlow dla aktualnego użytkownika
+    private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
     init {
-        // Pobierz aktualnego użytkownika po inicjalizacji ViewModelu
-        viewModelScope.launch {
-            authRepository.getCurrentUser().collectLatest { user ->
-                _currentUser.value = user
+        val currentUserId = firebaseAuth.currentUser?.uid
+        if (currentUserId != null) {
+            viewModelScope.launch {
+                authRepository.getUserProfile(currentUserId).collectLatest { resource ->
+                    if (resource is Resource.Success) {
+                        _currentUser.value = resource.data
+                        onSearchQueryChanged(_searchQuery.value)
+                    }
+                }
             }
         }
     }
 
     fun onSearchQueryChanged(query: String) {
+        _searchQuery.value = query
         viewModelScope.launch {
             if (query.length >= 3) {
+                _searchResults.value = Resource.Loading
                 repository.searchUsers(query).collect { resource ->
                     _searchResults.value = when (resource) {
                         is Resource.Success -> {
@@ -69,7 +81,7 @@ class CommunityViewModel @Inject constructor(
                             Resource.Success(usersWithStatus)
                         }
                         is Resource.Error -> Resource.Error(resource.message)
-                        is Resource.Loading -> Resource.Loading
+                        else -> Resource.Loading
                     }
                 }
             } else {
@@ -79,7 +91,7 @@ class CommunityViewModel @Inject constructor(
     }
 
     private fun getRelationshipStatus(currentUser: User?, otherUser: User): RelationshipStatus {
-        currentUser ?: return RelationshipStatus.STRANGER // Jeśli brak zalogowanego użytkownika
+        currentUser ?: return RelationshipStatus.STRANGER
 
         return when {
             currentUser.uid == otherUser.uid -> RelationshipStatus.SELF
@@ -114,17 +126,11 @@ class CommunityViewModel @Inject constructor(
         }
     }
 
-    private fun handleAction(action: suspend () -> Resource<Any>, successMessage: String, refreshSearch: Boolean = false) {
+    private fun handleAction(action: suspend () -> Resource<Any>, successMessage: String) {
         viewModelScope.launch {
             when (val response = action()) {
                 is Resource.Success -> {
                     _eventMessage.emit(successMessage)
-                    if (refreshSearch) {
-                        // Odśwież wyniki wyszukiwania po wykonaniu akcji, jeśli jest to potrzebne
-                        val currentSearchQuery = (_searchResults.value as? Resource.Success)?.data?.firstOrNull()?.user?.username?.substring(0, 3) ?: "" // Pobierz zapytanie z wyników
-                        onSearchQueryChanged(currentSearchQuery) // Odśwież wyniki
-                    }
-                    // Odśwież inne listy, np. znajomych czy zaproszeń
                     fetchFriends()
                     fetchReceivedRequests()
                     fetchSentRequests()
@@ -148,11 +154,10 @@ class CommunityViewModel @Inject constructor(
             }
         }
     }
-
-    // Zaktualizowane funkcje, aby odświeżały wyszukiwanie i listy
-    fun sendFriendRequest(toUserId: String) = handleAction({ repository.sendFriendRequest(toUserId) }, "Zaproszenie wysłane!", true)
-    fun cancelFriendRequest(toUserId: String) = handleAction({ repository.cancelFriendRequest(toUserId) }, "Zaproszenie anulowane.", true)
-    fun acceptFriendRequest(fromUserId: String) = handleAction({ repository.acceptFriendRequest(fromUserId) }, "Zaproszenie zaakceptowane.", true)
-    fun rejectFriendRequest(fromUserId: String) = handleAction({ repository.rejectFriendRequest(fromUserId) }, "Zaproszenie odrzucone.", true)
-    fun removeFriend(friendId: String) = handleAction({ repository.removeFriend(friendId) }, "Znajomy usunięty.", true)
+    
+    fun sendFriendRequest(toUserId: String) = handleAction({ repository.sendFriendRequest(toUserId) }, "Zaproszenie wysłane!")
+    fun cancelFriendRequest(toUserId: String) = handleAction({ repository.cancelFriendRequest(toUserId) }, "Zaproszenie anulowane.")
+    fun acceptFriendRequest(fromUserId: String) = handleAction({ repository.acceptFriendRequest(fromUserId) }, "Zaproszenie zaakceptowane.")
+    fun rejectFriendRequest(fromUserId: String) = handleAction({ repository.rejectFriendRequest(fromUserId) }, "Zaproszenie odrzucone.")
+    fun removeFriend(friendId: String) = handleAction({ repository.removeFriend(friendId) }, "Znajomy usunięty.")
 }

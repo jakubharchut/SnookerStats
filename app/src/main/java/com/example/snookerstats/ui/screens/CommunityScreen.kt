@@ -138,7 +138,7 @@ fun FriendsScreen(
                 UserCard(
                     user = user,
                     status = RelationshipStatus.FRIENDS,
-                    onClick = { navController.navigate("profile/${user.uid}") },
+                    onClick = { navController.navigate("user_profile/${user.uid}") },
                     onActionClick = { 
                         userToRemove = user
                         showDialog = true

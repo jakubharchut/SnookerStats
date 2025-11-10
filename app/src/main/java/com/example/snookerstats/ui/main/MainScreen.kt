@@ -27,9 +27,12 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import com.example.snookerstats.MainActivity
+import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.ui.auth.AuthViewModel
 import com.example.snookerstats.ui.auth.NavigationEvent
 import com.example.snookerstats.ui.chats.ChatListScreen
+import com.example.snookerstats.ui.chats.ConversationScreen
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.ui.notifications.NotificationViewModel
 import com.example.snookerstats.ui.profile.ManageProfileScreen
@@ -50,6 +53,14 @@ fun MainScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val unreadNotificationsCount by notificationViewModel.unreadNotificationCount.collectAsState()
+
+    val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    // Lista tras, które powinny być wyświetlane bez głównych pasków nawigacyjnych
+    val fullScreenRoutes = listOf("conversation/{chatId}")
+
+    val showBars = currentDestination?.route !in fullScreenRoutes
 
     LaunchedEffect(Unit) {
         authViewModel.navigationEvent.collectLatest { event ->
@@ -95,51 +106,57 @@ fun MainScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text(username) },
-                actions = {
-                    IconButton(onClick = {
-                        internalNavController.navigate("chat_list") {
-                            popUpTo(internalNavController.graph.findStartDestination().id)
-                            launchSingleTop = true
-                        }
-                    }) {
-                        Icon(imageVector = Icons.Filled.Forum, contentDescription = "Wiadomości")
-                    }
-                    IconButton(onClick = {
-                        internalNavController.navigate("notifications") {
-                            popUpTo(internalNavController.graph.findStartDestination().id)
-                            launchSingleTop = true
-                        }
-                    }) {
-                        BadgedBox(badge = {
-                            if (unreadNotificationsCount > 0) {
-                                Badge(modifier = Modifier.offset(x = (-12).dp, y = (-4).dp)) {
-                                    Text(text = unreadNotificationsCount.toString())
-                                }
+            if (showBars) {
+                TopAppBar(
+                    title = { Text(username) },
+                    actions = {
+                        IconButton(onClick = {
+                            internalNavController.navigate("chat_list") {
+                                popUpTo(internalNavController.graph.findStartDestination().id)
+                                launchSingleTop = true
                             }
                         }) {
-                            Icon(imageVector = Icons.Default.Notifications, contentDescription = "Powiadomienia")
+                            Icon(imageVector = Icons.Filled.Forum, contentDescription = "Wiadomości")
+                        }
+                        IconButton(onClick = {
+                            internalNavController.navigate("notifications") {
+                                popUpTo(internalNavController.graph.findStartDestination().id)
+                                launchSingleTop = true
+                            }
+                        }) {
+                            BadgedBox(badge = {
+                                if (unreadNotificationsCount > 0) {
+                                    Badge(modifier = Modifier.offset(x = (-12).dp, y = (-4).dp)) {
+                                        Text(text = unreadNotificationsCount.toString())
+                                    }
+                                }
+                            }) {
+                                Icon(imageVector = Icons.Default.Notifications, contentDescription = "Powiadomienia")
+                            }
+                        }
+                        IconButton(onClick = {
+                            internalNavController.navigate("user_profile/null") { // Nawigacja do własnego profilu
+                                popUpTo(internalNavController.graph.findStartDestination().id)
+                                launchSingleTop = true
+                            }
+                        }) {
+                            Icon(imageVector = Icons.Filled.AccountCircle, contentDescription = "Profil")
+                        }
+                        IconButton(onClick = { authViewModel.signOut() }) {
+                            Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Wyloguj")
                         }
                     }
-                    IconButton(onClick = {
-                        internalNavController.navigate("profile") {
-                            popUpTo(internalNavController.graph.findStartDestination().id)
-                            launchSingleTop = true
-                        }
-                    }) {
-                        Icon(imageVector = Icons.Filled.AccountCircle, contentDescription = "Profil")
-                    }
-                    IconButton(onClick = { authViewModel.signOut() }) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Wyloguj")
-                    }
-                }
-            )
+                )
+            }
         },
-        bottomBar = { BottomNavigationBar(navController = internalNavController) }
+        bottomBar = {
+            if (showBars) {
+                BottomNavigationBar(navController = internalNavController)
+            }
+        }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            NavigationGraph(mainNavController = navController, internalNavController = internalNavController)
+            NavigationGraph(internalNavController = internalNavController)
         }
     }
 }
@@ -173,7 +190,8 @@ fun BottomNavigationBar(navController: NavController) {
 }
 
 @Composable
-fun NavigationGraph(mainNavController: NavController, internalNavController: NavHostController) {
+fun NavigationGraph(internalNavController: NavHostController) {
+    val activity = (LocalContext.current as MainActivity)
     NavHost(internalNavController, startDestination = BottomNavItem.Home.route) {
         composable(BottomNavItem.Home.route) { HomeScreen() }
         composable(BottomNavItem.Play.route) { PlayScreen() }
@@ -187,25 +205,35 @@ fun NavigationGraph(mainNavController: NavController, internalNavController: Nav
             })
         ) { backStackEntry ->
             val initialTabIndex = backStackEntry.arguments?.getInt("initialTabIndex") ?: 0
-            CommunityScreen(navController = mainNavController, initialTabIndex = initialTabIndex)
+            CommunityScreen(navController = internalNavController, initialTabIndex = initialTabIndex)
         }
         composable("chat_list") {
-            ChatListScreen(navController = mainNavController)
+            ChatListScreen(navController = internalNavController)
         }
         composable("notifications") {
-            NotificationsScreen(navController = mainNavController)
+            NotificationsScreen(navController = internalNavController)
         }
         composable(
-            route = "profile?userId={userId}",
+            route = "user_profile/{userId}",
             arguments = listOf(navArgument("userId") {
                 type = NavType.StringType
                 nullable = true
+                defaultValue = null
             })
         ) {
-            UserProfileScreen(navController = mainNavController)
+            UserProfileScreen(navController = internalNavController)
         }
         composable("manage_profile") {
             ManageProfileScreen(navController = internalNavController)
+        }
+        composable(
+            route = "conversation/{chatId}",
+            arguments = listOf(navArgument("chatId") { type = NavType.StringType })
+        ) {
+            ConversationScreen(
+                navController = internalNavController,
+                authRepository = activity.authRepository
+            )
         }
     }
 }

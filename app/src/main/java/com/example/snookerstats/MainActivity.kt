@@ -8,20 +8,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.ui.auth.LoginScreen
 import com.example.snookerstats.ui.auth.RegisterScreen
 import com.example.snookerstats.ui.auth.RegistrationSuccessScreen
-import com.example.snookerstats.ui.chats.ConversationScreen
 import com.example.snookerstats.ui.main.MainScreen
 import com.example.snookerstats.ui.main.SnackbarManager
 import com.example.snookerstats.ui.profile.SetupProfileScreen
-import com.example.snookerstats.ui.screens.UserProfileScreen
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -60,23 +56,6 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("main") {
                             MainScreen(navController = navController, snackbarManager = snackbarManager)
-                        }
-                        composable(
-                            route = "conversation/{chatId}",
-                            arguments = listOf(
-                                navArgument("chatId") { type = NavType.StringType }
-                            )
-                        ) {
-                            ConversationScreen(
-                                navController = navController,
-                                authRepository = authRepository // Upewnienie się, że przekazujemy IAuthRepository
-                            )
-                        }
-                        composable(
-                            route = "user_profile/{userId}",
-                            arguments = listOf(navArgument("userId") { type = NavType.StringType })
-                        ) {
-                            UserProfileScreen(navController = navController)
                         }
                     }
                 }

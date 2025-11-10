@@ -200,9 +200,16 @@ fun NavigationGraph(internalNavController: NavHostController) {
     val activity = (LocalContext.current as MainActivity)
     NavHost(internalNavController, startDestination = BottomNavItem.Home.route) {
         composable(BottomNavItem.Home.route) { HomeScreen() }
-        composable(BottomNavItem.Play.route) { PlayScreen() }
+        composable(BottomNavItem.Play.route) { PlayScreen(navController = internalNavController) }
         composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen() }
         composable(BottomNavItem.Stats.route) { StatsScreen() }
+        composable(
+            route = "match_setup/{opponentId}",
+            arguments = listOf(navArgument("opponentId") { type = NavType.StringType })
+        ) {
+            MatchSetupScreen(navController = internalNavController)
+        }
+        composable("scoring") { ScoringScreen(navController = internalNavController) }
         composable(
             route = "community?initialTabIndex={initialTabIndex}",
             arguments = listOf(navArgument("initialTabIndex") {

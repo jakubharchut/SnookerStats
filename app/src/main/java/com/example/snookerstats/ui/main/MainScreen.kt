@@ -209,7 +209,15 @@ fun NavigationGraph(internalNavController: NavHostController) {
         ) {
             MatchSetupScreen(navController = internalNavController)
         }
-        composable("scoring") { ScoringScreen(navController = internalNavController) }
+        composable(
+            route = "scoring/{numberOfReds}",
+            arguments = listOf(navArgument("numberOfReds") {
+                type = NavType.IntType
+                defaultValue = 15
+            })
+        ) { 
+            ScoringScreen(navController = internalNavController) 
+        }
         composable(
             route = "community?initialTabIndex={initialTabIndex}",
             arguments = listOf(navArgument("initialTabIndex") {

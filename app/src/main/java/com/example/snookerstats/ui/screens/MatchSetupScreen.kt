@@ -101,7 +101,7 @@ fun MatchSetupScreen(
             }
 
             Button(
-                onClick = { navController.navigate("scoring") },
+                onClick = { navController.navigate("scoring/${uiState.matchFormat.reds}") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),

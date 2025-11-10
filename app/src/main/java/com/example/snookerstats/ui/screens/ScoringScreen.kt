@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -17,24 +18,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.SnookerBall
 
 @Composable
-fun ScoringScreen(navController: NavController) {
-    // Na razie używamy przykładowych danych
-    val player1FirstName = "Jakub"
-    val player1LastName = "Kowalski"
-    val player1Username = "koobi"
-    val player1FramesWon = 1
+fun ScoringScreen(
+    navController: NavController,
+    viewModel: ScoringViewModel = hiltViewModel()
+) {
+    val state by viewModel.uiState.collectAsState()
 
-    val player2FirstName = "Anna"
-    val player2LastName = "Nowak"
-    val player2Username = "Merka"
-    val player2FramesWon = 0
-
-    val sampleBreak = listOf(SnookerBall.Red, SnookerBall.Black, SnookerBall.Red)
-    val sampleTime = "00:42"
+    if (state.isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -44,45 +44,62 @@ fun ScoringScreen(navController: NavController) {
     ) {
         // 1. Górny panel wyników
         Scoreboard(
-            player1FirstName = player1FirstName,
-            player1LastName = player1LastName,
-            player1Username = player1Username,
-            player1Score = 8,
-            player1FramesWon = player1FramesWon,
-            player2FirstName = player2FirstName,
-            player2LastName = player2LastName,
-            player2Username = player2Username,
-            player2Score = 0,
-            player2FramesWon = player2FramesWon
+            player1FirstName = state.player1?.user?.firstName ?: "Player 1",
+            player1LastName = state.player1?.user?.lastName ?: "",
+            player1Username = state.player1?.user?.username ?: "",
+            player1Score = state.player1?.score ?: 0,
+            player1FramesWon = state.player1?.framesWon ?: 0,
+            player2FirstName = state.player2?.user?.firstName ?: "Player 2",
+            player2LastName = state.player2?.user?.lastName ?: "",
+            player2Username = state.player2?.user?.username ?: "",
+            player2Score = state.player2?.score ?: 0,
+            player2FramesWon = state.player2?.framesWon ?: 0
         )
         
         Spacer(modifier = Modifier.height(16.dp))
         
         // 2. Panel statystyk bieżących i zegar
-        CurrentStatsAndTimer(time = sampleTime)
+        CurrentStatsAndTimer(
+            time = state.timer,
+            breakValue = state.currentBreak,
+            pointsRemaining = state.pointsRemaining,
+            redsRemaining = state.redsRemaining
+        )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         // 3. Wizualizacja brejka
-        BreakVisualizer(breakBalls = sampleBreak)
+        BreakVisualizer(breakBalls = state.breakHistory)
 
         Spacer(modifier = Modifier.height(16.dp))
         Divider()
         Spacer(modifier = Modifier.height(16.dp))
         
         // 4. Panel akcji (przyciski bil)
-        BallButtons()
+        BallButtons(
+            isRedNext = state.isRedNext,
+            onBallClick = viewModel::onBallClicked
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
         
         // 5. Panel akcji specjalnych
-        ActionButtons()
+        ActionButtons(
+            onFoulClick = viewModel::onFoulClicked,
+            onSafetyClick = viewModel::onSafetyClicked,
+            onMissClick = viewModel::onMissClicked,
+            onUndoClick = viewModel::onUndoClicked
+        )
 
         // Pusty element, który "wypycha" ostatnie przyciski na dół
         Spacer(modifier = Modifier.weight(1f))
 
         // 6. Akcje zakończenia
-        FrameAndMatchActions()
+        FrameAndMatchActions(
+            onEndFrameClick = viewModel::onEndFrameClicked,
+            onRepeatFrameClick = viewModel::onRepeatFrameClicked,
+            onEndMatchClick = viewModel::onEndMatchClicked
+        )
     }
 }
 
@@ -125,7 +142,7 @@ private fun Scoreboard(
 }
 
 @Composable
-private fun CurrentStatsAndTimer(time: String) {
+private fun CurrentStatsAndTimer(time: String, breakValue: Int, pointsRemaining: Int, redsRemaining: Int) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -133,15 +150,15 @@ private fun CurrentStatsAndTimer(time: String) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Break", fontSize = 12.sp)
-            Text("8", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(breakValue.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Pozostało", fontSize = 12.sp)
-            Text("131", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(pointsRemaining.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Czerwonych", fontSize = 12.sp)
-            Text("13", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(redsRemaining.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Czas podejścia", fontSize = 12.sp)
@@ -196,7 +213,10 @@ private fun BallIcon(ball: SnookerBall, count: Int) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BallButtons() {
+private fun BallButtons(
+    isRedNext: Boolean,
+    onBallClick: (SnookerBall) -> Unit
+) {
     val colors = listOf(
         SnookerBall.Yellow, SnookerBall.Green, SnookerBall.Brown,
         SnookerBall.Blue, SnookerBall.Pink, SnookerBall.Black
@@ -208,7 +228,8 @@ private fun BallButtons() {
     ) {
         // Red ball button
         Button(
-            onClick = { /* TODO */ },
+            onClick = { onBallClick(SnookerBall.Red) },
+            enabled = isRedNext, // Dynamicznie włączany/wyłączany
             modifier = Modifier
                 .width(256.dp) // 3 * 80dp (balls) + 2 * 8dp (spaces)
                 .height(56.dp),
@@ -231,16 +252,25 @@ private fun BallButtons() {
             maxItemsInEachRow = 3
         ) {
             colors.forEach { ball ->
-                BallButton(ball = ball, onClick = { /*TODO*/ })
+                BallButton(
+                    ball = ball,
+                    onClick = { onBallClick(ball) },
+                    enabled = !isRedNext // Dynamicznie włączany/wyłączany
+                )
             }
         }
     }
 }
 
 @Composable
-private fun BallButton(ball: SnookerBall, onClick: () -> Unit) {
+private fun BallButton(
+    ball: SnookerBall,
+    onClick: () -> Unit,
+    enabled: Boolean
+) {
     Button(
         onClick = onClick,
+        enabled = enabled,
         shape = CircleShape,
         modifier = Modifier.size(80.dp),
         colors = ButtonDefaults.buttonColors(containerColor = ball.color),
@@ -256,37 +286,46 @@ private fun BallButton(ball: SnookerBall, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ActionButtons() {
+private fun ActionButtons(
+    onFoulClick: () -> Unit,
+    onSafetyClick: () -> Unit,
+    onMissClick: () -> Unit,
+    onUndoClick: () -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = { /*TODO*/ }, modifier = Modifier.weight(1f)) { Text("Faul") }
-            Button(onClick = { /*TODO*/ }, modifier = Modifier.weight(1f)) { Text("Odstawna") }
+            Button(onClick = onFoulClick, modifier = Modifier.weight(1f)) { Text("Faul") }
+            Button(onClick = onSafetyClick, modifier = Modifier.weight(1f)) { Text("Odstawna") }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = { /*TODO*/ }, modifier = Modifier.weight(1f)) { Text("Pudło") }
-            Button(onClick = { /*TODO*/ }, modifier = Modifier.weight(1f)) { Text("Cofnij") }
+            Button(onClick = onMissClick, modifier = Modifier.weight(1f)) { Text("Pudło") }
+            Button(onClick = onUndoClick, modifier = Modifier.weight(1f)) { Text("Cofnij") }
         }
     }
 }
 
 @Composable
-private fun FrameAndMatchActions() {
+private fun FrameAndMatchActions(
+    onEndFrameClick: () -> Unit,
+    onRepeatFrameClick: () -> Unit,
+    onEndMatchClick: () -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        OutlinedButton(onClick = { /*TODO*/ }, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onEndFrameClick, modifier = Modifier.fillMaxWidth()) {
             Text("Zakończ frejma")
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(onClick = { /*TODO*/ }, modifier = Modifier.weight(1f)) { Text("Powtórz frejma") }
-            OutlinedButton(onClick = { /*TODO*/ }, modifier = Modifier.weight(1f)) { Text("Zakończ mecz") }
+            OutlinedButton(onClick = onRepeatFrameClick, modifier = Modifier.weight(1f)) { Text("Powtórz frejma") }
+            OutlinedButton(onClick = onEndMatchClick, modifier = Modifier.weight(1f)) { Text("Zakończ mecz") }
         }
     }
 }

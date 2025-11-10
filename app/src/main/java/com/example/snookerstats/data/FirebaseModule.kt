@@ -1,5 +1,6 @@
 package com.example.snookerstats.data
 
+import com.example.snookerstats.data.local.dao.MatchDao
 import com.example.snookerstats.data.local.preferences.EncryptedPrefsManager
 import com.example.snookerstats.data.repository.*
 import com.example.snookerstats.domain.repository.*
@@ -46,9 +47,9 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideMatchRepository(
-        firestore: FirebaseFirestore,
-        authRepository: IAuthRepository
-    ): MatchRepository = MatchRepositoryImpl(firestore, authRepository)
+        matchDao: MatchDao
+        // firestore: FirebaseFirestore // Dodamy później, gdy będzie potrzebne
+    ): MatchRepository = MatchRepositoryImpl(matchDao)
 
     @Provides
     @Singleton

@@ -34,7 +34,8 @@ data class ScoringState(
     val nextColorBallOn: SnookerBall? = null,
     val isFreeBall: Boolean = false,
     val showFoulDialog: Boolean = false,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val isFrameOver: Boolean = false
 )
 
 @HiltViewModel
@@ -79,33 +80,65 @@ class ScoringViewModel @Inject constructor(
 
     fun onBallClicked(ball: SnookerBall) {
         _uiState.update { currentState ->
-            if (currentState.redsRemaining == 0 && !currentState.isFreeBall && currentState.nextColorBallOn != null) {
-                if (ball != currentState.nextColorBallOn) return@update currentState
-            }
-            
-            var pointsToAdd = ball.points
-            if (currentState.isFreeBall) {
-                if (ball is SnookerBall.Red) return@update currentState
-                pointsToAdd = if (currentState.redsRemaining > 0) 1 else currentState.nextColorBallOn?.points ?: 0
-            } else {
-                if (!currentState.canPotColor && ball !is SnookerBall.Red) return@update currentState
-            }
+            if (currentState.isFrameOver) return@update currentState
 
+            // --- VALIDATION ---
+            val isValid = when {
+                currentState.isFreeBall -> ball !is SnookerBall.Red
+                currentState.redsRemaining == 0 -> {
+                    if (currentState.nextColorBallOn == null) ball !is SnookerBall.Red // Any color after last red
+                    else ball == currentState.nextColorBallOn // Correct color in sequence
+                }
+                else -> { // Reds on table
+                    if (currentState.canPotColor) ball !is SnookerBall.Red
+                    else ball is SnookerBall.Red
+                }
+            }
+            if (!isValid) return@update currentState
+
+            val pointsToAdd = if (currentState.isFreeBall && currentState.redsRemaining > 0) 1 else ball.points
             val activePlayerState = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player1 else currentState.player2
             if (activePlayerState == null) return@update currentState
 
             val newScore = activePlayerState.score + pointsToAdd
             val newPlayerState = activePlayerState.copy(score = newScore)
-
             val newRedsRemaining = if (ball is SnookerBall.Red && !currentState.isFreeBall) currentState.redsRemaining - 1 else currentState.redsRemaining
-            
-            val canPotColorNext = if (currentState.isFreeBall) true else ball is SnookerBall.Red
             val nextBreakHistory = currentState.breakHistory + ball
+            val newPointsRemaining = currentState.pointsRemaining - pointsToAdd
 
-            val nextColorOn = if (newRedsRemaining == 0) {
-                if (ball is SnookerBall.Red && newRedsRemaining == 0) null 
-                else getNextColorBallOn(nextBreakHistory)
-            } else null
+            var canPotColorNext = false
+            var nextColorOn: SnookerBall? = null
+            var isFrameOverNext = false
+
+            if (newRedsRemaining > 0) {
+                canPotColorNext = (ball is SnookerBall.Red || currentState.isFreeBall)
+            } else { // ENDGAME
+                canPotColorNext = true
+                
+                // Case 1: Just potted the last red. Now ANY color is available.
+                if (currentState.redsRemaining > 0 && newRedsRemaining == 0) {
+                    nextColorOn = null
+                }
+                // Case 2: In the "any color" phase and just potted a color. Next is Yellow.
+                else if (currentState.redsRemaining == 0 && currentState.nextColorBallOn == null) {
+                    nextColorOn = SnookerBall.Yellow
+                }
+                // Case 3: Already in the sequence.
+                else {
+                    nextColorOn = when (ball) {
+                        is SnookerBall.Yellow -> SnookerBall.Green
+                        is SnookerBall.Green -> SnookerBall.Brown
+                        is SnookerBall.Brown -> SnookerBall.Blue
+                        is SnookerBall.Blue -> SnookerBall.Pink
+                        is SnookerBall.Pink -> SnookerBall.Black
+                        else -> null // Includes Black, which ends the sequence
+                    }
+                }
+                
+                if (ball is SnookerBall.Black && nextColorOn == null) {
+                    isFrameOverNext = true
+                }
+            }
 
             currentState.copy(
                 player1 = if (currentState.activePlayerId == currentState.player1?.user?.uid) newPlayerState else currentState.player1,
@@ -113,26 +146,15 @@ class ScoringViewModel @Inject constructor(
                 currentBreak = currentState.currentBreak + pointsToAdd,
                 breakHistory = nextBreakHistory,
                 redsRemaining = newRedsRemaining,
-                canPotColor = canPotColorNext || (newRedsRemaining == 0 && nextColorOn == null),
+                pointsRemaining = newPointsRemaining,
+                canPotColor = canPotColorNext,
                 nextColorBallOn = nextColorOn,
-                isFreeBall = false
+                isFreeBall = false,
+                isFrameOver = isFrameOverNext
             )
         }
     }
     
-    private fun getNextColorBallOn(breakHistory: List<SnookerBall>): SnookerBall? {
-        val pottedColors = breakHistory.filter { it !is SnookerBall.Red }
-        return when {
-            !pottedColors.any { it is SnookerBall.Yellow } -> SnookerBall.Yellow
-            !pottedColors.any { it is SnookerBall.Green } -> SnookerBall.Green
-            !pottedColors.any { it is SnookerBall.Brown } -> SnookerBall.Brown
-            !pottedColors.any { it is SnookerBall.Blue } -> SnookerBall.Blue
-            !pottedColors.any { it is SnookerBall.Pink } -> SnookerBall.Pink
-            !pottedColors.any { it is SnookerBall.Black } -> SnookerBall.Black
-            else -> null
-        }
-    }
-
     fun onFoulClicked() { _uiState.update { it.copy(showFoulDialog = true) } }
     fun onDismissFoulDialog() { _uiState.update { it.copy(showFoulDialog = false) } }
 
@@ -155,9 +177,8 @@ class ScoringViewModel @Inject constructor(
                 activePlayerId = nextPlayerId,
                 currentBreak = 0,
                 breakHistory = emptyList(),
-                canPotColor = false,
-                redsRemaining = newRedsRemaining,
-                nextColorBallOn = if (newRedsRemaining == 0) getNextColorBallOn(emptyList()) else null
+                canPotColor = newRedsRemaining == 0,
+                redsRemaining = newRedsRemaining
             )
         }
     }
@@ -174,7 +195,7 @@ class ScoringViewModel @Inject constructor(
                 breakHistory = emptyList(),
                 canPotColor = false,
                 isFreeBall = false,
-                nextColorBallOn = if(currentState.redsRemaining == 0) getNextColorBallOn(currentState.breakHistory) else null
+                nextColorBallOn = if(currentState.redsRemaining == 0) SnookerBall.Yellow else null
             )
         }
     }

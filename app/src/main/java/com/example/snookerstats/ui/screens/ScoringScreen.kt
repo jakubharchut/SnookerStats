@@ -68,6 +68,7 @@ fun ScoringScreen(
         Divider()
         Spacer(modifier = Modifier.height(16.dp))
         BallButtons(
+            isFrameOver = state.isFrameOver,
             canPotColor = state.canPotColor,
             isFreeBall = state.isFreeBall,
             redsRemaining = state.redsRemaining,
@@ -191,12 +192,12 @@ private fun BallIcon(ball: SnookerBall, count: Int) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BallButtons(canPotColor: Boolean, isFreeBall: Boolean, redsRemaining: Int, nextColorBallOn: SnookerBall?, onBallClick: (SnookerBall) -> Unit) {
+private fun BallButtons(isFrameOver: Boolean, canPotColor: Boolean, isFreeBall: Boolean, redsRemaining: Int, nextColorBallOn: SnookerBall?, onBallClick: (SnookerBall) -> Unit) {
     val colors = listOf(SnookerBall.Yellow, SnookerBall.Green, SnookerBall.Brown, SnookerBall.Blue, SnookerBall.Pink, SnookerBall.Black)
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(
             onClick = { onBallClick(SnookerBall.Red) },
-            enabled = redsRemaining > 0 && !isFreeBall,
+            enabled = !isFrameOver && redsRemaining > 0 && !isFreeBall,
             modifier = Modifier.width(256.dp).height(56.dp),
             shape = MaterialTheme.shapes.medium,
             colors = ButtonDefaults.buttonColors(containerColor = SnookerBall.Red.color, contentColor = SnookerBall.Red.contentColor)
@@ -205,7 +206,7 @@ private fun BallButtons(canPotColor: Boolean, isFreeBall: Boolean, redsRemaining
         }
         FlowRow(modifier = Modifier.width(256.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 3) {
             colors.forEach { ball ->
-                val isEnabled = when {
+                val isEnabled = !isFrameOver && when {
                     isFreeBall -> true
                     redsRemaining == 0 -> nextColorBallOn == null || ball == nextColorBallOn
                     else -> canPotColor

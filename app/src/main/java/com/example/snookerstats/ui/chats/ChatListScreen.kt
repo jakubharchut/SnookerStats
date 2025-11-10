@@ -70,7 +70,7 @@ fun ChatListScreen(
                                 Text("Brak aktywnych czatów. Naciśnij +, aby rozpocząć rozmowę.")
                             }
                         } else {
-                            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(8.dp)) {
                                 items(state.data) { chatWithUser ->
                                     val isUnread = (chatWithUser.chat.unreadCounts[currentUserId] ?: 0) > 0
                                     ChatListItem(
@@ -169,28 +169,46 @@ fun NewChatContent(
 @Composable
 fun ChatListItem(chatWithUserDetails: ChatWithUserDetails, isUnread: Boolean, onClick: () -> Unit) {
     val fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal
+    val containerColor = if (isUnread) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
 
-    ListItem(
-        headlineContent = {
-            Text(
-                text = chatWithUserDetails.otherUser.username,
-                fontWeight = fontWeight
-            )
-        },
-        supportingContent = {
-            Text(
-                text = chatWithUserDetails.chat.lastMessage ?: "...",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontWeight = fontWeight
-            )
-        },
-        leadingContent = {
-            UserAvatar(
-                user = chatWithUserDetails.otherUser,
-                modifier = Modifier.size(40.dp)
-            )
-        },
-        modifier = Modifier.clickable(onClick = onClick)
-    )
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
+        ListItem(
+            headlineContent = {
+                Text(
+                    text = "${chatWithUserDetails.otherUser.firstName} ${chatWithUserDetails.otherUser.lastName}",
+                    fontWeight = fontWeight,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            },
+            supportingContent = {
+                Column {
+                    Text(
+                        text = "@${chatWithUserDetails.otherUser.username}",
+                        fontWeight = fontWeight,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = chatWithUserDetails.chat.lastMessage ?: "...",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = fontWeight,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            leadingContent = {
+                UserAvatar(
+                    user = chatWithUserDetails.otherUser,
+                    modifier = Modifier.size(40.dp)
+                )
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent) // Make ListItem transparent to see Card's color
+        )
+    }
 }

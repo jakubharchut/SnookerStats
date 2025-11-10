@@ -28,7 +28,13 @@ fun CommunityScreen(
     var selectedTabIndex by remember { mutableIntStateOf(initialTabIndex) }
     val tabs = listOf("Szukaj", "Znajomi", "Zaproszenia")
     val friendsState by viewModel.friends.collectAsState()
+    val receivedRequestsState by viewModel.receivedRequests.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Efekt do pobierania zaproszeń, gdy ekran jest widoczny
+    LaunchedEffect(Unit) {
+        viewModel.fetchReceivedRequests()
+    }
 
     LaunchedEffect(key1 = true) {
         viewModel.eventMessage.collectLatest { message ->
@@ -59,7 +65,20 @@ fun CommunityScreen(
                     Tab(
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
-                        text = { Text(text = title) }
+                        text = {
+                            if (title == "Zaproszenia") {
+                                BadgedBox(badge = {
+                                    val receivedRequests = (receivedRequestsState as? Resource.Success)?.data
+                                    if (!receivedRequests.isNullOrEmpty()) {
+                                        Badge(modifier = Modifier.offset(x = 7.dp)) { Text(receivedRequests.size.toString()) }
+                                    }
+                                }) {
+                                    Text(text = title)
+                                }
+                            } else {
+                                Text(text = title)
+                            }
+                        }
                     )
                 }
             }

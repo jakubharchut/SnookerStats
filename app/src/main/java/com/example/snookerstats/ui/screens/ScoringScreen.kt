@@ -1,9 +1,11 @@
 package com.example.snookerstats.ui.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
@@ -11,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,11 +53,14 @@ fun ScoringScreen(
             player1Username = state.player1?.user?.username ?: "",
             player1Score = state.player1?.score ?: 0,
             player1FramesWon = state.player1?.framesWon ?: 0,
+            player1Id = state.player1?.user?.uid ?: "",
             player2FirstName = state.player2?.user?.firstName ?: "Player 2",
             player2LastName = state.player2?.user?.lastName ?: "",
             player2Username = state.player2?.user?.username ?: "",
             player2Score = state.player2?.score ?: 0,
-            player2FramesWon = state.player2?.framesWon ?: 0
+            player2FramesWon = state.player2?.framesWon ?: 0,
+            player2Id = state.player2?.user?.uid ?: "",
+            activePlayerId = state.activePlayerId
         )
         Spacer(modifier = Modifier.height(16.dp))
         CurrentStatsAndTimer(
@@ -134,19 +141,41 @@ private fun FoulDialog(onDismiss: () -> Unit, onConfirm: (Int, Boolean, Int) -> 
 }
 
 @Composable
-private fun Scoreboard(player1FirstName: String, player1LastName: String, player1Username: String, player1Score: Int, player1FramesWon: Int, player2FirstName: String, player2LastName: String, player2Username: String, player2Score: Int, player2FramesWon: Int) {
+private fun Scoreboard(
+    player1FirstName: String, player1LastName: String, player1Username: String, player1Score: Int, player1FramesWon: Int, player1Id: String,
+    player2FirstName: String, player2LastName: String, player2Username: String, player2Score: Int, player2FramesWon: Int, player2Id: String,
+    activePlayerId: String?
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val player1Modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (activePlayerId == player1Id) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                .padding(vertical = 8.dp, horizontal = 4.dp)
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = player1Modifier) {
                 Text(text = "$player1FirstName $player1LastName", style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Text(text = "@$player1Username", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(text = player1Score.toString(), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 8.dp)) {
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
                 Text(text = "FRAMES", style = MaterialTheme.typography.labelSmall)
                 Text(text = "$player1FramesWon - $player2FramesWon", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+
+            val player2Modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (activePlayerId == player2Id) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                .padding(vertical = 8.dp, horizontal = 4.dp)
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = player2Modifier) {
                 Text(text = "$player2FirstName $player2LastName", style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Text(text = "@$player2Username", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(text = player2Score.toString(), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)

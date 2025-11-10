@@ -109,3 +109,35 @@ Architektura modułu opiera się na wzorcu MVVM i jest podzielona na trzy głów
 - **Problem:** Po naprawieniu reguł bezpieczeństwa, aplikacja zaczęła się wywalać przy próbie przejścia do ekranu rozmowy z błędem `Navigation destination ... cannot be found`.
 - **Przyczyna:** W aplikacji istniały dwa kontrolery nawigacji (`NavController`): główny (z `MainActivity`) i wewnętrzny (w `MainScreen`). `ChatListScreen` był wywoływany z wewnętrznym kontrolerem, który nie "widział" globalnej trasy `conversation/{...}`.
 - **Rozwiązanie:** Przeprowadzono refaktoryzację `MainScreen.kt`, aby zapewnić, że ekrany wymagające nawigacji "na zewnątrz" (jak `ChatListScreen` czy `CommunityScreen`) otrzymują główny `NavController`, co rozwiązało problem crashy.
+
+---
+
+## 6. Ulepszenia (Listopad 2025) - System Nieprzeczytanych Wiadomości i Powiadomień
+
+Wprowadzono kompleksowy system do zarządzania stanem "nieprzeczytane/przeczytane" dla wiadomości oraz inteligentne powiadomienia push.
+
+### 6.1. Zmiany w Modelu Danych
+- W `data class Chat` (`domain/model/Chat.kt`) dodano dwa nowe pola:
+    - `userPresentInChat: String? = null`: Przechowuje `uid` użytkownika, który aktualnie ma otwarty dany ekran rozmowy. Służy do blokowania wysyłania zbędnych powiadomień.
+    - `unreadCounts: Map<String, Int> = emptyMap()`: Mapa, w której kluczem jest `uid` uczestnika, a wartością liczba nieprzeczytanych przez niego wiadomości w tym czacie.
+
+### 6.2. Logika Zarządzania Stanem Wiadomości
+- **Oznaczanie jako przeczytane:** Gdy użytkownik wchodzi do `ConversationScreen`, automatycznie wywoływana jest funkcja `repository.resetUnreadCount(chatId)`, która zeruje jego licznik nieprzeczytanych wiadomości dla tego czatu w Firestore.
+- **Inkrementacja licznika:** Funkcja `repository.sendMessage()` została zmodyfikowana. Teraz, oprócz wysłania wiadomości, atomowo inkrementuje (zwiększa o 1) licznik w polu `unreadCounts` dla odbiorcy wiadomości.
+- **Inicjalizacja licznika:** Funkcja `repository.createOrGetChat()` przy tworzeniu nowego czatu inicjalizuje mapę `unreadCounts`, ustawiając liczniki obu użytkowników na `0`.
+
+### 6.3. Powiadomienia Push o Nowych Wiadomościach
+- **Funkcja w Chmurze (`sendNewMessageNotification`):**
+    - Stworzono nową Cloud Function, która jest uruchamiana (`onDocumentCreated`) po dodaniu nowej wiadomości do dowolnego czatu.
+    - **Inteligentna logika:** Przed wysłaniem powiadomienia, funkcja sprawdza pole `userPresentInChat` w dokumencie czatu. Powiadomienie jest wysyłane **tylko wtedy, gdy `uid` odbiorcy jest różne** od wartości w tym polu (tzn. gdy użytkownik nie patrzy akurat na ten ekran czatu).
+- **Śledzenie obecności (klient):**
+    - W `ConversationScreen` zaimplementowano `DisposableEffect`, który przy wejściu na ekran wywołuje `viewModel.setUserPresence(true)`, a przy wyjściu `viewModel.setUserPresence(false)`.
+    - `ViewModel` przekazuje tę informację do repozytorium, które aktualizuje pole `userPresentInChat` w Firestore.
+
+### 6.4. Zmiany w Interfejsie Użytkownika
+- **Badge na ikonie głównej:** W `MainScreen`, na ikonie wiadomości (`Forum`) w `TopAppBar`, wyświetlany jest `Badge` z liczbą konwersacji, które mają co najmniej jedną nieprzeczytaną wiadomość.
+- **Wizualne wyróżnienie na liście:** W `ChatListScreen` elementy listy (`ChatListItem`) reprezentujące nieprzeczytane konwersacje są teraz wyróżnione:
+    - Mają inny, ciemniejszy kolor tła (`secondaryContainer`).
+    - Tekst (imię, nazwisko, username i treść wiadomości) jest pogrubiony.
+    - Zmieniono format wyświetlania użytkownika na bardziej czytelny: "Imię Nazwisko" jako główny tekst, a "@username" jako dodatkowa informacja.
+- **Refaktoryzacja nawigacji:** Przeniesiono całą nawigację po zalogowaniu (w tym do czatu i profilu) do `MainScreen`, aby zapewnić spójny wygląd (obecność lub brak głównych pasków nawigacyjnych) we wszystkich zagnieżdżonych ekranach.

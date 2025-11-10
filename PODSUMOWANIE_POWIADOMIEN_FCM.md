@@ -89,7 +89,7 @@ Po potwierdzeniu, że token FCM jest poprawny (dzięki udanemu testowi z konsoli
 
 ## Dalsze Ulepszenia Systemu Powiadomień (2025-11-09)
 
-Wprowadzone następujące ulepszenia w obsłudze powiadomień po stronie klienta:
+Wprowadzone następujące ulepszenia w obsładze powiadomień po stronie klienta:
 
 ### 1. Niezawodne Odświeżanie Listy Powiadomień
 
@@ -118,3 +118,24 @@ Wprowadzone następujące ulepszenia w obsłudze powiadomień po stronie klienta
   - Powiadomienia odczytane są wizualnie "wyłączone" (nieklikalne), a ich jedyną akcją pozostaje usunięcie.
   - Zmodyfikowano `NotificationsScreen.kt` (dodano `navController` i `LaunchedEffect` do obsługi zdarzeń nawigacyjnych) oraz `NotificationViewModel.kt` (dodano `sealed class NavigationEvent` i emitowanie zdarzenia `NavigateToCommunity` z `tabIndex`).
   - Zaktualizowano `MainScreen.kt`, aby poprawnie przekazywać `navController` do `NotificationsScreen` oraz obsługiwać argument `initialTabIndex` w trasie do `CommunityScreen`.
+
+---
+
+## 7. Powiadomienia o Nowych Wiadomościach w Czacie (Listopad 2025)
+
+Rozbudowano system powiadomień o nową funkcjonalność - informowanie użytkowników o nowych wiadomościach w prywatnych czatach.
+
+### 7.1. Implementacja Funkcji w Chmurze (`sendNewMessageNotification`)
+- **Cel:** Stworzenie nowej funkcji `sendNewMessageNotification` w pliku `index.js`, która automatycznie wysyła powiadomienie, gdy w czacie pojawi się nowa wiadomość.
+- **Trigger:** Funkcja jest uruchamiana przez zdarzenie `onDocumentCreated` na ścieżce `chats/{chatId}/messages/{messageId}`.
+- **Inteligentne Wysyłanie:** Zaimplementowano kluczową logikę, która zapobiega wysyłaniu powiadomień do użytkownika, który aktywnie korzysta z danego czatu.
+    - **Mechanizm:** Przed wysłaniem powiadomienia, funkcja odczytuje pole `userPresentInChat` z dokumentu nadrzędnego czatu (`chats/{chatId}`).
+    - **Warunek:** Powiadomienie jest wysyłane **tylko wtedy**, gdy `uid` odbiorcy jest **różne** od wartości w polu `userPresentInChat`.
+
+### 7.2. Śledzenie Obecności Użytkownika (Strona Klienta)
+- **Cel:** Informowanie backendu o tym, czy użytkownik aktualnie znajduje się na ekranie konkretnej rozmowy.
+- **Zmiany w Modelu Danych:** Do `data class Chat` dodano pole `userPresentInChat: String?`, które przechowuje `uid` obecnego użytkownika lub `null`.
+- **Implementacja w UI:** W `ConversationScreen` (`ui/chats/ConversationScreen.kt`) użyto `DisposableEffect`, aby:
+    - Przy wejściu na ekran (`onActive`) wywołać `viewModel.setUserPresence(true)`.
+    - Przy wyjściu z ekranu (`onDispose`) wywołać `viewModel.setUserPresence(false)`.
+- **Logika w Repozytorium:** `ChatRepositoryImpl` zyskał nową metodę `updateUserPresenceInChat`, która aktualizuje odpowiednie pole w dokumencie czatu w Firestore.

@@ -155,3 +155,20 @@ Ekran profilu został gruntownie przebudowany w celu uproszczenia wyglądu i dod
 ### 5.3. Poprawki Interfejsu Użytkownika w "Zaproszeniach"
 - **Problem:** W zakładce "Zaproszenia", pod-menu do filtrowania ("Otrzymane" / "Wysłane") zostało błędnie zaimplementowane jako drugi `TabRow` pod głównym, co wyglądało źle i było nieintuicyjne.
 - **Rozwiązanie:** Przywrócono poprawny wygląd. Wewnętrzne menu zostało zaimplementowane przy użyciu komponentu `FilterChip`, co tworzy wizualnie lżejszy i bardziej czytelny interfejs w formie dwóch przycisków-pigułek.
+
+---
+
+## 6. Ulepszenia (Listopad 2025) - Dynamiczne UI i Wskaźniki
+
+Wprowadzono szereg ulepszeń mających na celu poprawę responsywności i czytelności interfejsu.
+
+### 6.1. Dynamiczny Status w Wyszukiwarce Graczy
+- **Problem:** Wyszukiwarka graczy w zakładce "Szukaj" zawsze pokazywała ikonę "Dodaj znajomego", nawet jeśli dany użytkownik był już znajomym.
+- **Rozwiązanie:**
+    - Zaimplementowano w `CommunityViewModel` logikę, która w czasie rzeczywistym nasłuchuje na zmiany w profilu zalogowanego użytkownika (listy znajomych, zaproszeń).
+    - Wyniki wyszukiwania są teraz opakowane w `data class UserWithStatus`, która przechowuje zarówno obiekt `User`, jak i jego aktualny `RelationshipStatus`.
+    - Po każdej akcji (dodanie/usunięcie znajomego, wysłanie/anulowanie zaproszenia), wyniki wyszukiwania są automatycznie odświeżane, aby `UserCard` mógł wyświetlić poprawną ikonę akcji (np. "Usuń znajomego" zamiast "Dodaj").
+
+### 6.2. Badge na Zakładce "Zaproszenia"
+- **Problem:** Użytkownik nie miał wizualnej informacji o liczbie oczekujących zaproszeń do znajomych bez wchodzenia do odpowiedniej zakładki.
+- **Rozwiązanie:** W `CommunityScreen` dodano `BadgedBox` do zakładki "Zaproszenia". Wyświetla on czerwoną kropkę z liczbą otrzymanych, niezaakceptowanych zaproszeń, dając użytkownikowi natychmiastową informację zwrotną.

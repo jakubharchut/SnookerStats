@@ -5,10 +5,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -46,7 +52,6 @@ fun PlayScreen(navController: NavController) {
 
 @Composable
 private fun PlayerContent(navController: NavController) {
-    // To jest teraz główna zawartość zakładki "Gracze"
     OpponentSelectionList(navController = navController)
 }
 
@@ -54,69 +59,97 @@ private fun PlayerContent(navController: NavController) {
 @Composable
 private fun OpponentSelectionList(navController: NavController, viewModel: CommunityViewModel = hiltViewModel()) {
     val friendsState by viewModel.friends.collectAsState()
-    val currentUserState by viewModel.currentUser.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    var expandedHeaders by remember { mutableStateOf(setOf("Ulubieni", "Klubowicze", "Pozostali znajomi")) }
 
     LaunchedEffect(Unit) {
         viewModel.fetchFriends()
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = Modifier.fillMaxSize().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         when (val state = friendsState) {
             is Resource.Loading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             is Resource.Success -> {
                 val friends = state.data
-                val currentUser = currentUserState
-
-                val clubMembersOnly = emptyList<User>()
-
+                
                 val groupedOpponents = remember(friends, currentUser) {
+                    val favIds = currentUser?.favoriteOpponents ?: emptyList()
                     val currentUserClub = currentUser?.club?.takeIf { it.isNotBlank() }
-                    val (clubFriends, otherFriends) = friends.partition {
-                        it.club != null && it.club == currentUserClub
-                    }
-                    
+
+                    val (favorites, nonFavorites) = friends.partition { it.uid in favIds }
+                    val (clubFriends, otherFriends) = nonFavorites.partition { it.club != null && it.club == currentUserClub }
+
                     linkedMapOf(
+                        "Ulubieni" to favorites,
                         "Klubowicze" to clubFriends,
-                        "Pozostali klubowicze" to clubMembersOnly,
                         "Pozostali znajomi" to otherFriends
                     )
                 }
 
-                if (friends.isEmpty() && clubMembersOnly.isEmpty()) {
+                if (friends.isEmpty()) {
                      Text("Nie masz jeszcze żadnych znajomych. Dodaj ich w zakładce 'Ludzie' lub wyszukaj poniżej.", textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
                 }
                 
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     groupedOpponents.forEach { (header, opponents) ->
-                        if (opponents.isNotEmpty() || header.contains("Klubowicze")) {
-                            stickyHeader {
-                                Surface(modifier = Modifier.fillParentMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant) {
-                                    Text(
-                                        text = header,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        stickyHeader {
+                            val isExpanded = header in expandedHeaders
+                            Surface(
+                                modifier = Modifier.fillParentMaxWidth().clickable {
+                                    expandedHeaders = if (isExpanded) expandedHeaders - header else expandedHeaders + header
+                                },
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(text = header, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                                    Icon(
+                                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                        contentDescription = if (isExpanded) "Zwiń" else "Rozwiń"
                                     )
                                 }
                             }
                         }
 
-                        if (opponents.isNotEmpty()) {
-                            items(opponents) { opponent ->
-                                ListItem(
-                                    headlineContent = { Text(opponent.username, fontWeight = FontWeight.Bold) },
-                                    supportingContent = { Text("${opponent.firstName} ${opponent.lastName}") },
-                                    leadingContent = { UserAvatar(user = opponent, modifier = Modifier.size(40.dp)) },
-                                    modifier = Modifier.clickable { navController.navigate("match_setup/${opponent.uid}") }
-                                )
-                            }
-                        } else if (header.contains("Klubowicze")) {
-                            item {
-                                Text(
-                                    text = if(header == "Klubowicze") "Brak znajomych w Twoim klubie." else "Funkcjonalność wkrótce dostępna.",
-                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    textAlign = TextAlign.Center
-                                )
+                        if (header in expandedHeaders) {
+                            if (opponents.isNotEmpty()) {
+                                items(opponents) { opponent ->
+                                    val isFavorite = currentUser?.favoriteOpponents?.contains(opponent.uid) == true
+                                    ListItem(
+                                        headlineContent = { Text(opponent.username, fontWeight = FontWeight.Bold) },
+                                        supportingContent = { Text("${opponent.firstName} ${opponent.lastName}") },
+                                        leadingContent = { UserAvatar(user = opponent, modifier = Modifier.size(40.dp)) },
+                                        trailingContent = {
+                                            IconButton(onClick = {
+                                                if (isFavorite) viewModel.removeFromFavorites(opponent.uid)
+                                                else viewModel.addToFavorites(opponent.uid)
+                                            }) {
+                                                Icon(
+                                                    imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                                    contentDescription = if (isFavorite) "Usuń z ulubionych" else "Dodaj do ulubionych",
+                                                    tint = if (isFavorite) Color(0xFFFFD700) else Color.Gray
+                                                )
+                                            }
+                                        },
+                                        modifier = Modifier.clickable { navController.navigate("match_setup/${opponent.uid}") }
+                                    )
+                                }
+                            } else {
+                                item {
+                                    val emptyText = when(header) {
+                                        "Klubowicze" -> if (currentUser?.club.isNullOrBlank()) "Nie należysz do żadnego klubu." else "Brak innych graczy w Twoim klubie."
+                                        "Ulubieni" -> "Brak ulubionych graczy."
+                                        else -> "Brak graczy w tej kategorii."
+                                    }
+                                    Text(
+                                        text = emptyText,
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
                         }
                     }
@@ -125,7 +158,7 @@ private fun OpponentSelectionList(navController: NavController, viewModel: Commu
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedButton(
                     onClick = { navController.navigate("community?initialTabIndex=0") },
-                    modifier = Modifier.fillMaxWidth(0.8f)
+                    modifier = Modifier.fillMaxWidth(0.8f).padding(bottom = 16.dp)
                 ) {
                     Text("Szukaj gracza")
                 }

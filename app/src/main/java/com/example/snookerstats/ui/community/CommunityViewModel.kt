@@ -131,9 +131,7 @@ class CommunityViewModel @Inject constructor(
             when (val response = action()) {
                 is Resource.Success -> {
                     _eventMessage.emit(successMessage)
-                    fetchFriends()
-                    fetchReceivedRequests()
-                    fetchSentRequests()
+                    // Nie odświeżamy już tutaj, bo currentUser.collectLatest to zrobi
                 }
                 is Resource.Error -> _eventMessage.emit("Błąd: ${response.message}")
                 else -> {}
@@ -160,4 +158,6 @@ class CommunityViewModel @Inject constructor(
     fun acceptFriendRequest(fromUserId: String) = handleAction({ repository.acceptFriendRequest(fromUserId) }, "Zaproszenie zaakceptowane.")
     fun rejectFriendRequest(fromUserId: String) = handleAction({ repository.rejectFriendRequest(fromUserId) }, "Zaproszenie odrzucone.")
     fun removeFriend(friendId: String) = handleAction({ repository.removeFriend(friendId) }, "Znajomy usunięty.")
+    fun addToFavorites(userId: String) = handleAction({ repository.addToFavorites(userId) }, "Dodano do ulubionych")
+    fun removeFromFavorites(userId: String) = handleAction({ repository.removeFromFavorites(userId) }, "Usunięto z ulubionych")
 }

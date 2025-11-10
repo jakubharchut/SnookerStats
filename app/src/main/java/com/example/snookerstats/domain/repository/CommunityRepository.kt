@@ -14,4 +14,6 @@ interface CommunityRepository {
     fun getFriends(): Flow<Resource<List<User>>>
     fun getReceivedFriendRequests(): Flow<Resource<List<User>>>
     fun getSentFriendRequests(): Flow<Resource<List<User>>>
+    suspend fun addToFavorites(userId: String): Resource<Unit>
+    suspend fun removeFromFavorites(userId: String): Resource<Unit>
 }

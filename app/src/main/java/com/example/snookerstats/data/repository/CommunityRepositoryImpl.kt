@@ -29,6 +29,26 @@ class CommunityRepositoryImpl @Inject constructor(
     private val currentUserId: String
         get() = auth.currentUser!!.uid
 
+    override suspend fun addToFavorites(userId: String): Resource<Unit> {
+        return try {
+            firestore.collection("users").document(currentUserId)
+                .update("favoriteOpponents", FieldValue.arrayUnion(userId)).await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    override suspend fun removeFromFavorites(userId: String): Resource<Unit> {
+        return try {
+            firestore.collection("users").document(currentUserId)
+                .update("favoriteOpponents", FieldValue.arrayRemove(userId)).await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Unknown error")
+        }
+    }
+
     override fun searchUsers(query: String): Flow<Resource<List<User>>> = flow {
         emit(Resource.Loading)
         try {

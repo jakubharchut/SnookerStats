@@ -60,3 +60,33 @@ Realizacja powyższego przepływu wymaga stworzenia i połączenia nawigacją na
 1.  **`OpponentSelectionScreen`**: Ekran z listą znajomych i wyszukiwarką, służący do wyboru przeciwnika.
 2.  **`MatchSetupScreen`**: Ekran konfiguracji rodzaju i formatu meczu.
 3.  **`ScoringScreen`**: Główny ekran do wprowadzania wyniku uderzenie po uderzeniu.
+
+---
+
+## 4. Ulepszenia Interfejsu (Listopad 2025)
+
+Wprowadzono szereg ulepszeń w interfejsie użytkownika modułu gry, aby był on bardziej spójny z resztą aplikacji i bardziej funkcjonalny.
+
+### 4.1. Ekran "Graj" w Stylu Zakładek
+- **Problem:** Początkowa wersja ekranu "Graj" z trzema przyciskami była niespójna z resztą aplikacji.
+- **Rozwiązanie:** Ekran `PlayScreen` został gruntownie przebudowany. Zamiast przycisków, główna nawigacja opiera się teraz na komponencie `TabRow` (zakładki), spójnym z ekranem "Społeczność".
+- **Zakładki:**
+    - **Gracze:** Do rozpoczynania meczu z zarejestrowanymi użytkownikami.
+    - **Gość:** Do gry z przeciwnikiem bez konta.
+    - **Trening:** Do gry solo.
+    - **Turniej:** Zakładka-placeholder, zarezerwowana dla przyszłej funkcjonalności turniejów.
+
+### 4.2. Grupowana Lista Przeciwników z Ulubionymi
+- **Problem:** Prosta lista znajomych była nieefektywna przy większej liczbie kontaktów.
+- **Rozwiązanie:** W zakładce "Gracze" zaimplementowano zaawansowaną, grupowaną listę przeciwników.
+    - **System Ulubionych:**
+        - Do modelu `User` dodano pole `favoriteOpponents: List<String>`.
+        - Przy każdym graczu na liście (poza ulubionymi) znajduje się ikona gwiazdki, która pozwala dodać go do ulubionych.
+        - Kliknięcie w gwiazdkę u ulubionego gracza usuwa go z tej listy.
+        - Listy odświeżają się automatycznie po każdej zmianie.
+    - **Grupowanie:** Lista jest podzielona na rozwijane sekcje: "Ulubieni", "Klubowicze" i "Pozostali znajomi". Zapewnia to przejrzystość i przygotowuje aplikację pod pełną funkcjonalność klubów.
+    - **Wyszukiwarka:** Poniżej listy znajduje się przycisk "Szukaj gracza", który przenosi do pełnej wyszukiwarki w module "Społeczność".
+
+### 4.3. Ulepszenia Ekranu Konfiguracji Meczu
+- **Dodano format "3 Czerwone":** Rozszerzono opcje formatu meczu o popularny wariant treningowy.
+- **Przycisk Wstecz:** Dodano przycisk "Wstecz", aby umożliwić użytkownikowi łatwy powrót do ekranu wyboru przeciwnika, jeśli się pomylił.

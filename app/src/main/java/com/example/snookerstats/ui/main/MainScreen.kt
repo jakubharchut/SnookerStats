@@ -28,7 +28,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.snookerstats.MainActivity
-import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.ui.auth.AuthViewModel
 import com.example.snookerstats.ui.auth.NavigationEvent
 import com.example.snookerstats.ui.chats.ChatListScreen
@@ -53,13 +52,12 @@ fun MainScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val unreadNotificationsCount by notificationViewModel.unreadNotificationCount.collectAsState()
+    val unreadChatCount by mainViewModel.unreadChatCount.collectAsState()
 
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    // Lista tras, które powinny być wyświetlane bez głównych pasków nawigacyjnych
     val fullScreenRoutes = listOf("conversation/{chatId}")
-
     val showBars = currentDestination?.route !in fullScreenRoutes
 
     LaunchedEffect(Unit) {
@@ -116,7 +114,15 @@ fun MainScreen(
                                 launchSingleTop = true
                             }
                         }) {
-                            Icon(imageVector = Icons.Filled.Forum, contentDescription = "Wiadomości")
+                            BadgedBox(badge = {
+                                if (unreadChatCount > 0) {
+                                    Badge(modifier = Modifier.offset(x = (-8).dp, y = (-4).dp)) {
+                                        Text(text = unreadChatCount.toString())
+                                    }
+                                }
+                            }) {
+                                Icon(imageVector = Icons.Filled.Forum, contentDescription = "Wiadomości")
+                            }
                         }
                         IconButton(onClick = {
                             internalNavController.navigate("notifications") {
@@ -126,7 +132,7 @@ fun MainScreen(
                         }) {
                             BadgedBox(badge = {
                                 if (unreadNotificationsCount > 0) {
-                                    Badge(modifier = Modifier.offset(x = (-12).dp, y = (-4).dp)) {
+                                    Badge(modifier = Modifier.offset(x = (-8).dp, y = (-4).dp)) {
                                         Text(text = unreadNotificationsCount.toString())
                                     }
                                 }
@@ -135,7 +141,7 @@ fun MainScreen(
                             }
                         }
                         IconButton(onClick = {
-                            internalNavController.navigate("user_profile/null") { // Nawigacja do własnego profilu
+                            internalNavController.navigate("user_profile/null") {
                                 popUpTo(internalNavController.graph.findStartDestination().id)
                                 launchSingleTop = true
                             }

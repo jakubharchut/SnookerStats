@@ -78,7 +78,6 @@ object FirebaseModule {
     @Singleton
     fun provideChatRepository(
         firestore: FirebaseFirestore,
-        authRepository: IAuthRepository,
-        userRepository: UserRepository
-    ): ChatRepository = ChatRepositoryImpl(firestore, authRepository, userRepository)
+        authRepository: IAuthRepository
+    ): ChatRepository = ChatRepositoryImpl(firestore, authRepository)
 }

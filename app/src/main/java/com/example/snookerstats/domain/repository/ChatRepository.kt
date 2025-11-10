@@ -12,4 +12,5 @@ interface ChatRepository {
     suspend fun createOrGetChat(otherUserId: String): Resource<String>
     suspend fun deleteChat(chatId: String): Resource<Unit>
     suspend fun updateUserPresenceInChat(chatId: String, userId: String?): Resource<Unit>
+    suspend fun resetUnreadCount(chatId: String): Resource<Unit>
 }

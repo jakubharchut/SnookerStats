@@ -8,5 +8,6 @@ data class Chat(
     val participants: List<String> = emptyList(),
     val lastMessage: String? = null,
     val lastMessageTimestamp: Timestamp? = null,
-    val userPresentInChat: String? = null // Nowe pole do śledzenia obecności
+    val userPresentInChat: String? = null,
+    val unreadCounts: Map<String, Int> = emptyMap() // Pole dla liczników nieprzeczytanych wiadomości
 )

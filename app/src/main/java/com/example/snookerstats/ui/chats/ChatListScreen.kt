@@ -20,6 +20,7 @@ import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.community.CommunityViewModel
 import com.example.snookerstats.util.Resource
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +32,7 @@ fun ChatListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val friendsState by communityViewModel.friends.collectAsState()
     var showSheet by remember { mutableStateOf(false) }
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
     LaunchedEffect(showSheet) {
         if (showSheet) {
@@ -70,9 +72,14 @@ fun ChatListScreen(
                         } else {
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 items(state.data) { chatWithUser ->
-                                    ChatListItem(chatWithUserDetails = chatWithUser, onClick = {
-                                        navController.navigate("conversation/${chatWithUser.chat.id}")
-                                    })
+                                    val isUnread = (chatWithUser.chat.unreadCounts[currentUserId] ?: 0) > 0
+                                    ChatListItem(
+                                        chatWithUserDetails = chatWithUser,
+                                        isUnread = isUnread,
+                                        onClick = {
+                                            navController.navigate("conversation/${chatWithUser.chat.id}")
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -160,14 +167,22 @@ fun NewChatContent(
 }
 
 @Composable
-fun ChatListItem(chatWithUserDetails: ChatWithUserDetails, onClick: () -> Unit) {
+fun ChatListItem(chatWithUserDetails: ChatWithUserDetails, isUnread: Boolean, onClick: () -> Unit) {
+    val fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal
+
     ListItem(
-        headlineContent = { Text(chatWithUserDetails.otherUser.username, fontWeight = FontWeight.Bold) },
+        headlineContent = {
+            Text(
+                text = chatWithUserDetails.otherUser.username,
+                fontWeight = fontWeight
+            )
+        },
         supportingContent = {
             Text(
                 text = chatWithUserDetails.chat.lastMessage ?: "...",
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = fontWeight
             )
         },
         leadingContent = {

@@ -39,6 +39,13 @@ class ConversationViewModel @Inject constructor(
     init {
         loadMessages()
         loadOtherUserDetails()
+        markChatAsRead()
+    }
+
+    private fun markChatAsRead() {
+        viewModelScope.launch {
+            chatRepository.resetUnreadCount(chatId)
+        }
     }
     
     fun setUserPresence(isPresent: Boolean) {

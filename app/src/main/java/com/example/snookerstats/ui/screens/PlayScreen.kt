@@ -1,5 +1,6 @@
 package com.example.snookerstats.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,7 +22,7 @@ import com.example.snookerstats.util.Resource
 @Composable
 fun PlayScreen(navController: NavController) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Gracz", "Gość", "Trening", "Turniej")
+    val tabs = listOf("Gracze", "Gość", "Trening", "Turniej")
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTabIndex) {
@@ -45,63 +46,88 @@ fun PlayScreen(navController: NavController) {
 
 @Composable
 private fun PlayerContent(navController: NavController) {
-    var showOpponentList by remember { mutableStateOf(false) }
-
-    Box(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        if (showOpponentList) {
-            OpponentSelectionList(navController = navController)
-        } else {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxHeight()
-            ) {
-                Text("Rozpocznij mecz z innym zarejestrowanym graczem.", textAlign = TextAlign.Center)
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = { showOpponentList = true },
-                    modifier = Modifier.fillMaxWidth(0.8f)
-                ) {
-                    Text("Wybierz Gracza")
-                }
-            }
-        }
-    }
+    // To jest teraz główna zawartość zakładki "Gracze"
+    OpponentSelectionList(navController = navController)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun OpponentSelectionList(navController: NavController, viewModel: CommunityViewModel = hiltViewModel()) {
     val friendsState by viewModel.friends.collectAsState()
+    val currentUserState by viewModel.currentUser.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.fetchFriends()
     }
 
-    Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         when (val state = friendsState) {
-            is Resource.Loading -> CircularProgressIndicator()
+            is Resource.Loading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             is Resource.Success -> {
-                if (state.data.isEmpty()) {
-                    Text("Nie masz jeszcze żadnych znajomych. Dodaj ich w zakładce 'Ludzie'.")
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.data) { friend ->
-                            ListItem(
-                                headlineContent = { Text(friend.username, fontWeight = FontWeight.Bold) },
-                                supportingContent = { Text("${friend.firstName} ${friend.lastName}") },
-                                leadingContent = { UserAvatar(user = friend, modifier = Modifier.size(40.dp)) },
-                                modifier = Modifier.clickable {
-                                    navController.navigate("match_setup/${friend.uid}")
+                val friends = state.data
+                val currentUser = currentUserState
+
+                val clubMembersOnly = emptyList<User>()
+
+                val groupedOpponents = remember(friends, currentUser) {
+                    val currentUserClub = currentUser?.club?.takeIf { it.isNotBlank() }
+                    val (clubFriends, otherFriends) = friends.partition {
+                        it.club != null && it.club == currentUserClub
+                    }
+                    
+                    linkedMapOf(
+                        "Klubowicze" to clubFriends,
+                        "Pozostali klubowicze" to clubMembersOnly,
+                        "Pozostali znajomi" to otherFriends
+                    )
+                }
+
+                if (friends.isEmpty() && clubMembersOnly.isEmpty()) {
+                     Text("Nie masz jeszcze żadnych znajomych. Dodaj ich w zakładce 'Ludzie' lub wyszukaj poniżej.", textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
+                }
+                
+                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    groupedOpponents.forEach { (header, opponents) ->
+                        if (opponents.isNotEmpty() || header.contains("Klubowicze")) {
+                            stickyHeader {
+                                Surface(modifier = Modifier.fillParentMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant) {
+                                    Text(
+                                        text = header,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
                                 }
-                            )
+                            }
+                        }
+
+                        if (opponents.isNotEmpty()) {
+                            items(opponents) { opponent ->
+                                ListItem(
+                                    headlineContent = { Text(opponent.username, fontWeight = FontWeight.Bold) },
+                                    supportingContent = { Text("${opponent.firstName} ${opponent.lastName}") },
+                                    leadingContent = { UserAvatar(user = opponent, modifier = Modifier.size(40.dp)) },
+                                    modifier = Modifier.clickable { navController.navigate("match_setup/${opponent.uid}") }
+                                )
+                            }
+                        } else if (header.contains("Klubowicze")) {
+                            item {
+                                Text(
+                                    text = if(header == "Klubowicze") "Brak znajomych w Twoim klubie." else "Funkcjonalność wkrótce dostępna.",
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = { navController.navigate("community?initialTabIndex=0") },
+                    modifier = Modifier.fillMaxWidth(0.8f)
+                ) {
+                    Text("Szukaj gracza")
                 }
             }
             is Resource.Error -> Text("Błąd: ${state.message}", color = MaterialTheme.colorScheme.error)
@@ -109,12 +135,13 @@ private fun OpponentSelectionList(navController: NavController, viewModel: Commu
     }
 }
 
+
 @Composable
 private fun GuestContent(navController: NavController) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxHeight()
+        modifier = Modifier.fillMaxHeight().padding(16.dp)
     ) {
         Text("Zapisz wynik meczu z osobą, która nie posiada konta w aplikacji.", textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(24.dp))
@@ -132,7 +159,7 @@ private fun TrainingContent(navController: NavController) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxHeight()
+        modifier = Modifier.fillMaxHeight().padding(16.dp)
     ) {
         Text("Rozpocznij sesję treningową w pojedynkę.", textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(24.dp))
@@ -150,7 +177,7 @@ private fun TournamentContent() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxHeight()
+        modifier = Modifier.fillMaxHeight().padding(16.dp)
     ) {
         Text("Funkcjonalność w budowie...\nStay tuned! ;)", textAlign = TextAlign.Center)
     }

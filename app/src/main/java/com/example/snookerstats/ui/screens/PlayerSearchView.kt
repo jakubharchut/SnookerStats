@@ -18,7 +18,7 @@ import com.example.snookerstats.ui.screens.common.UserCard
 import com.example.snookerstats.util.Resource
 
 @Composable
-fun PlayerSearchScreen(
+fun PlayerSearchView(
     navController: NavController,
     viewModel: CommunityViewModel = hiltViewModel()
 ) {
@@ -30,9 +30,7 @@ fun PlayerSearchScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         OutlinedTextField(
@@ -63,7 +61,7 @@ fun PlayerSearchScreen(
                         UserCard(
                             user = userWithStatus.user,
                             status = userWithStatus.relationshipStatus,
-                            onClick = { navController.navigate("user_profile/${userWithStatus.user.uid}") },
+                            onClick = { navController.navigate("match_setup/${userWithStatus.user.uid}") }, // Zmiana nawigacji na MatchSetup
                             onActionClick = {
                                 when (userWithStatus.relationshipStatus) {
                                     RelationshipStatus.NOT_FRIENDS, RelationshipStatus.STRANGER -> viewModel.sendFriendRequest(userWithStatus.user.uid)

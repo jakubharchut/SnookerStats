@@ -51,7 +51,7 @@ Jest to centralny punkt konfiguracji gry, niezależnie od ścieżki, którą wyb
 - **Konfiguracja:**
     - **Rodzaj Meczu:** Sparingowy / Rankingowy.
     - **Format Meczu:** Liczba czerwonych bil (15, 10, 6, 3).
-- **Rozpoczęcie Gry:** Przycisk "Rozpocznij Mecz" przenosi do `ScoringScreen`.
+- **Rozpoczęcie Gry:** Przycisk "Rozpocznij Mecz" przenosi do `ScoringScreen` z przekazaniem wybranej liczby czerwonych jako argument nawigacji.
 
 ---
 
@@ -61,9 +61,9 @@ Jest to centralny punkt konfiguracji gry, niezależnie od ścieżki, którą wyb
 - **Rejestracja Każdego Ruchu:** Aplikacja musi zapisywać każde uderzenie (`Shot`) jako osobny obiekt, zawierający typ (wbicie, faul, miss), wartość punktową oraz `timestamp`.
 - **Synchronizacja na Żywo:** Mecz musi być w pełni synchronizowany w czasie rzeczywistym między dwoma urządzeniami graczy. Każda akcja wykonana przez jednego gracza jest natychmiast widoczna u drugiego.
 - **Zasady Snookera:** Logika aplikacji musi uwzględniać kluczowe zasady gry, takie jak sekwencja wbijania bil (czerwona -> kolor), faule, `miss` oraz `free ball`.
-- **Statystyki w Czasie Rzeczywistym:** Aplikacja musi na bieżąco obliczać i wyświetlać kluczowe dane, takie jak: aktualny break, punkty pozostałe na stole, liczba czerwonych na stole, informacja o potrzebie snookera.
-- **Wizualizacja Brejka:** Oprócz numerycznej wartości brejka, aplikacja powinna graficznie przedstawiać bile, które tworzą aktualny brejk. Jeśli w brejku znajduje się wiele bil tego samego koloru (np. dwie czerwone), reprezentacja graficzna powinna to odzwierciedlać (np. jedna czerwona kula z cyfrą '2' w środku lub obok).
-- **Zegar Czasu Rozbicia (Break Timer):** Na ekranie powinien być wyświetlany zegar, który rozpoczyna odliczanie czasu od momentu wykonania pierwszego uderzenia (rozbicia) w danym podejściu. Zegar powinien pokazywać aktualny czas trwania podejścia.
+- **Statystyki w Czasie Rzeczywistym:** Aplikacja musi na bieżąco obliczać i wyświetlać kluczowe dane, takie jak: aktualny break, punkty pozostałe na stole, liczba czerwonych na stole.
+- **Wizualizacja Brejka:** Oprócz numerycznej wartości brejka, aplikacja graficznie przedstawia bile, które tworzą aktualny brejk. Jeśli w brejku znajduje się wiele bil tego samego koloru, reprezentacja graficzna odzwierciedla to za pomocą cyfry wewnątrz ikony bili.
+- **Zegar Czasu Rozbicia (Break Timer):** Na ekranie wyświetlany jest zegar, który rozpoczyna odliczanie czasu od momentu wykonania pierwszego uderzenia (rozbicia) w danym podejściu.
 - **Powrót do Gry:** Użytkownik musi mieć możliwość powrotu do niedokończonego meczu po przypadkowym zamknięciu aplikacji.
 - **Wizualizacja:** Zebrane dane muszą być wystarczająco szczegółowe, aby w przyszłości umożliwić stworzenie wizualizacji przebiegu frejma (np. w formie histogramu).
 
@@ -112,3 +112,53 @@ Jest to centralny punkt konfiguracji gry, niezależnie od ścieżki, którą wyb
 - **Szacowany czas:** ok. 8 godzin.
 
 **Całkowity szacowany czas:** ok. 6-7 dni roboczych.
+
+---
+
+## 5. Implementacja `ScoringScreen` - Szczegóły Logiki (stan na 2025-11-10)
+
+Architektura opiera się na `ScoringViewModel` oraz `ScoringState`, który przechowuje cały stan frejma. Poniżej opisano kluczowe zaimplementowane mechanizmy.
+
+### 5.1. Logika Wbijania Bil (`onBallClicked`)
+Funkcja ta jest sercem systemu i obsługuje wszystkie fazy gry:
+
+#### A. Normalna Gra (czerwone na stole)
+- **Czerwona bila jest zawsze dostępna:** Gracz może wbić czerwoną w każdej chwili. Pozwala to na obsługę scenariusza, w którym w jednym uderzeniu wpada więcej niż jedna czerwona – użytkownik po prostu klika przycisk "Czerwona" odpowiednią liczbę razy.
+- **Aktywacja kolorów:** Po kliknięciu na czerwoną bilę, stan `canPotColor` jest ustawiany na `true`, co aktywuje przyciski bil kolorowych.
+- **Dezaktywacja kolorów:** Po wbiciu bili kolorowej, `canPotColor` jest resetowany do `false`, zmuszając gracza do ponownego zagrania na czerwoną.
+
+#### B. Wolna Bila (`isFreeBall`)
+- **Aktywacja:** Tryb "Wolnej bili" jest aktywowany w oknie faulu.
+- **Logika:** W tym trybie:
+    - Przycisk czerwonej bili jest nieaktywny.
+    - Wszystkie bile kolorowe są aktywne.
+    - **Gdy są czerwone na stole:** Wbicie dowolnego koloru daje **1 punkt** (jak za czerwoną). Stan `canPotColor` jest ustawiany na `true`, aby umożliwić zagranie na normalny kolor.
+    - **Gdy nie ma czerwonych na stole:** Wbicie dowolnego koloru daje punkty równe wartości bili, która była "na grze" w sekwencji.
+
+#### C. Koniec Frejma (gra na kolory)
+- **Aktywacja:** Tryb ten włącza się automatycznie, gdy `redsRemaining` spada do 0.
+- **Krok 1: Dowolny kolor po ostatniej czerwonej:**
+    - Bezpośrednio po wbiciu ostatniej czerwonej, stan `nextColorBallOn` jest ustawiany na `null`, a `canPotColor` na `true`. W UI powoduje to aktywację **wszystkich** bil kolorowych, pozwalając graczowi na wybór.
+- **Krok 2: Sekwencja od żółtej do czarnej:**
+    - Po wbiciu tej pierwszej, dowolnej bili kolorowej, `ViewModel` przechodzi w tryb sekwencyjny.
+    - Stan `nextColorBallOn` jest ustawiany na `SnookerBall.Yellow`.
+    - Od tego momentu tylko jeden, właściwy przycisk bili kolorowej jest aktywny, prowadząc gracza przez sekwencję: Żółta -> Zielona -> Brązowa -> Niebieska -> Różowa -> Czarna.
+- **Koniec partii:** Po wbiciu czarnej bili, stan `isFrameOver` jest ustawiany na `true`, co blokuje wszystkie przyciski bil.
+
+### 5.2. Logika Faulu (`onFoulConfirmed`)
+- **Okno Dialogowe:** Po kliknięciu "Faul" pojawia się `AlertDialog` z trzema sekcjami:
+    1.  **Wartość faulu:** Wybór od 4 do 7 punktów.
+    2.  **Wolna bila:** Checkbox do aktywacji trybu `isFreeBall` dla przeciwnika.
+    3.  **Czerwone wbite w faulu:** Licznik (+/-) pozwalający określić, ile czerwonych bil wpadło do kieszeni podczas faulu.
+- **Działanie:** Po zatwierdzeniu, `ViewModel`:
+    - Dodaje wybraną liczbę punktów do wyniku **przeciwnika**.
+    - Zmniejsza `redsRemaining` o podaną liczbę.
+    - Przekazuje turę przeciwnikowi, aktywując dla niego tryb `isFreeBall`, jeśli został zaznaczony.
+
+### 5.3. Zakończenie Tury (`endTurn`)
+- Funkcje `onMissClicked` ("Pudło") oraz `onSafetyClicked` ("Odstawna") wywołują wspólną, prywatną funkcję `endTurn()`.
+- **Działanie:** Funkcja ta:
+    - Zmienia aktywnego gracza (`activePlayerId`).
+    - Zeruje `currentBreak` i `breakHistory`.
+    - Resetuje wszystkie stany (takie jak `canPotColor` i `isFreeBall`) do wartości początkowych dla nowej tury.
+    - Jeśli gra jest już w fazie na kolory, poprawnie ustawia `nextColorBallOn` dla nadchodzącego gracza.

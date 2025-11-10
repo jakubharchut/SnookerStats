@@ -50,7 +50,7 @@ class ScoringViewModel @Inject constructor(
     init {
         val matchId = "test_match_123"
         val numberOfReds = savedStateHandle.get<Int>("numberOfReds") ?: 15
-        val initialPoints = (numberOfReds * 8) + 27
+        val initialPoints = calculatePointsRemaining(numberOfReds, null)
 
         _uiState.update {
             it.copy(
@@ -75,6 +75,21 @@ class ScoringViewModel @Inject constructor(
                 activePlayerId = "player1",
                 isLoading = false
             )
+        }
+    }
+
+    private fun calculatePointsRemaining(reds: Int, nextColor: SnookerBall?): Int {
+        if (reds > 0) {
+            return (reds * 8) + 27
+        }
+        return when (nextColor) {
+            SnookerBall.Yellow -> 27
+            SnookerBall.Green -> 25
+            SnookerBall.Brown -> 22
+            SnookerBall.Blue -> 18
+            SnookerBall.Pink -> 13
+            SnookerBall.Black -> 7
+            else -> 0 // Frame is over or in an intermediate state
         }
     }
 
@@ -104,7 +119,6 @@ class ScoringViewModel @Inject constructor(
             val newPlayerState = activePlayerState.copy(score = newScore)
             val newRedsRemaining = if (ball is SnookerBall.Red && !currentState.isFreeBall) currentState.redsRemaining - 1 else currentState.redsRemaining
             val nextBreakHistory = currentState.breakHistory + ball
-            val newPointsRemaining = currentState.pointsRemaining - pointsToAdd
 
             var canPotColorNext = false
             var nextColorOn: SnookerBall? = null
@@ -140,6 +154,8 @@ class ScoringViewModel @Inject constructor(
                 }
             }
 
+            val newPointsRemaining = calculatePointsRemaining(newRedsRemaining, nextColorOn)
+
             currentState.copy(
                 player1 = if (currentState.activePlayerId == currentState.player1?.user?.uid) newPlayerState else currentState.player1,
                 player2 = if (currentState.activePlayerId == currentState.player2?.user?.uid) newPlayerState else currentState.player2,
@@ -168,6 +184,9 @@ class ScoringViewModel @Inject constructor(
             
             val newRedsRemaining = (currentState.redsRemaining - redsPotted).coerceAtLeast(0)
             val nextPlayerId = opponentState.user.uid
+            
+            val nextColorOn = if (newRedsRemaining == 0) SnookerBall.Yellow else null
+            val newPointsRemaining = calculatePointsRemaining(newRedsRemaining, nextColorOn)
 
             currentState.copy(
                 player1 = if (opponentState.user.uid == currentState.player1?.user?.uid) newOpponentState else currentState.player1,
@@ -178,7 +197,9 @@ class ScoringViewModel @Inject constructor(
                 currentBreak = 0,
                 breakHistory = emptyList(),
                 canPotColor = newRedsRemaining == 0,
-                redsRemaining = newRedsRemaining
+                redsRemaining = newRedsRemaining,
+                pointsRemaining = newPointsRemaining,
+                nextColorBallOn = nextColorOn
             )
         }
     }
@@ -189,13 +210,14 @@ class ScoringViewModel @Inject constructor(
     private fun endTurn() {
         _uiState.update { currentState ->
             val nextPlayerId = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player2?.user?.uid else currentState.player1?.user?.uid
+            val nextColorOn = if(currentState.redsRemaining == 0) currentState.nextColorBallOn ?: SnookerBall.Yellow else null
             currentState.copy(
                 activePlayerId = nextPlayerId,
                 currentBreak = 0,
                 breakHistory = emptyList(),
                 canPotColor = false,
                 isFreeBall = false,
-                nextColorBallOn = if(currentState.redsRemaining == 0) SnookerBall.Yellow else null
+                nextColorBallOn = nextColorOn
             )
         }
     }

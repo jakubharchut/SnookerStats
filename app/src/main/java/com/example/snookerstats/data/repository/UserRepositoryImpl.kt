@@ -1,7 +1,7 @@
 package com.example.snookerstats.data.repository
 
 import com.example.snookerstats.domain.model.User
-import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
 import com.google.firebase.firestore.FirebaseFirestore
@@ -10,7 +10,7 @@ import javax.inject.Inject
 
 class UserRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val authRepository: AuthRepository
+    private val authRepository: IAuthRepository
 ) : UserRepository {
 
     override suspend fun getUser(userId: String): Resource<User> {

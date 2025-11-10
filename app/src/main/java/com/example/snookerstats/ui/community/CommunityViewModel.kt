@@ -3,8 +3,11 @@ package com.example.snookerstats.ui.community
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.CommunityRepository
+import com.example.snookerstats.ui.screens.RelationshipStatus
+import com.example.snookerstats.ui.screens.UserWithStatus
 import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -19,11 +22,12 @@ sealed class CommunityNavigationEvent {
 @HiltViewModel
 class CommunityViewModel @Inject constructor(
     private val repository: CommunityRepository,
-    private val chatRepository: ChatRepository
+    private val chatRepository: ChatRepository,
+    private val authRepository: IAuthRepository // Zmiana na IAuthRepository
 ) : ViewModel() {
 
-    private val _searchResults = MutableStateFlow<Resource<List<User>>>(Resource.Success(emptyList()))
-    val searchResults: StateFlow<Resource<List<User>>> = _searchResults.asStateFlow()
+    private val _searchResults = MutableStateFlow<Resource<List<UserWithStatus>>>(Resource.Success(emptyList()))
+    val searchResults: StateFlow<Resource<List<UserWithStatus>>> = _searchResults.asStateFlow()
 
     private val _friends = MutableStateFlow<Resource<List<User>>>(Resource.Loading)
     val friends: StateFlow<Resource<List<User>>> = _friends.asStateFlow()
@@ -40,11 +44,49 @@ class CommunityViewModel @Inject constructor(
     private val _navigationEvent = Channel<CommunityNavigationEvent>()
     val navigationEvent = _navigationEvent.receiveAsFlow()
 
+    private val _currentUser = MutableStateFlow<User?>(null) // StateFlow dla aktualnego użytkownika
+    val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
+
+    init {
+        // Pobierz aktualnego użytkownika po inicjalizacji ViewModelu
+        viewModelScope.launch {
+            authRepository.getCurrentUser().collectLatest { user ->
+                _currentUser.value = user
+            }
+        }
+    }
+
     fun onSearchQueryChanged(query: String) {
         viewModelScope.launch {
-            repository.searchUsers(query).collect {
-                _searchResults.value = it
+            if (query.length >= 3) {
+                repository.searchUsers(query).collect { resource ->
+                    _searchResults.value = when (resource) {
+                        is Resource.Success -> {
+                            val currentUserData = _currentUser.value
+                            val usersWithStatus = resource.data.map { user ->
+                                UserWithStatus(user, getRelationshipStatus(currentUserData, user))
+                            }
+                            Resource.Success(usersWithStatus)
+                        }
+                        is Resource.Error -> Resource.Error(resource.message)
+                        is Resource.Loading -> Resource.Loading
+                    }
+                }
+            } else {
+                _searchResults.value = Resource.Success(emptyList())
             }
+        }
+    }
+
+    private fun getRelationshipStatus(currentUser: User?, otherUser: User): RelationshipStatus {
+        currentUser ?: return RelationshipStatus.STRANGER // Jeśli brak zalogowanego użytkownika
+
+        return when {
+            currentUser.uid == otherUser.uid -> RelationshipStatus.SELF
+            currentUser.friends.contains(otherUser.uid) -> RelationshipStatus.FRIENDS
+            currentUser.friendRequestsSent.contains(otherUser.uid) -> RelationshipStatus.REQUEST_SENT
+            currentUser.friendRequestsReceived.contains(otherUser.uid) -> RelationshipStatus.REQUEST_RECEIVED
+            else -> RelationshipStatus.NOT_FRIENDS
         }
     }
 
@@ -72,10 +114,21 @@ class CommunityViewModel @Inject constructor(
         }
     }
 
-    private fun handleAction(action: suspend () -> Resource<Any>, successMessage: String) {
+    private fun handleAction(action: suspend () -> Resource<Any>, successMessage: String, refreshSearch: Boolean = false) {
         viewModelScope.launch {
             when (val response = action()) {
-                is Resource.Success -> _eventMessage.emit(successMessage)
+                is Resource.Success -> {
+                    _eventMessage.emit(successMessage)
+                    if (refreshSearch) {
+                        // Odśwież wyniki wyszukiwania po wykonaniu akcji, jeśli jest to potrzebne
+                        val currentSearchQuery = (_searchResults.value as? Resource.Success)?.data?.firstOrNull()?.user?.username?.substring(0, 3) ?: "" // Pobierz zapytanie z wyników
+                        onSearchQueryChanged(currentSearchQuery) // Odśwież wyniki
+                    }
+                    // Odśwież inne listy, np. znajomych czy zaproszeń
+                    fetchFriends()
+                    fetchReceivedRequests()
+                    fetchSentRequests()
+                }
                 is Resource.Error -> _eventMessage.emit("Błąd: ${response.message}")
                 else -> {}
             }
@@ -96,9 +149,10 @@ class CommunityViewModel @Inject constructor(
         }
     }
 
-    fun sendFriendRequest(toUserId: String) = handleAction({ repository.sendFriendRequest(toUserId) }, "Zaproszenie wysłane!")
-    fun cancelFriendRequest(toUserId: String) = handleAction({ repository.cancelFriendRequest(toUserId) }, "Zaproszenie anulowane.")
-    fun acceptFriendRequest(fromUserId: String) = handleAction({ repository.acceptFriendRequest(fromUserId) }, "Zaproszenie zaakceptowane.")
-    fun rejectFriendRequest(fromUserId: String) = handleAction({ repository.rejectFriendRequest(fromUserId) }, "Zaproszenie odrzucone.")
-    fun removeFriend(friendId: String) = handleAction({ repository.removeFriend(friendId) }, "Znajomy usunięty.")
+    // Zaktualizowane funkcje, aby odświeżały wyszukiwanie i listy
+    fun sendFriendRequest(toUserId: String) = handleAction({ repository.sendFriendRequest(toUserId) }, "Zaproszenie wysłane!", true)
+    fun cancelFriendRequest(toUserId: String) = handleAction({ repository.cancelFriendRequest(toUserId) }, "Zaproszenie anulowane.", true)
+    fun acceptFriendRequest(fromUserId: String) = handleAction({ repository.acceptFriendRequest(fromUserId) }, "Zaproszenie zaakceptowane.", true)
+    fun rejectFriendRequest(fromUserId: String) = handleAction({ repository.rejectFriendRequest(fromUserId) }, "Zaproszenie odrzucone.", true)
+    fun removeFriend(friendId: String) = handleAction({ repository.removeFriend(friendId) }, "Znajomy usunięty.", true)
 }

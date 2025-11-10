@@ -7,7 +7,7 @@ import com.example.snookerstats.data.repository.CommunityRepositoryImpl
 import com.example.snookerstats.data.repository.NotificationRepositoryImpl
 import com.example.snookerstats.data.repository.ProfileRepositoryImpl
 import com.example.snookerstats.data.repository.UserRepositoryImpl
-import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.CommunityRepository
 import com.example.snookerstats.domain.repository.NotificationRepository
@@ -44,7 +44,7 @@ object FirebaseModule {
         firebaseAuth: FirebaseAuth,
         firestore: FirebaseFirestore,
         prefsManager: EncryptedPrefsManager
-    ): AuthRepository = AuthRepositoryImpl(firebaseAuth, firestore, prefsManager)
+    ): IAuthRepository = AuthRepositoryImpl(firebaseAuth, firestore, prefsManager)
 
     @Provides
     @Singleton
@@ -71,14 +71,14 @@ object FirebaseModule {
     @Singleton
     fun provideUserRepository(
         firestore: FirebaseFirestore,
-        authRepository: AuthRepository
+        authRepository: IAuthRepository
     ): UserRepository = UserRepositoryImpl(firestore, authRepository)
 
     @Provides
     @Singleton
     fun provideChatRepository(
         firestore: FirebaseFirestore,
-        authRepository: AuthRepository,
+        authRepository: IAuthRepository,
         userRepository: UserRepository
     ): ChatRepository = ChatRepositoryImpl(firestore, authRepository, userRepository)
 }

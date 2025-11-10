@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.User
-import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.CommunityRepository
 import com.example.snookerstats.ui.screens.RelationshipStatus
@@ -27,7 +27,7 @@ sealed class ProfileState {
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
+    private val authRepository: IAuthRepository,
     private val communityRepository: CommunityRepository,
     private val chatRepository: ChatRepository,
     savedStateHandle: SavedStateHandle

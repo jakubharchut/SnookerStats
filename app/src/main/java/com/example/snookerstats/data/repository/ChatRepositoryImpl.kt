@@ -2,7 +2,7 @@ package com.example.snookerstats.data.repository
 
 import com.example.snookerstats.domain.model.Chat
 import com.example.snookerstats.domain.model.Message
-import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
@@ -17,7 +17,7 @@ import javax.inject.Inject
 
 class ChatRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val authRepository: AuthRepository,
+    private val authRepository: IAuthRepository,
     private val userRepository: UserRepository
 ) : ChatRepository {
 

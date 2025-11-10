@@ -2,7 +2,7 @@ package com.example.snookerstats.data.repository
 
 import com.example.snookerstats.data.local.preferences.EncryptedPrefsManager
 import com.example.snookerstats.domain.model.User
-import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.util.Resource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -17,7 +17,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
     private val prefsManager: EncryptedPrefsManager
-) : AuthRepository {
+) : IAuthRepository {
 
     override val currentUser: FirebaseUser?
         get() = firebaseAuth.currentUser
@@ -69,6 +69,29 @@ class AuthRepositoryImpl @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    override fun getCurrentUser(): Flow<User?> = callbackFlow {
+        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
+            val firebaseUser = auth.currentUser
+            if (firebaseUser == null) {
+                trySend(null)
+            } else {
+                // Gdy użytkownik jest zalogowany, pobierz jego pełny profil
+                firestore.collection("users").document(firebaseUser.uid)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        val user = snapshot.toObject(User::class.java)
+                        trySend(user)
+                    }
+                    .addOnFailureListener { 
+                        trySend(null) // W przypadku błędu
+                    }
+            }
+        }
+        firebaseAuth.addAuthStateListener(authStateListener)
+        awaitClose {
+            firebaseAuth.removeAuthStateListener(authStateListener)
+        }
+    }
 
     override suspend fun updateFcmToken(token: String): Resource<Boolean> {
         return try {
@@ -99,8 +122,6 @@ class AuthRepositoryImpl @Inject constructor(
         val password = prefsManager.getPassword()
         return if (email != null && password != null) Pair(email, password) else null
     }
-
-
 
     override fun clearCredentials() {
         prefsManager.clearCredentials()

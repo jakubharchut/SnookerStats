@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Message
 import com.example.snookerstats.domain.model.User
-import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
@@ -20,7 +20,7 @@ import javax.inject.Inject
 class ConversationViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val userRepository: UserRepository,
-    private val authRepository: AuthRepository,
+    private val authRepository: IAuthRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 

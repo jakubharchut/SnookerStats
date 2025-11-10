@@ -2,7 +2,7 @@ package com.example.snookerstats.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.util.Resource
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,7 +15,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
+    private val authRepository: IAuthRepository,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 

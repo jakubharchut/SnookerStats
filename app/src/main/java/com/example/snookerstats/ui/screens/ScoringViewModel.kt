@@ -1,18 +1,23 @@
 package com.example.snookerstats.ui.screens
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.snookerstats.domain.model.SnookerBall
 import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.domain.model.SnookerBall
 import com.example.snookerstats.domain.repository.MatchRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 data class PlayerState(
@@ -48,9 +53,11 @@ class ScoringViewModel @Inject constructor(
     val uiState: StateFlow<ScoringState> = _uiState.asStateFlow()
 
     private val stateHistory = mutableListOf<ScoringState>()
+    private var timerJob: Job? = null
+    private var timeInMillis = 0L
 
     init {
-        val matchId = "test_match_123"
+        val matchId = savedStateHandle.get<String>("matchId") ?: "test_match_123"
         val numberOfReds = savedStateHandle.get<Int>("numberOfReds") ?: 15
         val initialPoints = calculatePointsRemaining(numberOfReds, null)
 
@@ -61,23 +68,68 @@ class ScoringViewModel @Inject constructor(
             )
         }
 
-        loadMockData()
         matchRepository.getMatchStream(matchId).onEach { match ->
-            // TODO: Map data
+            if (match != null && match.player1Id != null && match.player2Id != null) {
+                // Step 1: Get Player User objects
+                val (player1, player2) = matchRepository.getPlayersForMatch(match.player1Id, match.player2Id)
+                Log.d("ScoringViewModel", "Player 1 Loaded: ${player1?.firstName} ${player1?.lastName}")
+                Log.d("ScoringViewModel", "Player 2 Loaded: ${player2?.firstName} ${player2?.lastName}")
+
+
+                if (player1 == null || player2 == null) {
+                    // Handle error case if players are not found
+                    return@onEach
+                }
+                
+                // Step 2: Set player data first to ensure UI has access to names
+                _uiState.update {
+                    it.copy(
+                        player1 = PlayerState(user = player1),
+                        player2 = PlayerState(user = player2)
+                    )
+                }
+
+                // Step 3: Calculate scores and update the rest of the state
+                val currentFrame = match.frames.lastOrNull()
+                val completedFrames = match.frames.dropLast(if (currentFrame != null) 1 else 0)
+
+                val p1FramesWon = completedFrames.count { it.player1Points > it.player2Points }
+                val p2FramesWon = completedFrames.count { it.player2Points > it.player1Points }
+
+                val p1Score = currentFrame?.player1Points ?: 0
+                val p2Score = currentFrame?.player2Points ?: 0
+
+                _uiState.update {
+                    it.copy(
+                        player1 = it.player1?.copy(score = p1Score, framesWon = p1FramesWon),
+                        player2 = it.player2?.copy(score = p2Score, framesWon = p2FramesWon),
+                        activePlayerId = match.player1Id,
+                        isLoading = false
+                    )
+                }
+            }
         }.launchIn(viewModelScope)
     }
 
-    private fun loadMockData() {
-        val user1 = User(uid = "player1", email = "test1@test.com", username = "koobi", firstName = "Jakub", lastName = "Kowalski")
-        val user2 = User(uid = "player2", email = "test2@test.com", username = "Merka", firstName = "Anna", lastName = "Nowak")
-        _uiState.update {
-            it.copy(
-                player1 = PlayerState(user = user1, framesWon = 1),
-                player2 = PlayerState(user = user2, framesWon = 0),
-                activePlayerId = "player1",
-                isLoading = false
-            )
+    private fun startTimer() {
+        if (timerJob?.isActive == true) return // Already running
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(1000)
+                timeInMillis += 1000
+                val minutes = TimeUnit.MILLISECONDS.toMinutes(timeInMillis)
+                val seconds = TimeUnit.MILLISECONDS.toSeconds(timeInMillis) % 60
+                _uiState.update {
+                    it.copy(timer = String.format("%02d:%02d", minutes, seconds))
+                }
+            }
         }
+    }
+
+    private fun resetTimer() {
+        timerJob?.cancel()
+        timeInMillis = 0L
+        _uiState.update { it.copy(timer = "00:00") }
     }
 
     private fun calculatePointsRemaining(reds: Int, nextColor: SnookerBall?): Int {
@@ -91,7 +143,7 @@ class ScoringViewModel @Inject constructor(
             SnookerBall.Blue -> 18
             SnookerBall.Pink -> 13
             SnookerBall.Black -> 7
-            else -> 0 // Frame is over or in an intermediate state
+            else -> 0
         }
     }
 
@@ -100,23 +152,23 @@ class ScoringViewModel @Inject constructor(
         _uiState.update { currentState ->
             if (currentState.isFrameOver) return@update currentState
 
-            // --- VALIDATION ---
             val isValid = when {
                 currentState.isFreeBall -> ball !is SnookerBall.Red
                 currentState.redsRemaining == 0 -> {
-                    if (currentState.nextColorBallOn == null) ball !is SnookerBall.Red // Any color after last red
-                    else ball == currentState.nextColorBallOn // Correct color in sequence
+                    if (currentState.nextColorBallOn == null) ball !is SnookerBall.Red
+                    else ball == currentState.nextColorBallOn
                 }
-                else -> { // Reds on table
+                else -> {
                     if (currentState.canPotColor) ball !is SnookerBall.Red
                     else ball is SnookerBall.Red
                 }
             }
             if (!isValid) {
-                stateHistory.removeLast() // remove invalid state change
+                stateHistory.removeLast()
                 return@update currentState
             }
-
+            
+            startTimer()
 
             val pointsToAdd = if (currentState.isFreeBall && currentState.redsRemaining > 0) 1 else ball.points
             val activePlayerState = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player1 else currentState.player2
@@ -136,15 +188,12 @@ class ScoringViewModel @Inject constructor(
             } else { // ENDGAME
                 canPotColorNext = true
                 
-                // Case 1: Just potted the last red. Now ANY color is available.
                 if (currentState.redsRemaining > 0 && newRedsRemaining == 0) {
                     nextColorOn = null
                 }
-                // Case 2: In the "any color" phase and just potted a color. Next is Yellow.
                 else if (currentState.redsRemaining == 0 && currentState.nextColorBallOn == null) {
                     nextColorOn = SnookerBall.Yellow
                 }
-                // Case 3: Already in the sequence.
                 else {
                     nextColorOn = when (ball) {
                         is SnookerBall.Yellow -> SnookerBall.Green
@@ -152,7 +201,7 @@ class ScoringViewModel @Inject constructor(
                         is SnookerBall.Brown -> SnookerBall.Blue
                         is SnookerBall.Blue -> SnookerBall.Pink
                         is SnookerBall.Pink -> SnookerBall.Black
-                        else -> null // Includes Black, which ends the sequence
+                        else -> null
                     }
                 }
                 
@@ -183,6 +232,7 @@ class ScoringViewModel @Inject constructor(
 
     fun onFoulConfirmed(foulPoints: Int, isFreeBall: Boolean, redsPotted: Int) {
         stateHistory.add(uiState.value)
+        startTimer() // Timer now acts as a frame timer
         _uiState.update { currentState ->
             val opponentState = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player2 else currentState.player1
             if (opponentState == null) return@update currentState
@@ -217,6 +267,7 @@ class ScoringViewModel @Inject constructor(
 
     private fun endTurn() {
         stateHistory.add(uiState.value)
+        startTimer() // Timer starts/continues on turn end for the next player
         _uiState.update { currentState ->
             val nextPlayerId = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player2?.user?.uid else currentState.player1?.user?.uid
             val nextColorOn = if(currentState.redsRemaining == 0) currentState.nextColorBallOn ?: SnookerBall.Yellow else null
@@ -237,7 +288,16 @@ class ScoringViewModel @Inject constructor(
             _uiState.value = lastState
         }
     }
-    fun onEndFrameClicked() { /* TODO */ }
-    fun onRepeatFrameClicked() { /* TODO */ }
-    fun onEndMatchClicked() { /* TODO */ }
+    fun onEndFrameClicked() { 
+        resetTimer()
+        /* TODO */
+    }
+    fun onRepeatFrameClicked() { 
+        resetTimer()
+        /* TODO */ 
+    }
+    fun onEndMatchClicked() { 
+        resetTimer()
+        /* TODO */ 
+    }
 }

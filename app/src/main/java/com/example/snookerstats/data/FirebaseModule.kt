@@ -47,9 +47,10 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideMatchRepository(
-        matchDao: MatchDao
+        matchDao: MatchDao,
+        userRepository: UserRepository
         // firestore: FirebaseFirestore // Dodamy później, gdy będzie potrzebne
-    ): MatchRepository = MatchRepositoryImpl(matchDao)
+    ): MatchRepository = MatchRepositoryImpl(matchDao, userRepository)
 
     @Provides
     @Singleton

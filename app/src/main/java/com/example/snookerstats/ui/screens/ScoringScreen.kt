@@ -361,11 +361,11 @@ private fun BallButton(ball: SnookerBall, onClick: () -> Unit, enabled: Boolean)
 private fun ActionButtons(onFoulClick: () -> Unit, onSafetyClick: () -> Unit, onMissClick: () -> Unit, onUndoClick: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = onFoulClick, modifier = Modifier.weight(1f)) { Text("Faul") }
             Button(onClick = onSafetyClick, modifier = Modifier.weight(1f)) { Text("Odstawna") }
+            Button(onClick = onMissClick, modifier = Modifier.weight(1f)) { Text("Pudło") }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = onMissClick, modifier = Modifier.weight(1f)) { Text("Pudło") }
+            Button(onClick = onFoulClick, modifier = Modifier.weight(1f)) { Text("Faul") }
             Button(onClick = onUndoClick, modifier = Modifier.weight(1f)) { Text("Cofnij") }
         }
     }

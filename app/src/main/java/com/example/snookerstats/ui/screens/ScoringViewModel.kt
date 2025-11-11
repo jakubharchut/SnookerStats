@@ -8,12 +8,17 @@ import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.ui.main.SnackbarManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.math.abs
+
+sealed class ScoringNavEvent {
+    object NavigateToMatchHistory : ScoringNavEvent()
+}
 
 data class PlayerState(
     val user: User,
@@ -56,6 +61,9 @@ class ScoringViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ScoringState())
     val uiState: StateFlow<ScoringState> = _uiState.asStateFlow()
 
+    private val _navEvent = Channel<ScoringNavEvent>()
+    val navEvent = _navEvent.receiveAsFlow()
+
     private var timerJob: Job? = null
     private var timeInMillis = 0L
     private var currentMatch: Match? = null
@@ -86,8 +94,8 @@ class ScoringViewModel @Inject constructor(
             val currentFrame = match.frames.lastOrNull() ?: Frame(matchId = match.id, frameNumber = 1)
             val completedFrames = if (match.status == MatchStatus.COMPLETED) match.frames else match.frames.dropLast(1)
 
-            val p1FramesWon = completedFrames.count { it.player1Points > it.player2Points }
-            val p2FramesWon = completedFrames.count { it.player2Points > it.player1Points }
+            val p1FramesWon = completedFrames.count { it.player1Points > it.player2Points && (it.player1Points != 0 || it.player2Points != 0) }
+            val p2FramesWon = completedFrames.count { it.player2Points > it.player1Points && (it.player1Points != 0 || it.player2Points != 0) }
 
             val reconstructedScoringState = reconstructScoringState(
                 shots = currentFrame.shots,
@@ -579,6 +587,14 @@ class ScoringViewModel @Inject constructor(
     }
     
     fun onEndMatchClicked() {
+        val state = uiState.value
+        val p1Score = state.player1?.score ?: 0
+        val p2Score = state.player2?.score ?: 0
+
+        if (p1Score == p2Score) {
+            snackbarManager.showMessage("Nie można zakończyć meczu przy remisie w bieżącym frejmie.")
+            return
+        }
         _uiState.update { it.copy(showEndMatchDialog = true) }
     }
     
@@ -587,11 +603,22 @@ class ScoringViewModel @Inject constructor(
     }
 
     fun onEndMatchConfirmed() {
-        val match = currentMatch ?: return
-        resetTimer()
-        
-        val updatedMatch = match.copy(status = MatchStatus.COMPLETED)
-        updateMatchInRepository(updatedMatch)
-        _uiState.update { it.copy(showEndMatchDialog = false, showFrameOverDialog = false) }
+        viewModelScope.launch {
+            val match = currentMatch ?: return@launch
+            val state = uiState.value
+            val currentFrame = state.currentFrame ?: return@launch
+            resetTimer()
+
+            val finalizedFrame = currentFrame.copy(
+                player1Points = state.player1?.score ?: 0,
+                player2Points = state.player2?.score ?: 0
+            )
+            val finalizedFrames = match.frames.dropLast(1) + finalizedFrame
+            
+            val updatedMatch = match.copy(status = MatchStatus.COMPLETED, frames = finalizedFrames)
+            updateMatchInRepository(updatedMatch)
+            _uiState.update { it.copy(showEndMatchDialog = false, showFrameOverDialog = false) }
+            _navEvent.send(ScoringNavEvent.NavigateToMatchHistory)
+        }
     }
 }

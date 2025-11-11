@@ -22,7 +22,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.SnookerBall
-import kotlin.math.abs
+import com.example.snookerstats.ui.navigation.BottomNavItem
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun ScoringScreen(
@@ -30,6 +31,19 @@ fun ScoringScreen(
     viewModel: ScoringViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.navEvent.collectLatest { event ->
+            when(event) {
+                is ScoringNavEvent.NavigateToMatchHistory -> {
+                    navController.navigate(BottomNavItem.MatchHistory.route) {
+                        popUpTo(navController.graph.startDestinationId)
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+    }
 
     if (state.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -65,7 +79,7 @@ fun ScoringScreen(
             score = state.frameEndScore,
             onNextFrame = viewModel::onNextFrameClicked,
             onEndMatch = viewModel::onEndMatchConfirmed,
-            onDismiss = viewModel::onDismissFrameOverDialog
+            onReturnToFrame = viewModel::onReturnToFrameClicked
         )
     }
 
@@ -107,13 +121,8 @@ fun ScoringScreen(
         )
         Spacer(modifier = Modifier.weight(1f))
         
-        val p1Score = state.player1?.score ?: 0
-        val p2Score = state.player2?.score ?: 0
-        val isFrameFinishable = abs(p1Score - p2Score) >= state.pointsRemaining || state.pointsRemaining == 0
-        
         FrameAndMatchActions(
             isBreakInProgress = state.currentBreak > 0,
-            isFrameFinishable = isFrameFinishable,
             onEndFrameClick = viewModel::onEndFrameClicked,
             onRepeatFrameClick = viewModel::onRepeatFrameClicked,
             onEndMatchClick = viewModel::onEndMatchClicked
@@ -122,9 +131,15 @@ fun ScoringScreen(
 }
 
 @Composable
-private fun FrameOverDialog(winnerName: String?, score: String?, onNextFrame: () -> Unit, onEndMatch: () -> Unit, onDismiss: () -> Unit) {
+private fun FrameOverDialog(
+    winnerName: String?,
+    score: String?,
+    onNextFrame: () -> Unit,
+    onEndMatch: () -> Unit,
+    onReturnToFrame: () -> Unit
+) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = onReturnToFrame,
         title = { Text("Frejm zakończony") },
         text = {
             Column {
@@ -132,12 +147,14 @@ private fun FrameOverDialog(winnerName: String?, score: String?, onNextFrame: ()
                 Text("Wynikiem: ${score ?: "..."}")
             }
         },
-        confirmButton = { Button(onClick = onNextFrame) { Text("Następny frejm") } },
-        dismissButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onDismiss) { Text("Wróć do frejma") }
+        confirmButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                Button(onClick = onNextFrame) { Text("Następny frejm") }
                 TextButton(onClick = onEndMatch) { Text("Zakończ mecz") }
             }
+        },
+        dismissButton = {
+            TextButton(onClick = onReturnToFrame) { Text("Wróć do frejma") }
         }
     )
 }
@@ -357,16 +374,15 @@ private fun ActionButtons(onFoulClick: () -> Unit, onSafetyClick: () -> Unit, on
 @Composable
 private fun FrameAndMatchActions(
     isBreakInProgress: Boolean,
-    isFrameFinishable: Boolean,
     onEndFrameClick: () -> Unit,
     onRepeatFrameClick: () -> Unit,
     onEndMatchClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = onEndFrameClick, modifier = Modifier.fillMaxWidth(), enabled = !isBreakInProgress && isFrameFinishable) { Text("Zakończ frejma") }
+        OutlinedButton(onClick = onEndFrameClick, modifier = Modifier.fillMaxWidth(), enabled = !isBreakInProgress) { Text("Zakończ frejma") }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onRepeatFrameClick, modifier = Modifier.weight(1f), enabled = !isBreakInProgress) { Text("Powtórz frejma") }
-            OutlinedButton(onClick = onEndMatchClick, modifier = Modifier.weight(1f), enabled = !isBreakInProgress && isFrameFinishable) { Text("Zakończ mecz") }
+            OutlinedButton(onClick = onEndMatchClick, modifier = Modifier.weight(1f), enabled = !isBreakInProgress) { Text("Zakończ mecz") }
         }
     }
 }

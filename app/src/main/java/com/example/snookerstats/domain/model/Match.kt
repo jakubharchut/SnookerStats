@@ -6,14 +6,14 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "matches")
 data class Match(
     @PrimaryKey
-    val id: String,
-    val player1Id: String,
-    val player2Id: String?,
-    val date: Long,
-    val matchType: MatchType,
-    val numberOfReds: Int,
-    val status: MatchStatus,
-    val frames: List<Frame>
+    val id: String = "",
+    val player1Id: String = "",
+    val player2Id: String? = null,
+    val date: Long = 0L,
+    val matchType: MatchType = MatchType.SPARRING,
+    val numberOfReds: Int = 15,
+    val status: MatchStatus = MatchStatus.IN_PROGRESS,
+    val frames: List<Frame> = emptyList()
 )
 
 enum class MatchType {

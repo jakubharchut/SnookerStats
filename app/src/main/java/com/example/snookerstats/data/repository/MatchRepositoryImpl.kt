@@ -1,32 +1,52 @@
 package com.example.snookerstats.data.repository
 
+import android.util.Log
 import com.example.snookerstats.data.local.dao.MatchDao
 import com.example.snookerstats.domain.model.*
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class MatchRepositoryImpl @Inject constructor(
     private val matchDao: MatchDao,
-    private val userRepository: UserRepository
-    // private val firestore: FirebaseFirestore // Dodamy później
+    private val userRepository: UserRepository,
+    private val firestore: FirebaseFirestore
 ) : MatchRepository {
 
-    // Mock in-memory storage for matches
-    private val matches = mutableMapOf<String, Match>()
+    private val matchesCollection = firestore.collection("matches")
 
-    override fun getMatchStream(matchId: String): Flow<Match?> {
-        // Return a match from our in-memory storage
-        return flowOf(matches[matchId])
+    override fun getMatchStream(matchId: String): Flow<Match?> = callbackFlow {
+        val listener = matchesCollection.document(matchId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("MatchRepository", "Error listening to match stream", error)
+                    close(error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null && snapshot.exists()) {
+                    val match = snapshot.toObject(Match::class.java)
+                    trySend(match).isSuccess
+                } else {
+                    trySend(null).isSuccess
+                }
+            }
+        awaitClose { listener.remove() }
     }
     
     override suspend fun createNewMatch(match: Match) {
-        matches[match.id] = match
+        try {
+            matchesCollection.document(match.id).set(match).await()
+        } catch (e: Exception) {
+            Log.e("MatchRepository", "Error creating new match", e)
+        }
     }
 
     override suspend fun getPlayersForMatch(player1Id: String, player2Id: String): Pair<User?, User?> {
@@ -44,8 +64,10 @@ class MatchRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateMatch(match: Match) {
-        if (matches.containsKey(match.id)) {
-            matches[match.id] = match
+        try {
+            matchesCollection.document(match.id).set(match).await()
+        } catch (e: Exception) {
+            Log.e("MatchRepository", "Error updating match", e)
         }
     }
 }

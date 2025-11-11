@@ -1,11 +1,11 @@
 package com.example.snookerstats.ui.screens
 
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.*
 import com.example.snookerstats.domain.repository.MatchRepository
+import com.example.snookerstats.ui.main.SnackbarManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlin.math.abs
 
 data class PlayerState(
     val user: User,
@@ -34,14 +35,21 @@ data class ScoringState(
     val nextColorBallOn: SnookerBall? = null,
     val isFreeBall: Boolean = false,
     val showFoulDialog: Boolean = false,
+    val showRepeatFrameDialog: Boolean = false,
+    val showEndMatchDialog: Boolean = false,
+    val showFrameOverDialog: Boolean = false,
+    val frameWinnerName: String? = null,
+    val frameEndScore: String? = null,
     val isLoading: Boolean = true,
     val isFrameOver: Boolean = false,
-    val currentFrame: Frame? = null
+    val currentFrame: Frame? = null,
+    val initialReds: Int = 15
 )
 
 @HiltViewModel
 class ScoringViewModel @Inject constructor(
     private val matchRepository: MatchRepository,
+    private val snackbarManager: SnackbarManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -60,10 +68,14 @@ class ScoringViewModel @Inject constructor(
         if (matchId == null) {
             // TODO: Handle error
         } else {
-            _uiState.update { it.copy(matchId = matchId, redsRemaining = numberOfReds) }
+            _uiState.update { it.copy(matchId = matchId, redsRemaining = numberOfReds, initialReds = numberOfReds) }
             matchRepository.getMatchStream(matchId).onEach { match ->
                 if (match != null) {
                     currentMatch = match
+                    // Initial setup for completed matches
+                    if (_uiState.value.player1 == null && match.status == MatchStatus.COMPLETED) {
+                        _uiState.update { it.copy(isFrameOver = true) }
+                    }
                     updateUiWithMatchData(match)
                 }
             }.launchIn(viewModelScope)
@@ -74,7 +86,8 @@ class ScoringViewModel @Inject constructor(
         val (player1, player2) = matchRepository.getPlayersForMatch(match.player1Id, match.player2Id ?: "")
         if (player1 != null) {
             val currentFrame = match.frames.lastOrNull() ?: Frame(matchId = match.id, frameNumber = 1, player1Points = 0, player2Points = 0, shots = emptyList())
-            val completedFrames = match.frames.filter { it.id != currentFrame.id }
+            val completedFrames = if (match.status == MatchStatus.COMPLETED) match.frames else match.frames.dropLast(1)
+
 
             val p1FramesWon = completedFrames.count { it.player1Points > it.player2Points }
             val p2FramesWon = completedFrames.count { it.player2Points > it.player1Points }
@@ -124,20 +137,24 @@ class ScoringViewModel @Inject constructor(
         }
     }
 
-    private fun updateMatchInRepository(newState: ScoringState, lastShot: Shot) {
+    private fun updateMatchInRepository(match: Match) {
         viewModelScope.launch {
-            val match = currentMatch ?: return@launch
-            val updatedFrame = newState.currentFrame?.copy(
-                player1Points = newState.player1?.score ?: 0,
-                player2Points = newState.player2?.score ?: 0,
-                shots = newState.currentFrame.shots + lastShot
-            ) ?: return@launch
-
-            val updatedFrames = match.frames.filter { it.id != updatedFrame.id } + updatedFrame
-            val updatedMatch = match.copy(frames = updatedFrames)
-            
-            matchRepository.updateMatch(updatedMatch)
+            matchRepository.updateMatch(match)
         }
+    }
+    
+    private fun updateCurrentFrame(state: ScoringState, lastShot: Shot) {
+        val match = currentMatch ?: return
+        val frame = state.currentFrame ?: return
+        
+        val updatedFrame = frame.copy(
+            player1Points = state.player1?.score ?: 0,
+            player2Points = state.player2?.score ?: 0,
+            shots = frame.shots + lastShot
+        )
+        
+        val updatedFrames = match.frames.dropLast(1) + updatedFrame
+        updateMatchInRepository(match.copy(frames = updatedFrames))
     }
 
     fun onBallClicked(ball: SnookerBall) {
@@ -167,7 +184,7 @@ class ScoringViewModel @Inject constructor(
             
             var canPotColorNext = false
             var nextColorOn: SnookerBall? = null
-            var isFrameOverNext = false
+            var frameShouldEnd = false
 
             if (newRedsRemaining > 0) {
                 canPotColorNext = (ball is SnookerBall.Red || currentState.isFreeBall)
@@ -185,7 +202,9 @@ class ScoringViewModel @Inject constructor(
                         else -> null
                     }
                 }
-                if (ball is SnookerBall.Black && currentState.nextColorBallOn == SnookerBall.Black) isFrameOverNext = true
+                if (ball is SnookerBall.Black && currentState.nextColorBallOn == SnookerBall.Black) {
+                    frameShouldEnd = true
+                }
             }
 
             currentState.copy(
@@ -198,11 +217,15 @@ class ScoringViewModel @Inject constructor(
                 canPotColor = canPotColorNext,
                 nextColorBallOn = nextColorOn,
                 isFreeBall = false,
-                isFrameOver = isFrameOverNext
+                isFrameOver = frameShouldEnd
             )
         }
         val shot = Shot(timestamp = System.currentTimeMillis(), ballName = ball.name, points = ball.points, type = ShotType.POTTED)
-        updateMatchInRepository(newState, shot)
+        updateCurrentFrame(newState, shot)
+        
+        if (newState.isFrameOver) {
+            showFrameOverDialog()
+        }
     }
     
     fun onFoulClicked() { _uiState.update { it.copy(showFoulDialog = true) } }
@@ -237,7 +260,7 @@ class ScoringViewModel @Inject constructor(
             )
         }
         val shot = Shot(timestamp = System.currentTimeMillis(), ballName = SnookerBall.Red.name, points = foulPoints, type = ShotType.FOUL)
-        updateMatchInRepository(newState, shot)
+        updateCurrentFrame(newState, shot)
     }
 
     private fun endTurn(action: ShotType) {
@@ -257,7 +280,7 @@ class ScoringViewModel @Inject constructor(
             )
         }
         val shot = Shot(timestamp = System.currentTimeMillis(), ballName = SnookerBall.Red.name, points = 0, type = action)
-        updateMatchInRepository(newState, shot)
+        updateCurrentFrame(newState, shot)
     }
 
     fun onSafetyClicked() = endTurn(ShotType.SAFETY)
@@ -265,12 +288,136 @@ class ScoringViewModel @Inject constructor(
 
     fun onUndoClicked() {
         if (stateHistory.isNotEmpty()) {
-            val lastState = stateHistory.removeLast()
-            _uiState.value = lastState
+            _uiState.value = stateHistory.removeLast()
         }
     }
     
-    fun onEndFrameClicked() { /* TODO */ }
-    fun onRepeatFrameClicked() { /* TODO */ }
-    fun onEndMatchClicked() { /* TODO */ }
+    private fun showFrameOverDialog() {
+        val state = uiState.value
+        val p1 = state.player1 ?: return
+        val p2 = state.player2 ?: return
+        
+        val winner = if (p1.score > p2.score) p1 else p2
+        val scoreText = "${p1.score} - ${p2.score}"
+        
+        _uiState.update { it.copy(showFrameOverDialog = true, frameWinnerName = winner.user.firstName, frameEndScore = scoreText) }
+    }
+
+    fun onDismissFrameOverDialog() {
+        _uiState.update { it.copy(showFrameOverDialog = false) }
+    }
+    
+    fun onNextFrameClicked() {
+        val match = currentMatch ?: return
+        val state = uiState.value
+        
+        resetTimer()
+        
+        val newFrame = Frame(
+            matchId = match.id,
+            frameNumber = (state.currentFrame?.frameNumber ?: 0) + 1,
+            player1Points = 0,
+            player2Points = 0,
+            shots = emptyList()
+        )
+        
+        val updatedMatch = match.copy(frames = match.frames + newFrame)
+        updateMatchInRepository(updatedMatch)
+
+        _uiState.update {
+            it.copy(
+                redsRemaining = it.initialReds,
+                pointsRemaining = calculatePointsRemaining(it.initialReds, null),
+                currentBreak = 0,
+                breakHistory = emptyList(),
+                canPotColor = false,
+                nextColorBallOn = null,
+                isFreeBall = false,
+                isFrameOver = false, 
+                showFrameOverDialog = false
+            )
+        }
+    }
+    
+    fun onEndFrameClicked() {
+        val state = uiState.value
+        val p1Score = state.player1?.score ?: 0
+        val p2Score = state.player2?.score ?: 0
+
+        if (p1Score == p2Score) {
+            snackbarManager.showMessage("Nie można zakończyć frejma przy remisie.")
+            return
+        }
+
+        if (abs(p1Score - p2Score) < state.pointsRemaining) {
+            snackbarManager.showMessage("Przewaga jest mniejsza niż liczba punktów na stole.")
+            return
+        }
+        
+        _uiState.update { it.copy(isFrameOver = true) }
+        showFrameOverDialog()
+    }
+
+    fun onRepeatFrameClicked() {
+        _uiState.update { it.copy(showRepeatFrameDialog = true) }
+    }
+    
+    fun onDismissRepeatFrameDialog() {
+        _uiState.update { it.copy(showRepeatFrameDialog = false) }
+    }
+
+    fun onRepeatFrameConfirmed() {
+        val match = currentMatch ?: return
+        val currentFrame = uiState.value.currentFrame ?: return
+        
+        resetTimer()
+
+        val newFrame = currentFrame.copy(
+            player1Points = 0,
+            player2Points = 0,
+            shots = emptyList()
+        )
+
+        val updatedFrames = match.frames.dropLast(1) + newFrame
+        updateMatchInRepository(match.copy(frames = updatedFrames))
+
+        _uiState.update {
+            it.copy(
+                redsRemaining = it.initialReds,
+                pointsRemaining = calculatePointsRemaining(it.initialReds, null),
+                currentBreak = 0,
+                breakHistory = emptyList(),
+                canPotColor = false,
+                nextColorBallOn = null,
+                isFreeBall = false,
+                isFrameOver = false,
+                showRepeatFrameDialog = false
+            )
+        }
+    }
+    
+    fun onEndMatchClicked() {
+        val state = uiState.value
+        val p1Score = state.player1?.score ?: 0
+        val p2Score = state.player2?.score ?: 0
+
+        if (abs(p1Score - p2Score) < state.pointsRemaining && state.pointsRemaining > 0) {
+            snackbarManager.showMessage("Musisz najpierw zakończyć bieżącego frejma.")
+            return
+        }
+        _uiState.update { it.copy(showEndMatchDialog = true) }
+    }
+    
+    fun onDismissEndMatchDialog() {
+        _uiState.update { it.copy(showEndMatchDialog = false) }
+    }
+
+    fun onEndMatchConfirmed() {
+        val match = currentMatch ?: return
+        resetTimer()
+        
+        val updatedMatch = match.copy(status = MatchStatus.COMPLETED)
+        updateMatchInRepository(updatedMatch)
+        _uiState.update { it.copy(showEndMatchDialog = false, showFrameOverDialog = false) }
+    }
 }

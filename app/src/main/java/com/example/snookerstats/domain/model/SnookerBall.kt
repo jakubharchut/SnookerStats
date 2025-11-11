@@ -23,4 +23,19 @@ sealed class SnookerBall(val points: Int, val color: Color, val displayName: Str
 
     // Default no-arg constructor for Firestore
     constructor() : this(0, Color.Transparent, "")
+
+    companion object {
+        fun fromName(name: String): SnookerBall? {
+            return when (name) {
+                Red.name -> Red
+                Yellow.name -> Yellow
+                Green.name -> Green
+                Brown.name -> Brown
+                Blue.name -> Blue
+                Pink.name -> Pink
+                Black.name -> Black
+                else -> null // Handle unknown names, maybe throw an exception if strict
+            }
+        }
+    }
 }

@@ -56,7 +56,6 @@ class ScoringViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ScoringState())
     val uiState: StateFlow<ScoringState> = _uiState.asStateFlow()
 
-    private val stateHistory = mutableListOf<ScoringState>()
     private var timerJob: Job? = null
     private var timeInMillis = 0L
     private var currentMatch: Match? = null
@@ -88,18 +87,34 @@ class ScoringViewModel @Inject constructor(
             val currentFrame = match.frames.lastOrNull() ?: Frame(matchId = match.id, frameNumber = 1, player1Points = 0, player2Points = 0, shots = emptyList())
             val completedFrames = if (match.status == MatchStatus.COMPLETED) match.frames else match.frames.dropLast(1)
 
-
             val p1FramesWon = completedFrames.count { it.player1Points > it.player2Points }
             val p2FramesWon = completedFrames.count { it.player2Points > it.player1Points }
+
+            // REKONSTRUKCJA STANU na podstawie currentFrame.shots, aby uzyskać wszystkie pochodne stany UI
+            val reconstructedScoringState = reconstructScoringState(
+                shots = currentFrame.shots,
+                initialReds = match.numberOfReds, // Użyj match.numberOfReds jako początkowej wartości dla frejma
+                player1Id = match.player1Id,
+                player2Id = match.player2Id
+            )
 
             _uiState.update {
                 it.copy(
                     player1 = PlayerState(user = player1, score = currentFrame.player1Points, framesWon = p1FramesWon),
                     player2 = player2?.let { user -> PlayerState(user = user, score = currentFrame.player2Points, framesWon = p2FramesWon) },
-                    activePlayerId = it.activePlayerId ?: match.player1Id,
+                    activePlayerId = reconstructedScoringState.activePlayerId, // Użyj zrekonstruowanego activePlayerId
                     isLoading = false,
                     currentFrame = currentFrame,
-                    pointsRemaining = calculatePointsRemaining(it.redsRemaining, it.nextColorBallOn)
+                    // Użyj wartości ze zrekonstruowanego stanu
+                    redsRemaining = reconstructedScoringState.redsRemaining,
+                    pointsRemaining = reconstructedScoringState.pointsRemaining,
+                    currentBreak = reconstructedScoringState.currentBreak,
+                    breakHistory = reconstructedScoringState.breakHistory,
+                    canPotColor = reconstructedScoringState.canPotColor,
+                    nextColorBallOn = reconstructedScoringState.nextColorBallOn,
+                    isFreeBall = reconstructedScoringState.isFreeBall,
+                    isFrameOver = reconstructedScoringState.isFrameOver,
+                    initialReds = match.numberOfReds // Upewnij się, że to również pochodzi z match
                 )
             }
         }
@@ -143,23 +158,12 @@ class ScoringViewModel @Inject constructor(
         }
     }
     
-    private fun updateCurrentFrame(state: ScoringState, lastShot: Shot) {
-        val match = currentMatch ?: return
-        val frame = state.currentFrame ?: return
-        
-        val updatedFrame = frame.copy(
-            player1Points = state.player1?.score ?: 0,
-            player2Points = state.player2?.score ?: 0,
-            shots = frame.shots + lastShot
-        )
-        
+    private fun updateFrameInMatch(match: Match, updatedFrame: Frame) {
         val updatedFrames = match.frames.dropLast(1) + updatedFrame
         updateMatchInRepository(match.copy(frames = updatedFrames))
     }
 
     fun onBallClicked(ball: SnookerBall) {
-        stateHistory.add(uiState.value)
-        
         val newState = _uiState.updateAndGet { currentState ->
             if (currentState.isFrameOver) return@updateAndGet currentState
 
@@ -169,7 +173,6 @@ class ScoringViewModel @Inject constructor(
                 else -> if (currentState.canPotColor) ball !is SnookerBall.Red else ball is SnookerBall.Red
             }
             if (!isValid) {
-                stateHistory.removeLast()
                 return@updateAndGet currentState
             }
             
@@ -220,8 +223,14 @@ class ScoringViewModel @Inject constructor(
                 isFrameOver = frameShouldEnd
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = ball.name, points = ball.points, type = ShotType.POTTED)
-        updateCurrentFrame(newState, shot)
+        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = ball.name, points = ball.points, type = ShotType.POTTED, redsPottedInFoul = 0)
+        val frame = newState.currentFrame ?: return
+        val updatedFrame = frame.copy(
+            player1Points = newState.player1?.score ?: 0,
+            player2Points = newState.player2?.score ?: 0,
+            shots = frame.shots + shot
+        )
+        updateFrameInMatch(currentMatch!!, updatedFrame)
         
         if (newState.isFrameOver) {
             showFrameOverDialog()
@@ -232,7 +241,6 @@ class ScoringViewModel @Inject constructor(
     fun onDismissFoulDialog() { _uiState.update { it.copy(showFoulDialog = false) } }
 
     fun onFoulConfirmed(foulPoints: Int, isFreeBall: Boolean, redsPotted: Int) {
-        stateHistory.add(uiState.value)
         startTimer()
 
         val newState = _uiState.updateAndGet { currentState ->
@@ -259,12 +267,17 @@ class ScoringViewModel @Inject constructor(
                 nextColorBallOn = nextColorOn
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = SnookerBall.Red.name, points = foulPoints, type = ShotType.FOUL)
-        updateCurrentFrame(newState, shot)
+        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = SnookerBall.Red.name, points = foulPoints, type = ShotType.FOUL, redsPottedInFoul = redsPotted)
+        val frame = newState.currentFrame ?: return
+        val updatedFrame = frame.copy(
+            player1Points = newState.player1?.score ?: 0,
+            player2Points = newState.player2?.score ?: 0,
+            shots = frame.shots + shot
+        )
+        updateFrameInMatch(currentMatch!!, updatedFrame)
     }
 
     private fun endTurn(action: ShotType) {
-        stateHistory.add(uiState.value)
         startTimer()
         
         val newState = _uiState.updateAndGet { currentState ->
@@ -279,17 +292,184 @@ class ScoringViewModel @Inject constructor(
                 nextColorBallOn = nextColorOn
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = SnookerBall.Red.name, points = 0, type = action)
-        updateCurrentFrame(newState, shot)
+        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = SnookerBall.Red.name, points = 0, type = action, redsPottedInFoul = 0)
+        val frame = newState.currentFrame ?: return
+        val updatedFrame = frame.copy(
+            player1Points = newState.player1?.score ?: 0,
+            player2Points = newState.player2?.score ?: 0,
+            shots = frame.shots + shot
+        )
+        updateFrameInMatch(currentMatch!!, updatedFrame)
     }
 
     fun onSafetyClicked() = endTurn(ShotType.SAFETY)
     fun onMissClicked() = endTurn(ShotType.MISS)
 
-    fun onUndoClicked() {
-        if (stateHistory.isNotEmpty()) {
-            _uiState.value = stateHistory.removeLast()
+    // Nowa funkcja pomocnicza do rekonstrukcji ScoringState z listy strzałów
+    private fun reconstructScoringState(
+        shots: List<Shot>,
+        initialReds: Int,
+        player1Id: String,
+        player2Id: String? // Może być null dla gry solo
+    ): ScoringState {
+        var tempPlayer1Score = 0
+        var tempPlayer2Score = 0
+        var tempRedsRemaining = initialReds
+        var tempNextColorBallOn: SnookerBall? = null
+        var tempCanPotColor = false
+        var tempIsFreeBall = false
+        var tempActivePlayerId: String? = player1Id // Zmieniono na String?
+        var tempCurrentBreak = 0
+        val tempBreakHistory = mutableListOf<SnookerBall>()
+        var tempIsFrameOver = false
+
+        // Musimy śledzić, kto jest aktywnym graczem w danej turze. Zaczynamy od Player1.
+        var currentPlayerTurnId: String? = player1Id // Zmieniono na String?
+
+        for (shot in shots) {
+            when (shot.type) {
+                ShotType.POTTED -> {
+                    val pointsToAdd = if (tempIsFreeBall && tempRedsRemaining > 0) 1 else shot.points
+                    if (currentPlayerTurnId == player1Id) {
+                        tempPlayer1Score += pointsToAdd
+                    } else if (currentPlayerTurnId == player2Id) {
+                        tempPlayer2Score += pointsToAdd
+                    }
+
+                    val pottedBall = SnookerBall.fromName(shot.ballName)
+                    if (pottedBall == null) {
+                        // TODO: Handle error, unknown ball name. Log and skip for now.
+                        println("Error: Unknown ball name encountered during reconstruction: ${shot.ballName}")
+                        continue
+                    }
+
+                    if (pottedBall is SnookerBall.Red && !tempIsFreeBall) {
+                        tempRedsRemaining--
+                    }
+                    tempCurrentBreak += pointsToAdd
+                    tempBreakHistory.add(pottedBall)
+
+                    // Zaktualizuj canPotColor i nextColorBallOn na podstawie bieżącego stanu po strzale
+                    if (tempRedsRemaining > 0) {
+                        tempCanPotColor = (pottedBall is SnookerBall.Red || tempIsFreeBall)
+                    } else { // KOŃCÓWKA GRY
+                        tempCanPotColor = true
+                    }
+
+                    tempNextColorBallOn = if (tempRedsRemaining > 0 && pottedBall is SnookerBall.Red) {
+                        null // Po wbiciu czerwonej, każda kolorowa może zostać wbita
+                    } else if (tempRedsRemaining == 0) {
+                        when (pottedBall) {
+                            SnookerBall.Red -> SnookerBall.Yellow // Nie powinno się zdarzyć w końcówce gry, jeśli sekwencja jest przestrzegana
+                            SnookerBall.Yellow -> SnookerBall.Green
+                            SnookerBall.Green -> SnookerBall.Brown
+                            SnookerBall.Brown -> SnookerBall.Blue
+                            SnookerBall.Blue -> SnookerBall.Pink
+                            SnookerBall.Pink -> SnookerBall.Black
+                            else -> null // Powinno być Black w tym momencie, jeśli wszystkie kolory w sekwencji wbite
+                        }
+                    } else {
+                        tempNextColorBallOn // Zachowaj aktualne nextColorBallOn, jeśli nie jest to czerwona lub nie jest to końcówka gry
+                    }
+
+                    // Sprawdź, czy frejm powinien się zakończyć (po wbiciu czarnej w końcówce gry)
+                    if (pottedBall is SnookerBall.Black && tempRedsRemaining == 0 && tempNextColorBallOn == SnookerBall.Black) {
+                         tempIsFrameOver = true
+                    }
+                    tempIsFreeBall = false // Wolna bila skonsumowana
+                    tempActivePlayerId = currentPlayerTurnId // Gracz kontynuuje turę
+                }
+                ShotType.FOUL -> {
+                    // Punkty za faul dodane przeciwnikowi
+                    val opponentId = if (currentPlayerTurnId == player1Id) player2Id else player1Id
+                    if (opponentId == player1Id) {
+                        tempPlayer1Score += shot.points
+                    } else if (opponentId == player2Id) {
+                        tempPlayer2Score += shot.points
+                    }
+                    
+                    tempRedsRemaining = (tempRedsRemaining - shot.redsPottedInFoul).coerceAtLeast(0)
+
+                    // Zresetuj brejk
+                    tempCurrentBreak = 0
+                    tempBreakHistory.clear()
+                    tempIsFreeBall = false // Wolna bila mogła zostać ustawiona przez poprzedni faul, ale nie przez ten
+                    tempCanPotColor = tempRedsRemaining == 0 // Jeśli brak czerwonych, można wbijać kolorowe
+                    // Logika następnego koloru dla fauli może wymagać dopracowania, ale na razie jest prosta.
+                    tempNextColorBallOn = if (tempRedsRemaining == 0) SnookerBall.Yellow else null // Po faulu, jeśli brak czerwonych, zacznij od żółtej
+
+                    // Zmiana tury
+                    tempActivePlayerId = opponentId
+                    currentPlayerTurnId = opponentId // Aktualizuj dla następnego strzału w sekwencji
+                }
+                ShotType.SAFETY, ShotType.MISS -> {
+                    // Zmiana tury, wyniki nie. Brejk się resetuje.
+                    val opponentId = if (currentPlayerTurnId == player1Id) player2Id else player1Id
+                    tempActivePlayerId = opponentId
+                    tempCurrentBreak = 0
+                    tempBreakHistory.clear()
+                    tempIsFreeBall = false // Status wolnej bili resetuje się przy zmianie tury
+                    tempCanPotColor = tempRedsRemaining == 0 // Jeśli brak czerwonych, można wbijać kolorowe
+                    tempNextColorBallOn = if (tempRedsRemaining == 0) tempNextColorBallOn ?: SnookerBall.Yellow else null
+
+                    currentPlayerTurnId = opponentId // Aktualizuj dla następnego strzału w sekwencji
+                }
+            }
         }
+
+        // Oblicz pozostałe punkty na koniec rekonstrukcji
+        val finalPointsRemaining = calculatePointsRemaining(tempRedsRemaining, tempNextColorBallOn)
+
+        return ScoringState(
+            player1 = uiState.value.player1?.user?.let { user ->
+                PlayerState(user = user, score = tempPlayer1Score)
+            },
+            player2 = uiState.value.player2?.user?.let { user ->
+                PlayerState(user = user, score = tempPlayer2Score)
+            },
+            activePlayerId = tempActivePlayerId,
+            currentBreak = tempCurrentBreak,
+            redsRemaining = tempRedsRemaining,
+            pointsRemaining = finalPointsRemaining,
+            breakHistory = tempBreakHistory,
+            canPotColor = tempCanPotColor,
+            nextColorBallOn = tempNextColorBallOn,
+            isFreeBall = tempIsFreeBall,
+            isFrameOver = tempIsFrameOver,
+            initialReds = initialReds // Zachowaj początkowe czerwone
+        )
+    }
+
+    fun onUndoClicked() {
+        val match = currentMatch ?: return
+        val currentFrame = uiState.value.currentFrame ?: return
+        
+        if (currentFrame.shots.isEmpty()) {
+            snackbarManager.showMessage("Brak ruchów do cofnięcia w bieżącym frejmie.")
+            return
+        }
+
+        val lastShot = currentFrame.shots.last()
+        val updatedShots = currentFrame.shots.dropLast(1)
+
+        // Zrekonstruuj stan do przedostatniego strzału
+        val reconstructedState = reconstructScoringState(
+            shots = updatedShots,
+            initialReds = uiState.value.initialReds, // Użyj initialReds z uiState
+            player1Id = match.player1Id,
+            player2Id = match.player2Id
+        )
+
+        // Utwórz zaktualizowany frejm na podstawie zrekonstruowanego stanu
+        val updatedFrame = currentFrame.copy(
+            player1Points = reconstructedState.player1?.score ?: 0,
+            player2Points = reconstructedState.player2?.score ?: 0,
+            shots = updatedShots
+        )
+
+        updateFrameInMatch(match, updatedFrame)
+
+        // _uiState zostanie automatycznie zaktualizowany poprzez obserwator getMatchStream.
     }
     
     private fun showFrameOverDialog() {

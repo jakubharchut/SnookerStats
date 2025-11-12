@@ -1,4 +1,4 @@
-# Status Implementacji Mechaniki Gry (`ScoringViewModel`) - stan na 2025-11-11
+# Status Implementacji Mechaniki Gry (`ScoringViewModel`) - stan na 2025-11-12
 
 Ten dokument podsumowuje zaimplementowane funkcjonalności i logikę walidacji dla ekranu wprowadzania wyników.
 
@@ -42,12 +42,10 @@ Ten dokument podsumowuje zaimplementowane funkcjonalności i logikę walidacji d
   - **Walidacja:** Akcja jest zabezpieczona dialogiem z prośbą o potwierdzenie.
   - Logika poprawnie ustawia status meczu na `COMPLETED`.
 
-- **[UWAGA - DO POPRAWY] Cofnięcie Ruchu (`onUndoClicked`):**
-  - Funkcjonalność zaimplementowana, ale działa **tylko lokalnie** (`stateHistory`).
-  - **Krytyczny problem:** W trybie online spowoduje to desynchronizację stanu gry między dwoma urządzeniami. Wymaga przebudowy w oparciu o modyfikację listy `shots` w Firestore.
+- **[GOTOWE] Cofnięcie Ruchu (`onUndoClicked`):**
+  - Funkcjonalność zaimplementowana i działa w oparciu o modyfikację listy `shots` w Firestore, zapewniając synchronizację stanu gry.
 
 ## 2. Rzeczy do zrobienia (Następne kroki)
 
-1.  **Przebudowa `onUndoClicked`:** Implementacja cofania ruchu w oparciu o zapis w Firestore (najwyższy priorytet).
-2.  **Nawigacja po zakończeniu meczu:** Po `onEndMatchConfirmed` aplikacja powinna automatycznie przenieść użytkownika do ekranu historii meczy.
-3.  **Implementacja "Powrót do meczu":** Stworzenie mechanizmu, który pozwoli kontynuować przerwany mecz po ponownym uruchomieniu aplikacji.
+1.  **Nawigacja po zakończeniu meczu:** Po `onEndMatchConfirmed` aplikacja powinna automatycznie przenieść użytkownika do ekranu historii meczy.
+2.  **Implementacja "Powrót do meczu":** Stworzenie mechanizmu, który pozwoli kontynuować przerwany mecz po ponownym uruchomieniu aplikacji.

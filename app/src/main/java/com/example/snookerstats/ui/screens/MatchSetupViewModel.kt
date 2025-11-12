@@ -17,7 +17,6 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
-// Enums and data classes remain the same...
 enum class MatchType { RANKING, SPARRING }
 enum class MatchFormat(val reds: Int) { FIFTEEN(15), TEN(10), SIX(6), THREE(3) }
 
@@ -91,9 +90,9 @@ class MatchSetupViewModel @Inject constructor(
 
             val player2Id = when (val opponent = currentState.opponentType) {
                 is OpponentType.PLAYER -> opponent.user.uid
-                is OpponentType.GUEST -> "guest_${currentState.guestName}" // Simple unique ID for guest
+                is OpponentType.GUEST -> "guest_${currentState.guestName}"
                 is OpponentType.SOLO -> null
-                is OpponentType.LOADING -> return@launch // Cannot start match while loading
+                is OpponentType.LOADING -> return@launch
             }
 
             val newMatch = Match(
@@ -103,7 +102,7 @@ class MatchSetupViewModel @Inject constructor(
                 date = System.currentTimeMillis(),
                 matchType = com.example.snookerstats.domain.model.MatchType.valueOf(currentState.matchType.name),
                 numberOfReds = currentState.matchFormat.reds,
-                status = MatchStatus.IN_PROGRESS,
+                status = MatchStatus.IN_PROGRESS, // ZAWSZE IN_PROGRESS
                 frames = emptyList()
             )
 

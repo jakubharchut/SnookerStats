@@ -41,12 +41,14 @@ Ten dokument podsumowuje zaimplementowane funkcjonalności i logikę walidacji d
   - **Walidacja:** Akcja jest blokowana, jeśli bieżący frejm nie jest jeszcze rozstrzygnięty.
   - **Walidacja:** Akcja jest zabezpieczona dialogiem z prośbą o potwierdzenie.
   - Logika poprawnie ustawia status meczu na `COMPLETED`.
+  - **Dodatkowa logika:** Frejm z wynikiem 0:0 (bez oddanych strzałów) jest ignorowany przy finalizowaniu meczu.
 
 - **[GOTOWE] Cofnięcie Ruchu (`onUndoClicked`):**
   - Funkcjonalność zaimplementowana i działa w oparciu o modyfikację listy `shots` w Firestore, zapewniając synchronizację stanu gry.
 
 - **[GOTOWE] Nawigacja po zakończeniu meczu:** Po `onEndMatchConfirmed` aplikacja automatycznie przenosi użytkownika do ekranu historii meczy.
 
+- **[GOTOWE] Implementacja "Powrót do meczu":** Mechanizm pozwalający kontynuować przerwany mecz po ponownym uruchomieniu aplikacji został zaimplementowany, wykorzystując lokalną bazę danych Room do przechowywania stanu `IN_PROGRESS` oraz dodając przycisk "Wznów mecz" na `PlayScreen`.
+
 ## 2. Rzeczy do zrobienia (Następne kroki)
 
-1.  **Implementacja "Powrót do meczu":** Stworzenie mechanizmu, który pozwoli kontynuować przerwany mecz po ponownym uruchomieniu aplikacji.

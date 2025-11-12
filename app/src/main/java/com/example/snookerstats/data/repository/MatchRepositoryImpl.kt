@@ -10,6 +10,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -59,9 +60,20 @@ class MatchRepositoryImpl @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    override fun getOngoingMatch(): Flow<Match?> {
+        // Zmieniamy implementację, aby filtrować w pamięci po pobraniu wszystkich meczów z Room.
+        // To pomoże zdiagnozować, czy problem leży w zapytaniu SQL w MatchDao.
+        return matchDao.getAllMatches().map { matches ->
+            val ongoing = matches.firstOrNull { it.status == MatchStatus.IN_PROGRESS }
+            Log.d("MatchRepositoryImpl", "Checking for ongoing match. Found: $ongoing")
+            ongoing
+        }
+    }
+
     override suspend fun createNewMatch(match: Match) {
         try {
             matchesCollection.document(match.id).set(match).await()
+            matchDao.insertMatch(match) // Save to Room
         } catch (e: Exception) {
             Log.e("MatchRepository", "Error creating new match", e)
         }
@@ -84,6 +96,7 @@ class MatchRepositoryImpl @Inject constructor(
     override suspend fun updateMatch(match: Match) {
         try {
             matchesCollection.document(match.id).set(match).await()
+            matchDao.updateMatch(match) // Update in Room
         } catch (e: Exception) {
             Log.e("MatchRepository", "Error updating match", e)
         }

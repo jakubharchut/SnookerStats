@@ -3,9 +3,8 @@ package com.example.snookerstats.data.local
 import androidx.room.TypeConverter
 import com.example.snookerstats.domain.model.Frame
 import com.example.snookerstats.domain.model.MatchStatus
+import com.example.snookerstats.domain.model.MatchType // Poprawny import
 import com.example.snookerstats.domain.model.Shot
-import com.example.snookerstats.ui.screens.MatchFormat
-import com.example.snookerstats.ui.screens.MatchType
 import com.google.firebase.Timestamp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -13,7 +12,6 @@ import com.google.gson.reflect.TypeToken
 class Converters {
     private val gson = Gson()
 
-    // Konwerter dla List<String>
     @TypeConverter
     fun fromString(value: String): List<String> {
         val listType = object : TypeToken<List<String>>() {}.type
@@ -25,7 +23,6 @@ class Converters {
         return gson.toJson(list)
     }
 
-    // Konwerter dla List<Shot>
     @TypeConverter
     fun fromShotList(shots: List<Shot>): String {
         return gson.toJson(shots)
@@ -37,7 +34,6 @@ class Converters {
         return gson.fromJson(shotsJson, type)
     }
 
-    // Konwerter dla List<Frame>
     @TypeConverter
     fun fromFrameList(frames: List<Frame>): String {
         return gson.toJson(frames)
@@ -49,7 +45,6 @@ class Converters {
         return gson.fromJson(framesJson, type)
     }
 
-    // Konwerter dla Map<String, List<Int>> (dla 'breaks' w Frame)
     @TypeConverter
     fun fromBreaksMap(breaks: Map<String, List<Int>>): String {
         return gson.toJson(breaks)
@@ -61,7 +56,6 @@ class Converters {
         return gson.fromJson(breaksJson, type)
     }
 
-    // Konwerter dla MatchStatus
     @TypeConverter
     fun fromMatchStatus(status: MatchStatus): String {
         return status.name
@@ -72,7 +66,6 @@ class Converters {
         return MatchStatus.valueOf(statusString)
     }
 
-    // Konwerter dla MatchType
     @TypeConverter
     fun fromMatchType(type: MatchType): String {
         return type.name
@@ -83,18 +76,8 @@ class Converters {
         return MatchType.valueOf(typeString)
     }
 
-    // Konwerter dla MatchFormat
-    @TypeConverter
-    fun fromMatchFormat(format: MatchFormat): String {
-        return format.name
-    }
+    // Usunięto błędny konwerter dla MatchFormat z pakietu UI
 
-    @TypeConverter
-    fun toMatchFormat(formatString: String): MatchFormat {
-        return MatchFormat.valueOf(formatString)
-    }
-
-    // Konwerter dla Timestamp
     @TypeConverter
     fun fromTimestamp(timestamp: Timestamp): Long {
         return timestamp.toDate().time

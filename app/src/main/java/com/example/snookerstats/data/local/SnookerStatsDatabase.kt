@@ -5,13 +5,12 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.snookerstats.data.local.dao.MatchDao
 import com.example.snookerstats.data.local.dao.UserDao
-import com.example.snookerstats.domain.model.Frame
 import com.example.snookerstats.domain.model.Match
 import com.example.snookerstats.domain.model.User
 
 @Database(
-    entities = [User::class, Match::class, Frame::class],
-    version = 1,
+    entities = [User::class, Match::class],
+    version = 2, // PODNOSIMY WERSJĘ BAZY DANYCH
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -28,6 +28,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.snookerstats.MainActivity
+import com.example.snookerstats.domain.model.Match
 import com.example.snookerstats.ui.auth.AuthViewModel
 import com.example.snookerstats.ui.auth.NavigationEvent
 import com.example.snookerstats.ui.chats.ChatListScreen
@@ -46,7 +47,6 @@ fun MainScreen(
     authViewModel: AuthViewModel = hiltViewModel(),
     mainViewModel: MainViewModel = hiltViewModel(),
     notificationViewModel: NotificationViewModel = hiltViewModel(),
-    // Dodajemy ScoringViewModel
     scoringViewModel: ScoringViewModel = hiltViewModel()
 ) {
     val internalNavController = rememberNavController() // Wewnętrzny NavController dla dolnego paska
@@ -55,6 +55,9 @@ fun MainScreen(
     val context = LocalContext.current
     val unreadNotificationsCount by notificationViewModel.unreadNotificationCount.collectAsState()
     val unreadChatCount by mainViewModel.unreadChatCount.collectAsState()
+
+    // Pobieramy stan trwającego meczu z MainViewModel
+    val ongoingMatch by mainViewModel.ongoingMatch.collectAsState()
 
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -72,7 +75,6 @@ fun MainScreen(
         }
     }
 
-    // Dodajemy LaunchedEffect dla zdarzeń nawigacyjnych ze ScoringViewModel
     LaunchedEffect(Unit) {
         scoringViewModel.navEvent.collectLatest { event ->
             if (event is ScoringNavEvent.NavigateToMatchHistory) {
@@ -179,7 +181,11 @@ fun MainScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            NavigationGraph(internalNavController = internalNavController) 
+            // Przekazujemy stan do NavigationGraph
+            NavigationGraph(
+                internalNavController = internalNavController,
+                ongoingMatch = ongoingMatch
+            )
         }
     }
 }
@@ -203,8 +209,11 @@ fun BottomNavigationBar(navController: NavController) {
                 selected = currentDestination?.hierarchy?.any { it.route?.startsWith(item.route) == true } == true,
                 onClick = {
                     navController.navigate(item.route) {
-                        popUpTo(navController.graph.findStartDestination().id)
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
                         launchSingleTop = true
+                        restoreState = true
                     }
                 }
             )
@@ -213,11 +222,20 @@ fun BottomNavigationBar(navController: NavController) {
 }
 
 @Composable
-fun NavigationGraph(internalNavController: NavHostController) {
+fun NavigationGraph(
+    internalNavController: NavHostController,
+    ongoingMatch: Match? // Odbieramy stan
+) {
     val activity = (LocalContext.current as MainActivity)
     NavHost(internalNavController, startDestination = BottomNavItem.Home.route) {
         composable(BottomNavItem.Home.route) { HomeScreen() }
-        composable(BottomNavItem.Play.route) { PlayScreen(navController = internalNavController) }
+        // Przekazujemy stan do PlayScreen
+        composable(BottomNavItem.Play.route) {
+            PlayScreen(
+                navController = internalNavController,
+                ongoingMatch = ongoingMatch
+            )
+        }
         composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen() }
         composable(BottomNavItem.Stats.route) { StatsScreen() }
         composable(
@@ -232,8 +250,8 @@ fun NavigationGraph(internalNavController: NavHostController) {
                 navArgument("matchId") { type = NavType.StringType },
                 navArgument("numberOfReds") { type = NavType.IntType }
             )
-        ) { 
-            ScoringScreen(navController = internalNavController) 
+        ) {
+            ScoringScreen(navController = internalNavController)
         }
         composable(
             route = "community?initialTabIndex={initialTabIndex}",

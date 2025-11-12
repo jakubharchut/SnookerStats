@@ -27,7 +27,7 @@ import com.example.snookerstats.util.Resource
 
 @Composable
 fun PlayScreen(navController: NavController) {
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Gracze", "Gość", "Trening", "Turniej")
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -73,7 +73,7 @@ private fun OpponentSelectionList(navController: NavController, viewModel: Commu
                 val friends = state.data
                 
                 val groupedOpponents = remember(friends, currentUser) {
-                    val favIds = currentUser?.favoriteOpponents ?: emptyList()
+                    val favIds = currentUser?.favorites ?: emptyList() // POPRAWIONE
                     val currentUserClub = currentUser?.club?.takeIf { it.isNotBlank() }
 
                     val (favorites, nonFavorites) = friends.partition { it.uid in favIds }
@@ -116,7 +116,7 @@ private fun OpponentSelectionList(navController: NavController, viewModel: Commu
                         if (header in expandedHeaders) {
                             if (opponents.isNotEmpty()) {
                                 items(opponents) { opponent ->
-                                    val isFavorite = currentUser?.favoriteOpponents?.contains(opponent.uid) == true
+                                    val isFavorite = currentUser?.favorites?.contains(opponent.uid) == true // POPRAWIONE
                                     ListItem(
                                         headlineContent = { Text(opponent.username, fontWeight = FontWeight.Bold) },
                                         supportingContent = { Text("${opponent.firstName} ${opponent.lastName}") },

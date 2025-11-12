@@ -215,7 +215,6 @@ class ScoringViewModel @Inject constructor(
                         is SnookerBall.Green -> SnookerBall.Brown
                         is SnookerBall.Brown -> SnookerBall.Blue
                         is SnookerBall.Blue -> SnookerBall.Pink
-                        is SnookerBall.Pink -> SnookerBall.Black
                         else -> null
                     }
                 }
@@ -267,7 +266,8 @@ class ScoringViewModel @Inject constructor(
             if (currentState.redsRemaining > 0) {
                 canPotColorNext = true
                 nextColorOn = null
-            } else {
+            }
+            else {
                 canPotColorNext = true
                 // After potting a free ball as a color, the player must pot the actual color that was 'on'
                 nextColorOn = currentState.nextColorBallOn
@@ -609,13 +609,20 @@ class ScoringViewModel @Inject constructor(
             val currentFrame = state.currentFrame ?: return@launch
             resetTimer()
 
-            val finalizedFrame = currentFrame.copy(
-                player1Points = state.player1?.score ?: 0,
-                player2Points = state.player2?.score ?: 0
-            )
-            val finalizedFrames = match.frames.dropLast(1) + finalizedFrame
+            val p1CurrentFrameScore = state.player1?.score ?: 0
+            val p2CurrentFrameScore = state.player2?.score ?: 0
+
+            val framesToFinalize = if (p1CurrentFrameScore == 0 && p2CurrentFrameScore == 0) {
+                match.frames.dropLast(1) 
+            } else {
+                val finalizedCurrentFrame = currentFrame.copy(
+                    player1Points = p1CurrentFrameScore,
+                    player2Points = p2CurrentFrameScore
+                )
+                match.frames.dropLast(1) + finalizedCurrentFrame
+            }
             
-            val updatedMatch = match.copy(status = MatchStatus.COMPLETED, frames = finalizedFrames)
+            val updatedMatch = match.copy(status = MatchStatus.COMPLETED, frames = framesToFinalize)
             updateMatchInRepository(updatedMatch)
             _uiState.update { it.copy(showEndMatchDialog = false, showFrameOverDialog = false) }
             _navEvent.send(ScoringNavEvent.NavigateToMatchHistory)

@@ -23,7 +23,9 @@ object DatabaseModule {
             context,
             SnookerStatsDatabase::class.java,
             "snooker_stats_db"
-        ).build()
+        )
+        .fallbackToDestructiveMigration() // Dodajemy tę linię
+        .build()
     }
 
     @Provides

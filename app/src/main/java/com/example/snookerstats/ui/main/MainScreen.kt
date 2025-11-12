@@ -45,7 +45,9 @@ fun MainScreen(
     snackbarManager: SnackbarManager,
     authViewModel: AuthViewModel = hiltViewModel(),
     mainViewModel: MainViewModel = hiltViewModel(),
-    notificationViewModel: NotificationViewModel = hiltViewModel()
+    notificationViewModel: NotificationViewModel = hiltViewModel(),
+    // Dodajemy ScoringViewModel
+    scoringViewModel: ScoringViewModel = hiltViewModel()
 ) {
     val internalNavController = rememberNavController() // Wewnętrzny NavController dla dolnego paska
     val username by mainViewModel.username.collectAsState()
@@ -65,6 +67,21 @@ fun MainScreen(
             if (event is NavigationEvent.NavigateToLogin) {
                 navController.navigate("login") {
                     popUpTo("main") { inclusive = true }
+                }
+            }
+        }
+    }
+
+    // Dodajemy LaunchedEffect dla zdarzeń nawigacyjnych ze ScoringViewModel
+    LaunchedEffect(Unit) {
+        scoringViewModel.navEvent.collectLatest { event ->
+            if (event is ScoringNavEvent.NavigateToMatchHistory) {
+                internalNavController.navigate(BottomNavItem.MatchHistory.route) {
+                    popUpTo(internalNavController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
                 }
             }
         }
@@ -162,7 +179,7 @@ fun MainScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            NavigationGraph(internalNavController = internalNavController)
+            NavigationGraph(internalNavController = internalNavController) 
         }
     }
 }

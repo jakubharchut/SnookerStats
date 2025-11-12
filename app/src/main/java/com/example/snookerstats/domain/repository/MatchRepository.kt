@@ -8,6 +8,8 @@ interface MatchRepository {
 
     fun getMatchStream(matchId: String): Flow<Match?>
 
+    fun getAllMatchesStream(): Flow<List<Match>>
+
     suspend fun createNewMatch(match: Match)
 
     suspend fun updateMatch(match: Match)

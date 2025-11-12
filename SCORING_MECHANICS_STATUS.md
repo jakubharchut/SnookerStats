@@ -45,7 +45,8 @@ Ten dokument podsumowuje zaimplementowane funkcjonalności i logikę walidacji d
 - **[GOTOWE] Cofnięcie Ruchu (`onUndoClicked`):**
   - Funkcjonalność zaimplementowana i działa w oparciu o modyfikację listy `shots` w Firestore, zapewniając synchronizację stanu gry.
 
+- **[GOTOWE] Nawigacja po zakończeniu meczu:** Po `onEndMatchConfirmed` aplikacja automatycznie przenosi użytkownika do ekranu historii meczy.
+
 ## 2. Rzeczy do zrobienia (Następne kroki)
 
-1.  **Nawigacja po zakończeniu meczu:** Po `onEndMatchConfirmed` aplikacja powinna automatycznie przenieść użytkownika do ekranu historii meczy.
-2.  **Implementacja "Powrót do meczu":** Stworzenie mechanizmu, który pozwoli kontynuować przerwany mecz po ponownym uruchomieniu aplikacji.
+1.  **Implementacja "Powrót do meczu":** Stworzenie mechanizmu, który pozwoli kontynuować przerwany mecz po ponownym uruchomieniu aplikacji.

@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -281,10 +282,13 @@ fun MatchHistoryScreen(
                 Text(text = "Brak rozegranych meczów.")
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                items(matches) { match ->
-                    MatchHistoryItem(match = match)
-                    Spacer(modifier = Modifier.height(8.dp))
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                items(matches) { item ->
+                    MatchHistoryItem(item = item)
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         }
@@ -292,32 +296,71 @@ fun MatchHistoryScreen(
 }
 
 @Composable
-fun MatchHistoryItem(match: Match) {
+fun MatchHistoryItem(item: MatchHistoryDisplayItem) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = "ID Meczu: ${match.id}", style = MaterialTheme.typography.titleMedium)
-            Text(text = "Data: ${formatTimestamp(match.date)}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Gracz 1: ${match.player1Id}", style = MaterialTheme.typography.bodyMedium)
-            match.player2Id?.let {
-                Text(text = "Gracz 2: $it", style = MaterialTheme.typography.bodyMedium)
-            }
-            Text(text = "Typ Meczu: ${match.matchType}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Status: ${match.status}", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = formatTimestamp(item.match.date),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(12.dp))
 
-            if (match.status == MatchStatus.COMPLETED) {
-                // POPRAWIONA LOGIKA WYNIKU
-                val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
-                val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
-                val winnerId = if (p1FramesWon > p2FramesWon) match.player1Id else match.player2Id
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                // Player 1
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    UserAvatar(user = item.player1, modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = item.player1?.username ?: "Gracz 1",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
-                Text(text = "Wynik: $p1FramesWon - $p2FramesWon", style = MaterialTheme.typography.bodyLarge)
-                winnerId?.let { Text(text = "Zwycięzca: $it", style = MaterialTheme.typography.bodyLarge) }
+                // Score
+                Text(
+                    text = "${item.p1FramesWon} - ${item.p2FramesWon}",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                // Player 2
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    UserAvatar(user = item.player2, modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = item.player2?.username ?: "Gracz 2",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = item.match.matchType.name,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
+
 
 @Composable
 fun StatsScreen() {

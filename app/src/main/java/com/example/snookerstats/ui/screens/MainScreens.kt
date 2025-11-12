@@ -307,14 +307,13 @@ fun MatchHistoryItem(match: Match) {
             Text(text = "Status: ${match.status}", style = MaterialTheme.typography.bodyMedium)
 
             if (match.status == MatchStatus.COMPLETED) {
-                val lastFrame = match.frames.lastOrNull()
-                if (lastFrame != null) {
-                    val p1Score = lastFrame.player1Points
-                    val p2Score = lastFrame.player2Points
-                    val winner = if (p1Score > p2Score) match.player1Id else match.player2Id
-                    Text(text = "Wynik: $p1Score - $p2Score", style = MaterialTheme.typography.bodyLarge)
-                    winner?.let { Text(text = "Zwycięzca: $it", style = MaterialTheme.typography.bodyLarge) }
-                }
+                // POPRAWIONA LOGIKA WYNIKU
+                val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
+                val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
+                val winnerId = if (p1FramesWon > p2FramesWon) match.player1Id else match.player2Id
+
+                Text(text = "Wynik: $p1FramesWon - $p2FramesWon", style = MaterialTheme.typography.bodyLarge)
+                winnerId?.let { Text(text = "Zwycięzca: $it", style = MaterialTheme.typography.bodyLarge) }
             }
         }
     }

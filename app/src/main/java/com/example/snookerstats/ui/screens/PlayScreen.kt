@@ -73,7 +73,7 @@ private fun OpponentSelectionList(navController: NavController, viewModel: Commu
                 val friends = state.data
                 
                 val groupedOpponents = remember(friends, currentUser) {
-                    val favIds = currentUser?.favorites ?: emptyList() // POPRAWIONE
+                    val favIds = currentUser?.3favorites ?: emptyList() // POPRAWIONE
                     val currentUserClub = currentUser?.club?.takeIf { it.isNotBlank() }
 
                     val (favorites, nonFavorites) = friends.partition { it.uid in favIds }

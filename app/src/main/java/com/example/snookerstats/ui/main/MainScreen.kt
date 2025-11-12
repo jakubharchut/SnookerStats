@@ -58,8 +58,9 @@ fun MainScreen(
     val ongoingMatch by mainViewModel.ongoingMatch.collectAsState()
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val fullScreenRoutes = listOf("conversation/{chatId}")
-    val showBars = currentDestination?.route !in fullScreenRoutes
+
+    val screensWithoutBars = listOf("match_details/{matchId}")
+    val showBars = currentDestination?.route !in screensWithoutBars
 
     LaunchedEffect(Unit) {
         authViewModel.navigationEvent.collectLatest { event ->
@@ -148,7 +149,7 @@ fun MainScreen(
                             BadgedBox(badge = {
                                 if (unreadNotificationsCount > 0) {
                                     Badge(modifier = Modifier.offset(x = (-8).dp, y = (-4).dp)) {
-                                        Text(text = unreadNotificationsCount.toString())
+                                        Text(text = unreadChatCount.toString())
                                     }
                                 }
                             }) {
@@ -198,17 +199,18 @@ fun BottomNavigationBar(navController: NavController) {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
         items.forEach { item ->
+            val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
             NavigationBarItem(
                 icon = { Icon(imageVector = item.icon, contentDescription = item.title) },
                 label = { Text(text = item.title) },
-                selected = currentDestination?.hierarchy?.any { it.route?.startsWith(item.route) == true } == true,
+                selected = isSelected,
                 onClick = {
                     navController.navigate(item.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }
                         launchSingleTop = true
-                        restoreState = true
+                        restoreState = item.route != navController.currentDestination?.route
                     }
                 }
             )
@@ -251,7 +253,7 @@ fun NavigationGraph(
             route = "match_details/{matchId}",
             arguments = listOf(navArgument("matchId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val matchId = backStackEntry.arguments?.getString("matchId") ?: ""
+            val matchId = backStackEntry.arguments?.getString("matchId")
             MatchDetailsScreen(navController = internalNavController, matchId = matchId)
         }
         composable(

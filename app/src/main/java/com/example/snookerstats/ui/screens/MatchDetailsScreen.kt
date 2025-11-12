@@ -1,6 +1,7 @@
 package com.example.snookerstats.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -36,7 +37,7 @@ fun MatchDetailsScreen(
 ) {
     val viewModel: MatchDetailsViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
-    var selectedTab by remember { mutableStateOf(1) } // 0: Szczegóły, 1: Historia Meczu
+    var selectedTab by remember { mutableStateOf(1) }
 
     LaunchedEffect(matchId) {
         if (matchId != null) {
@@ -44,18 +45,20 @@ fun MatchDetailsScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Szczegóły meczu") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
-                    }
-                }
-            )
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Spójny, mały nagłówek z przyciskiem powrotu
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .clickable { navController.popBackStack() },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Cofnij", style = MaterialTheme.typography.bodyLarge)
         }
-    ) { paddingValues ->
+
         when {
             uiState.isLoading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -71,7 +74,6 @@ fun MatchDetailsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
                         .padding(horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -99,6 +101,7 @@ fun MatchDetailsScreen(
     }
 }
 
+// Reszta pliku pozostaje bez zmian
 @Composable
 private fun MatchHeader(item: MatchHistoryDisplayItem) {
     Row(
@@ -106,7 +109,6 @@ private fun MatchHeader(item: MatchHistoryDisplayItem) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Player 1 Info
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.weight(1f)
@@ -126,7 +128,6 @@ private fun MatchHeader(item: MatchHistoryDisplayItem) {
             )
         }
 
-        // Score
         Text(
             text = "${item.p1FramesWon} - ${item.p2FramesWon}",
             style = MaterialTheme.typography.headlineLarge,
@@ -134,7 +135,6 @@ private fun MatchHeader(item: MatchHistoryDisplayItem) {
             modifier = Modifier.padding(horizontal = 8.dp)
         )
 
-        // Player 2 Info
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.weight(1f)

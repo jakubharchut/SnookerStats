@@ -30,17 +30,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun HomeScreen(
-    mainViewModel: MainViewModel = hiltViewModel()
-) {
+fun HomeScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "Ekran Główny")
-            Spacer(modifier = Modifier.height(20.dp))
-            Button(onClick = { mainViewModel.runDatabaseTest() }) {
-                Text("Uruchom Test Bazy Danych")
-            }
-        }
+        Text(text = "Ekran Główny")
     }
 }
 
@@ -100,55 +92,58 @@ fun PlayerTabContent(
             CircularProgressIndicator()
         }
     } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            item {
-                PlayerSection(
-                    title = "Ulubieni",
-                    players = playerLists.favorites,
-                    favoriteIds = playerLists.favoriteIds,
-                    onPlayerClick = { user -> navController.navigate("match_setup/${user.uid}") },
-                    onToggleFavorite = viewModel::onToggleFavorite
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-            item {
-                PlayerSection(
-                    title = "Klubowicze",
-                    players = playerLists.clubMembers,
-                    favoriteIds = playerLists.favoriteIds,
-                    onPlayerClick = { user -> navController.navigate("match_setup/${user.uid}") },
-                    onToggleFavorite = viewModel::onToggleFavorite
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-            item {
-                PlayerSection(
-                    title = "Pozostali znajomi",
-                    players = playerLists.otherFriends,
-                    favoriteIds = playerLists.favoriteIds,
-                    onPlayerClick = { user -> navController.navigate("match_setup/${user.uid}") },
-                    onToggleFavorite = viewModel::onToggleFavorite
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-            item {
-                OutlinedButton(
-                    onClick = {
-                        navController.navigate(BottomNavItem.Community.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Szukaj gracza")
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .padding(bottom = 72.dp)
+            ) {
+                item {
+                    PlayerSection(
+                        title = "Ulubieni",
+                        players = playerLists.favorites,
+                        favoriteIds = playerLists.favoriteIds,
+                        onPlayerClick = { user -> navController.navigate("match_setup/${user.uid}") },
+                        onToggleFavorite = viewModel::onToggleFavorite
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
+                item {
+                    PlayerSection(
+                        title = "Klubowicze",
+                        players = playerLists.clubMembers,
+                        favoriteIds = playerLists.favoriteIds,
+                        onPlayerClick = { user -> navController.navigate("match_setup/${user.uid}") },
+                        onToggleFavorite = viewModel::onToggleFavorite
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                item {
+                    PlayerSection(
+                        title = "Pozostali znajomi",
+                        players = playerLists.otherFriends,
+                        favoriteIds = playerLists.favoriteIds,
+                        onPlayerClick = { user -> navController.navigate("match_setup/${user.uid}") },
+                        onToggleFavorite = viewModel::onToggleFavorite
+                    )
+                }
+            }
+            OutlinedButton(
+                onClick = {
+                    navController.navigate(BottomNavItem.Community.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+            ) {
+                Text("Szukaj gracza")
             }
         }
     }
@@ -228,7 +223,7 @@ fun PlayerListItem(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = "Dodaj do ulubionych",
-                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.Gray
+                    tint = if (isFavorite) Color(0xFFFFD700) else Color.Gray
                 )
             }
         }

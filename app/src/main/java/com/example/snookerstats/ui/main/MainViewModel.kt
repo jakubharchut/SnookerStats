@@ -4,8 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Match
-import com.example.snookerstats.domain.model.MatchStatus
-import com.example.snookerstats.domain.model.MatchType
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.domain.repository.MatchRepository
@@ -14,7 +12,6 @@ import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -73,41 +70,6 @@ class MainViewModel @Inject constructor(
                     _unreadChatCount.value = count
                 }
             }
-        }
-    }
-
-    // --- TESTOWANIE BAZY DANYCH ---
-    fun runDatabaseTest() {
-        viewModelScope.launch {
-            Log.d("DatabaseTest", "--- Rozpoczęcie testu bazy danych ---")
-            val testMatch = Match(
-                id = "test_${UUID.randomUUID()}",
-                player1Id = "test_player_1",
-                date = System.currentTimeMillis(),
-                status = MatchStatus.IN_PROGRESS,
-                matchType = MatchType.SPARRING,
-                numberOfReds = 15,
-                frames = emptyList()
-            )
-            Log.d("DatabaseTest", "Krok 1: Stworzono mecz testowy: $testMatch")
-            try {
-                matchRepository.createNewMatch(testMatch)
-                Log.d("DatabaseTest", "Krok 2: Wywołano createNewMatch bez błędu.")
-            } catch (e: Exception) {
-                Log.e("DatabaseTest", "Krok 2: Błąd podczas wywoływania createNewMatch!", e)
-                return@launch
-            }
-            try {
-                val ongoingMatch = matchRepository.getOngoingMatch().firstOrNull()
-                if (ongoingMatch != null) {
-                    Log.d("DatabaseTest", "Krok 3: SUKCES! Odczytano trwający mecz z bazy: $ongoingMatch")
-                } else {
-                    Log.e("DatabaseTest", "Krok 3: PORAŻKA! Nie znaleziono trwającego meczu.")
-                }
-            } catch (e: Exception) {
-                Log.e("DatabaseTest", "Krok 3: Błąd podczas odczytywania trwającego meczu!", e)
-            }
-            Log.d("DatabaseTest", "--- Zakończenie testu bazy danych ---")
         }
     }
 }

@@ -15,6 +15,9 @@ interface MatchDao {
 
     @Delete
     suspend fun deleteMatch(match: Match)
+    
+    @Query("DELETE FROM matches WHERE id = :matchId")
+    suspend fun deleteMatchById(matchId: String)
 
     @Query("SELECT * FROM matches WHERE id = :matchId")
     suspend fun getMatchById(matchId: String): Match?

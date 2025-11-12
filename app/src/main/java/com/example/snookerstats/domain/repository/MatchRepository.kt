@@ -15,6 +15,8 @@ interface MatchRepository {
     suspend fun createNewMatch(match: Match)
 
     suspend fun updateMatch(match: Match)
+    
+    suspend fun deleteMatch(matchId: String)
 
     suspend fun getPlayersForMatch(player1Id: String, player2Id: String): Pair<User?, User?>
 

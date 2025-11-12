@@ -61,8 +61,6 @@ class MatchRepositoryImpl @Inject constructor(
     }
 
     override fun getOngoingMatch(): Flow<Match?> {
-        // Zmieniamy implementację, aby filtrować w pamięci po pobraniu wszystkich meczów z Room.
-        // To pomoże zdiagnozować, czy problem leży w zapytaniu SQL w MatchDao.
         return matchDao.getAllMatches().map { matches ->
             val ongoing = matches.firstOrNull { it.status == MatchStatus.IN_PROGRESS }
             Log.d("MatchRepositoryImpl", "Checking for ongoing match. Found: $ongoing")
@@ -73,9 +71,27 @@ class MatchRepositoryImpl @Inject constructor(
     override suspend fun createNewMatch(match: Match) {
         try {
             matchesCollection.document(match.id).set(match).await()
-            matchDao.insertMatch(match) // Save to Room
+            matchDao.insertMatch(match)
         } catch (e: Exception) {
             Log.e("MatchRepository", "Error creating new match", e)
+        }
+    }
+
+    override suspend fun updateMatch(match: Match) {
+        try {
+            matchesCollection.document(match.id).set(match).await()
+            matchDao.updateMatch(match)
+        } catch (e: Exception) {
+            Log.e("MatchRepository", "Error updating match", e)
+        }
+    }
+    
+    override suspend fun deleteMatch(matchId: String) {
+        try {
+            matchesCollection.document(matchId).delete().await()
+            matchDao.deleteMatchById(matchId)
+        } catch (e: Exception) {
+            Log.e("MatchRepository", "Error deleting match", e)
         }
     }
 
@@ -91,14 +107,5 @@ class MatchRepositoryImpl @Inject constructor(
         }
         
         return Pair(user1, user2)
-    }
-
-    override suspend fun updateMatch(match: Match) {
-        try {
-            matchesCollection.document(match.id).set(match).await()
-            matchDao.updateMatch(match) // Update in Room
-        } catch (e: Exception) {
-            Log.e("MatchRepository", "Error updating match", e)
-        }
     }
 }

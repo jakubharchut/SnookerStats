@@ -149,7 +149,7 @@ fun MainScreen(
                             BadgedBox(badge = {
                                 if (unreadNotificationsCount > 0) {
                                     Badge(modifier = Modifier.offset(x = (-8).dp, y = (-4).dp)) {
-                                        Text(text = unreadChatCount.toString())
+                                        Text(text = unreadNotificationsCount.toString())
                                     }
                                 }
                             }) {
@@ -210,7 +210,8 @@ fun BottomNavigationBar(navController: NavController) {
                             saveState = true
                         }
                         launchSingleTop = true
-                        restoreState = item.route != navController.currentDestination?.route
+                        // Zawsze resetuj stan dla MatchHistory po ponownym kliknięciu lub jeśli to nowa zakładka
+                        restoreState = item.route != BottomNavItem.MatchHistory.route || !isSelected
                     }
                 }
             )

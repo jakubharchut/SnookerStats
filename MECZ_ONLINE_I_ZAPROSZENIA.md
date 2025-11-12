@@ -1,12 +1,12 @@
-# Specyfikacja Funkcjonalności: Mecz Online, Zaproszenia i Tryb Obserwatora
+# Specyfikacja Funkcjonalności: Mecz Online (Tryb Obserwatora)
 
-## Wersja: 1.0 (stan na 2025-11-12)
+## Wersja: 1.1 (stan na 2025-11-12)
 
 ---
 
 ## 1. Cel Główny
 
-Celem tej funkcjonalności jest umożliwienie drugiemu graczowi otrzymania powiadomienia o rozpoczętym meczu oraz dołączenia do niego w trybie "tylko do odczytu" (obserwatora).
+Celem tej funkcjonalności jest umożliwienie drugiemu graczowi otrzymania powiadomienia o rozpoczętym meczu oraz dołączenia do niego w trybie "tylko do odczytu" (obserwatora). Model ten zakłada, że tylko jeden użytkownik (inicjator meczu) aktywnie wprowadza wyniki.
 
 ---
 
@@ -67,16 +67,14 @@ Celem tej funkcjonalności jest umożliwienie drugiemu graczowi otrzymania powia
                     title: "Rozpoczęto nowy mecz!",
                     body: `${player1Data.firstName} ${player1Data.lastName} zaprasza Cię do oglądania waszego meczu.`,
                 },
-                // Można dodać dane, aby po kliknięciu przenieść bezpośrednio do meczu
                 data: {
                   matchId: context.params.matchId,
-                  screen: "scoring" // Przykładowy identyfikator ekranu
+                  screen: "scoring" 
                 }
             };
 
             console.log(`Wysyłanie powiadomienia do ${player2Id}...`);
             try {
-                // Używamy send() dla większej niezawodności
                 const message = {
                   token: recipientToken,
                   notification: payload.notification,
@@ -94,10 +92,10 @@ Celem tej funkcjonalności jest umożliwienie drugiemu graczowi otrzymania powia
 
 ### 2.3. Dołączenie jako Obserwator
 1.  **Przeciwnik (Gracz 2):** Po otrzymaniu powiadomienia, klika w nie. Aplikacja otwiera się i (w przyszłości) automatycznie przechodzi do trwającego meczu.
-2.  **Alternatywnie:** Gracz 2 może wejść w zakładkę "Graj", gdzie (podobnie jak w funkcji "Powrót do meczu") zobaczy trwający mecz i będzie mógł do niego dołączyć.
+2.  **Alternatywnie:** Gracz 2 może wejść w zakładkę "Graj", gdzie (dzięki funkcji "Powrót do meczu") zobaczy trwający mecz i zostanie do niego automatycznie przekierowany.
 3.  **Tryb "Tylko do odczytu":**
     - Ekran `ScoringScreen` musi zostać zmodyfikowany.
-    - Musi sprawdzać, czy zalogowany użytkownik (`currentUserId`) jest Graczem 1 (`match.player1Id`).
+    - Musi sprawdzać, czy zalogowany użytkownik jest inicjatorem meczu (Graczem 1).
     - Jeśli **nie jest**, wszystkie przyciski do wprowadzania punktów (`onBallClicked`, `onFoulClicked` itp.) muszą być **wyłączone (disabled)**.
     - Ekran będzie się aktualizował w czasie rzeczywistym dzięki nasłuchiwaniu na zmiany w dokumencie meczu w Firestore, ale interakcja będzie zablokowana.
 
@@ -107,5 +105,4 @@ Celem tej funkcjonalności jest umożliwienie drugiemu graczowi otrzymania powia
 
 - [ ] Wdrożenie powyższej funkcji `sendNewMatchNotification` do środowiska Firebase Cloud Functions.
 - [ ] Modyfikacja `ScoringViewModel` lub `ScoringScreen`, aby wprowadzić logikę trybu "tylko do odczytu" w zależności od ID zalogowanego użytkownika.
-- [ ] Implementacja mechanizmu w `PlayScreen`, który pozwoli Graczowi 2 zobaczyć i dołączyć do trwającego meczu (można rozszerzyć istniejącą logikę `ongoingMatch`).
 - [ ] (Opcjonalnie) Implementacja obsługi "głębokich linków" (deep linking), aby kliknięcie w powiadomienie przenosiło bezpośrednio do ekranu meczu.

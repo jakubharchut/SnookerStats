@@ -37,7 +37,7 @@ Ten dokument podsumowuje zaimplementowane funkcjonalności i logikę walidacji d
 - **[GOTOWE] Zakończenie Meczu:**
   - Przycisk "Zakończ mecz" jest dostępny po zakończeniu podejścia.
   - **Ulepszona Walidacja:** Akcja jest blokowana tylko wtedy, gdy bieżący frejm jest w trakcie (wynik inny niż 0-0). Zezwala na zakończenie meczu, gdy frejm jest nierozpoczęty.
-  - Logika poprawnie ustawia status meczu na `COMPLETED` i ignoruje nierozpoczęte frejmy przy zapisie.
+  - **Ulepszona Logika:** Zakończone mecze z pustymi frejmami są usuwane, zamiast zapisywania.
 
 - **[GOTOWE] Cofnięcie Ruchu (`onUndoClicked`):**
   - Funkcjonalność zaimplementowana i działa w oparciu o modyfikację listy `shots` w Firestore, zapewniając synchronizację stanu gry.

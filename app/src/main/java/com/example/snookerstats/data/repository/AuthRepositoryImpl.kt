@@ -27,15 +27,13 @@ class AuthRepositoryImpl @Inject constructor(
             val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
             val firebaseUser = result.user ?: return Resource.Error("Failed to create user.")
             firebaseUser.sendEmailVerification().await()
-            // OSTATECZNIE POPRAWIONY KONSTRUKTOR - USUNIĘTO NIEISTNIEJĄCE POLA
             val user = User(
                 uid = firebaseUser.uid,
                 email = email,
                 username = "",
                 firstName = "",
                 lastName = "",
-                publicProfile = true,
-                favorites = emptyList()
+                publicProfile = true
             )
             firestore.collection("users").document(firebaseUser.uid).set(user).await()
             Resource.Success(true)

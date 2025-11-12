@@ -42,26 +42,22 @@ import kotlinx.coroutines.flow.collectLatest
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    navController: NavController, // Główny NavController z MainActivity
+    navController: NavController,
     snackbarManager: SnackbarManager,
     authViewModel: AuthViewModel = hiltViewModel(),
     mainViewModel: MainViewModel = hiltViewModel(),
     notificationViewModel: NotificationViewModel = hiltViewModel(),
     scoringViewModel: ScoringViewModel = hiltViewModel()
 ) {
-    val internalNavController = rememberNavController() // Wewnętrzny NavController dla dolnego paska
+    val internalNavController = rememberNavController()
     val username by mainViewModel.username.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val unreadNotificationsCount by notificationViewModel.unreadNotificationCount.collectAsState()
     val unreadChatCount by mainViewModel.unreadChatCount.collectAsState()
-
-    // Pobieramy stan trwającego meczu z MainViewModel
     val ongoingMatch by mainViewModel.ongoingMatch.collectAsState()
-
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-
     val fullScreenRoutes = listOf("conversation/{chatId}")
     val showBars = currentDestination?.route !in fullScreenRoutes
 
@@ -181,7 +177,6 @@ fun MainScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            // Przekazujemy stan do NavigationGraph
             NavigationGraph(
                 internalNavController = internalNavController,
                 ongoingMatch = ongoingMatch
@@ -224,19 +219,18 @@ fun BottomNavigationBar(navController: NavController) {
 @Composable
 fun NavigationGraph(
     internalNavController: NavHostController,
-    ongoingMatch: Match? // Odbieramy stan
+    ongoingMatch: Match?
 ) {
     val activity = (LocalContext.current as MainActivity)
     NavHost(internalNavController, startDestination = BottomNavItem.Home.route) {
         composable(BottomNavItem.Home.route) { HomeScreen() }
-        // Przekazujemy stan do PlayScreen
         composable(BottomNavItem.Play.route) {
             PlayScreen(
                 navController = internalNavController,
                 ongoingMatch = ongoingMatch
             )
         }
-        composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen() }
+        composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen(navController = internalNavController) }
         composable(BottomNavItem.Stats.route) { StatsScreen() }
         composable(
             route = "match_setup/{opponentId}",
@@ -252,6 +246,13 @@ fun NavigationGraph(
             )
         ) {
             ScoringScreen(navController = internalNavController)
+        }
+        composable(
+            route = "match_details/{matchId}",
+            arguments = listOf(navArgument("matchId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val matchId = backStackEntry.arguments?.getString("matchId") ?: ""
+            MatchDetailsScreen(navController = internalNavController, matchId = matchId)
         }
         composable(
             route = "community?initialTabIndex={initialTabIndex}",

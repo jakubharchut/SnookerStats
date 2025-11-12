@@ -22,10 +22,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.snookerstats.domain.model.Match
-import com.example.snookerstats.domain.model.MatchStatus
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.common.UserAvatar
-import com.example.snookerstats.ui.main.MainViewModel
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import java.text.SimpleDateFormat
 import java.util.*
@@ -267,6 +265,7 @@ fun TournamentTabContent() {
 
 @Composable
 fun MatchHistoryScreen(
+    navController: NavController,
     viewModel: MatchHistoryViewModel = hiltViewModel()
 ) {
     val matches by viewModel.matches.collectAsState()
@@ -287,7 +286,10 @@ fun MatchHistoryScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 items(matches) { item ->
-                    MatchHistoryItem(item = item)
+                    MatchHistoryItem(
+                        item = item,
+                        onClick = { navController.navigate("match_details/${item.match.id}") }
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
@@ -296,9 +298,9 @@ fun MatchHistoryScreen(
 }
 
 @Composable
-fun MatchHistoryItem(item: MatchHistoryDisplayItem) {
+fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

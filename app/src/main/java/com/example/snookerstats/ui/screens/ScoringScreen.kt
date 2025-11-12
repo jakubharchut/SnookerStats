@@ -69,7 +69,8 @@ fun ScoringScreen(
     if (state.showEndMatchDialog) {
         EndMatchDialog(
             onDismiss = viewModel::onDismissEndMatchDialog,
-            onConfirm = viewModel::onEndMatchConfirmed
+            onConfirm = viewModel::onEndMatchConfirmed,
+            onAbandon = viewModel::onAbandonMatchConfirmed
         )
     }
 
@@ -161,13 +162,22 @@ private fun FrameOverDialog(
 
 
 @Composable
-private fun EndMatchDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+private fun EndMatchDialog(onDismiss: () -> Unit, onConfirm: () -> Unit, onAbandon: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Zakończyć mecz?") },
         text = { Text("Czy na pewno chcesz zakończyć ten mecz? Tej akcji nie można cofnąć.") },
         confirmButton = { Button(onClick = onConfirm) { Text("Zakończ") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } }
+        dismissButton = {
+            Row {
+                TextButton(
+                    onClick = onAbandon,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Porzuć") }
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = onDismiss) { Text("Anuluj") }
+            }
+        }
     )
 }
 

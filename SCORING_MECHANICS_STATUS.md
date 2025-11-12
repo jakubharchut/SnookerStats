@@ -26,9 +26,7 @@ Ten dokument podsumowuje zaimplementowane funkcjonalności i logikę walidacji d
 - **[GOTOWE] Zakończenie Frejma (Automatyczne i Ręczne):**
   - **Automatyczne:** Frejm kończy się po wbiciu ostatniej czarnej bili.
   - **Ręczne:** Przycisk "Zakończ frejma" jest dostępny po zakończeniu podejścia.
-  - **Walidacja:** Akcja jest blokowana, jeśli:
-    - Wynik jest remisowy.
-    - Różnica punktów jest mniejsza niż liczba punktów pozostałych na stole.
+  - **Walidacja:** Akcja jest blokowana, jeśli wynik jest remisowy.
   - **Dialog Podsumowujący:** Po zakończeniu frejma pojawia się dialog z wynikiem, zwycięzcą i opcjami: "Następny frejm", "Zakończ mecz", "Wróć do frejma".
 
 - **[GOTOWE] Powtórzenie Frejma:**
@@ -38,17 +36,17 @@ Ten dokument podsumowuje zaimplementowane funkcjonalności i logikę walidacji d
 
 - **[GOTOWE] Zakończenie Meczu:**
   - Przycisk "Zakończ mecz" jest dostępny po zakończeniu podejścia.
-  - **Walidacja:** Akcja jest blokowana, jeśli bieżący frejm nie jest jeszcze rozstrzygnięty.
-  - **Walidacja:** Akcja jest zabezpieczona dialogiem z prośbą o potwierdzenie.
-  - Logika poprawnie ustawia status meczu na `COMPLETED`.
-  - **Dodatkowa logika:** Frejm z wynikiem 0:0 (bez oddanych strzałów) jest ignorowany przy finalizowaniu meczu.
+  - **Ulepszona Walidacja:** Akcja jest blokowana tylko wtedy, gdy bieżący frejm jest w trakcie (wynik inny niż 0-0). Zezwala na zakończenie meczu, gdy frejm jest nierozpoczęty.
+  - Logika poprawnie ustawia status meczu na `COMPLETED` i ignoruje nierozpoczęte frejmy przy zapisie.
 
 - **[GOTOWE] Cofnięcie Ruchu (`onUndoClicked`):**
   - Funkcjonalność zaimplementowana i działa w oparciu o modyfikację listy `shots` w Firestore, zapewniając synchronizację stanu gry.
 
 - **[GOTOWE] Nawigacja po zakończeniu meczu:** Po `onEndMatchConfirmed` aplikacja automatycznie przenosi użytkownika do ekranu historii meczy.
 
-- **[GOTOWE] Implementacja "Powrót do meczu":** Mechanizm pozwalający kontynuować przerwany mecz po ponownym uruchomieniu aplikacji został zaimplementowany, wykorzystując lokalną bazę danych Room do przechowywania stanu `IN_PROGRESS` oraz dodając przycisk "Wznów mecz" na `PlayScreen`.
+- **[GOTOWE] Implementacja "Powrót do meczu":** Mechanizm pozwalający kontynuować przerwany mecz po ponownym uruchomieniu aplikacji został w pełni zaimplementowany, wykorzystując lokalną bazę danych Room i automatyczne przekierowanie z ekranu "Graj".
 
 ## 2. Rzeczy do zrobienia (Następne kroki)
 
+1.  **Implementacja Powiadomień o Meczu:** Stworzenie Cloud Function, która będzie informować przeciwnika o rozpoczęciu meczu.
+2.  **Tryb Obserwatora:** Stworzenie mechanizmu, który pozwoli drugiemu graczowi dołączyć do trwającego meczu w trybie "tylko do odczytu".

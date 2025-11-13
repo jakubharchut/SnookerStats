@@ -55,7 +55,7 @@ fun ScoringScreen(
     if (state.showFoulDialog) {
         FoulDialog(
             onDismiss = viewModel::onDismissFoulDialog,
-            onConfirm = viewModel::onFoulConfirmed
+            onConfirm = { foulPoints, redsPotted -> viewModel.onFoulConfirmed(foulPoints, false, redsPotted) }
         )
     }
 
@@ -118,7 +118,8 @@ fun ScoringScreen(
             onFoulClick = viewModel::onFoulClicked,
             onSafetyClick = viewModel::onSafetyClicked,
             onMissClick = viewModel::onMissClicked,
-            onUndoClick = viewModel::onUndoClicked
+            onUndoClick = viewModel::onUndoClicked,
+            onFreeBallClick = { viewModel.onFoulConfirmed(0, true, 0) }
         )
         Spacer(modifier = Modifier.weight(1f))
         
@@ -193,9 +194,8 @@ private fun RepeatFrameDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
 }
 
 @Composable
-private fun FoulDialog(onDismiss: () -> Unit, onConfirm: (Int, Boolean, Int) -> Unit) {
+private fun FoulDialog(onDismiss: () -> Unit, onConfirm: (Int, Int) -> Unit) {
     var selectedPoints by remember { mutableStateOf(4) }
-    var isFreeBall by remember { mutableStateOf(false) }
     var redsPotted by remember { mutableStateOf(0) }
 
     AlertDialog(
@@ -213,12 +213,6 @@ private fun FoulDialog(onDismiss: () -> Unit, onConfirm: (Int, Boolean, Int) -> 
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(Modifier.fillMaxWidth().toggleable(value = isFreeBall, onValueChange = { isFreeBall = it }, role = Role.Checkbox).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = isFreeBall, onCheckedChange = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Wolna bila (Free ball)")
-                }
-                Spacer(modifier = Modifier.height(16.dp))
                 Divider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Czerwone wbite w faulu:")
@@ -229,7 +223,7 @@ private fun FoulDialog(onDismiss: () -> Unit, onConfirm: (Int, Boolean, Int) -> 
                 }
             }
         },
-        confirmButton = { Button(onClick = { onConfirm(selectedPoints, isFreeBall, redsPotted) }) { Text("Zatwierdź") } },
+        confirmButton = { Button(onClick = { onConfirm(selectedPoints, redsPotted) }) { Text("Zatwierdź") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } }
     )
 }
@@ -333,7 +327,7 @@ private fun BallButtons(isFrameOver: Boolean, canPotColor: Boolean, isFreeBall: 
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(
             onClick = { onBallClick(SnookerBall.Red) },
-            enabled = !isFrameOver && redsRemaining > 0 && !isFreeBall,
+            enabled = !isFrameOver && redsRemaining > 0 && !canPotColor && !isFreeBall,
             modifier = Modifier.width(256.dp).height(56.dp),
             shape = MaterialTheme.shapes.medium,
             colors = ButtonDefaults.buttonColors(containerColor = SnookerBall.Red.color, contentColor = SnookerBall.Red.contentColor)
@@ -368,7 +362,7 @@ private fun BallButton(ball: SnookerBall, onClick: () -> Unit, enabled: Boolean)
 }
 
 @Composable
-private fun ActionButtons(onFoulClick: () -> Unit, onSafetyClick: () -> Unit, onMissClick: () -> Unit, onUndoClick: () -> Unit) {
+private fun ActionButtons(onFoulClick: () -> Unit, onSafetyClick: () -> Unit, onMissClick: () -> Unit, onUndoClick: () -> Unit, onFreeBallClick: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(onClick = onSafetyClick, modifier = Modifier.weight(1f)) { Text("Odstawna") }
@@ -376,6 +370,7 @@ private fun ActionButtons(onFoulClick: () -> Unit, onSafetyClick: () -> Unit, on
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(onClick = onFoulClick, modifier = Modifier.weight(1f)) { Text("Faul") }
+            Button(onClick = onFreeBallClick, modifier = Modifier.weight(1f)) { Text("Wolna bila") }
             Button(onClick = onUndoClick, modifier = Modifier.weight(1f)) { Text("Cofnij") }
         }
     }

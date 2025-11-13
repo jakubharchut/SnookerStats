@@ -37,8 +37,8 @@ data class ScoringState(
     val breakHistory: List<SnookerBall> = emptyList(),
     val timer: String = "00:00",
     val canPotColor: Boolean = false,
-    val nextColorBallOn: SnookerBall? = null,
     val isFreeBall: Boolean = false,
+    val nextColorBallOn: SnookerBall? = null,
     val showFoulDialog: Boolean = false,
     val showRepeatFrameDialog: Boolean = false,
     val showEndMatchDialog: Boolean = false,
@@ -116,8 +116,8 @@ class ScoringViewModel @Inject constructor(
                     currentBreak = reconstructedScoringState.currentBreak,
                     breakHistory = reconstructedScoringState.breakHistory,
                     canPotColor = reconstructedScoringState.canPotColor,
-                    nextColorBallOn = reconstructedScoringState.nextColorBallOn,
                     isFreeBall = reconstructedScoringState.isFreeBall,
+                    nextColorBallOn = reconstructedScoringState.nextColorBallOn,
                     isFrameOver = reconstructedScoringState.isFrameOver,
                     initialReds = match.numberOfReds
                 )
@@ -176,7 +176,7 @@ class ScoringViewModel @Inject constructor(
     }
 
     fun onBallClicked(ball: SnookerBall) {
-        if (_uiState.value.isFreeBall) {
+        if (uiState.value.isFreeBall) {
             onFreeBallPotted(ball)
             return
         }
@@ -264,42 +264,28 @@ class ScoringViewModel @Inject constructor(
     private fun onFreeBallPotted(nominatedBall: SnookerBall) {
         if (nominatedBall is SnookerBall.Red) return
 
-        val (pointsToAdd, shotType) = if (_uiState.value.redsRemaining > 0) {
-            1 to ShotType.FREE_BALL_POTTED_AS_RED
+        val currentState = _uiState.value
+        val shot: Shot
+
+        if (currentState.redsRemaining > 0) {
+            // Scenario 1: Reds on table - free ball is treated as a red
+            val points = 1
+            shot = Shot(
+                timestamp = System.currentTimeMillis(),
+                ballName = nominatedBall.name,
+                points = points,
+                type = ShotType.FREE_BALL_POTTED_AS_RED
+            )
         } else {
-            (_uiState.value.nextColorBallOn?.points ?: 0) to ShotType.FREE_BALL_POTTED_AS_COLOR
-        }
-
-        _uiState.updateAndGet { currentState ->
-            val activePlayerState = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player1 else currentState.player2
-            if (activePlayerState == null) return@updateAndGet currentState
-
-            val newScore = activePlayerState.score + pointsToAdd
-            val newPlayerState = activePlayerState.copy(score = newScore)
-
-            val canPotColorNext: Boolean
-            val nextColorOn: SnookerBall?
-
-            if (currentState.redsRemaining > 0) {
-                canPotColorNext = true
-                nextColorOn = null
-            } else {
-                canPotColorNext = true
-                nextColorOn = currentState.nextColorBallOn
-            }
-
-            currentState.copy(
-                player1 = if (currentState.activePlayerId == currentState.player1?.user?.uid) newPlayerState else currentState.player1,
-                player2 = if (currentState.activePlayerId == currentState.player2?.user?.uid) newPlayerState else currentState.player2,
-                currentBreak = currentState.currentBreak + pointsToAdd,
-                breakHistory = currentState.breakHistory + nominatedBall,
-                pointsRemaining = calculatePointsRemaining(currentState.redsRemaining, nextColorOn),
-                canPotColor = canPotColorNext,
-                nextColorBallOn = nextColorOn,
-                isFreeBall = false
+            // Scenario 2: No reds on table - free ball as a color
+            val points = currentState.nextColorBallOn?.points ?: 0
+            shot = Shot(
+                timestamp = System.currentTimeMillis(),
+                ballName = nominatedBall.name,
+                points = points,
+                type = ShotType.FREE_BALL_POTTED_AS_COLOR
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = nominatedBall.name, points = pointsToAdd, type = shotType)
         updateFrameWithNewShot(shot)
     }
 
@@ -340,11 +326,11 @@ class ScoringViewModel @Inject constructor(
                 player1 = if (opponentState.user.uid == currentState.player1?.user?.uid) newOpponentState else currentState.player1,
                 player2 = if (opponentState.user.uid == currentState.player2?.user?.uid) newOpponentState else currentState.player2,
                 showFoulDialog = false,
-                isFreeBall = isFreeBall,
                 activePlayerId = nextPlayerId,
                 currentBreak = 0,
                 breakHistory = emptyList(),
                 canPotColor = newRedsRemaining == 0,
+                isFreeBall = isFreeBall,
                 redsRemaining = newRedsRemaining,
                 pointsRemaining = calculatePointsRemaining(newRedsRemaining, nextColorOn),
                 nextColorBallOn = nextColorOn
@@ -394,7 +380,7 @@ class ScoringViewModel @Inject constructor(
         var tempIsFrameOver = false
 
         for (shot in shots) {
-            val pottedBall = SnookerBall.fromName(shot.ballName) ?: SnookerBall.Red
+            val pottedBall = SnookerBall.fromName(shot.ballName)
             var activePlayerBeforeShot = tempActivePlayerId
 
             when (shot.type) {
@@ -405,7 +391,7 @@ class ScoringViewModel @Inject constructor(
                     if (pottedBall is SnookerBall.Red) tempRedsRemaining--
 
                     tempCurrentBreak += shot.points
-                    tempBreakHistory.add(pottedBall)
+                    tempBreakHistory.add(pottedBall!!)
 
                     if (tempRedsRemaining > 0) {
                         tempCanPotColor = (pottedBall is SnookerBall.Red)
@@ -427,12 +413,19 @@ class ScoringViewModel @Inject constructor(
                             }
                         }
                     }
+                    tempIsFreeBall = false
                 }
-                ShotType.FREE_BALL_POTTED_AS_RED, ShotType.FREE_BALL_POTTED_AS_COLOR -> {
+                ShotType.FREE_BALL_POTTED_AS_RED -> {
                     if (tempActivePlayerId == player1Id) tempPlayer1Score += shot.points else tempPlayer2Score += shot.points
                     tempCurrentBreak += shot.points
-                    tempBreakHistory.add(pottedBall)
+                    tempBreakHistory.add(pottedBall!!)
                     tempCanPotColor = true
+                    tempIsFreeBall = false
+                }
+                ShotType.FREE_BALL_POTTED_AS_COLOR -> {
+                    if (tempActivePlayerId == player1Id) tempPlayer1Score += shot.points else tempPlayer2Score += shot.points
+                    tempCurrentBreak += shot.points
+                    tempBreakHistory.add(pottedBall!!)
                     tempIsFreeBall = false
                 }
                 ShotType.FOUL -> {
@@ -443,17 +436,21 @@ class ScoringViewModel @Inject constructor(
                     tempActivePlayerId = opponentId
                     tempCurrentBreak = 0
                     tempBreakHistory.clear()
-                    tempIsFreeBall = true
                     tempCanPotColor = tempRedsRemaining == 0
                     if (tempRedsRemaining == 0 && redsBeforeFoul > 0) tempNextColorBallOn = null
                     else if (tempRedsRemaining == 0 && tempNextColorBallOn == null) tempNextColorBallOn = SnookerBall.Yellow
+
+                    // This is a simplification. Real free ball is decided by referee
+                    val foulPoints = shot.points
+                    val isSnookerAfterFoul = true // Placeholder
+                    tempIsFreeBall = foulPoints < 4 && isSnookerAfterFoul
                 }
                 ShotType.SAFETY, ShotType.MISS -> {
                     tempActivePlayerId = if (tempActivePlayerId == player1Id) player2Id else player1Id
                     tempCurrentBreak = 0
                     tempBreakHistory.clear()
-                    tempIsFreeBall = false
                     tempCanPotColor = tempRedsRemaining == 0
+                    tempIsFreeBall = false
                     tempNextColorBallOn = if (tempRedsRemaining == 0) tempNextColorBallOn ?: SnookerBall.Yellow else null
                 }
             }
@@ -477,8 +474,8 @@ class ScoringViewModel @Inject constructor(
             pointsRemaining = finalPointsRemaining,
             breakHistory = tempBreakHistory,
             canPotColor = tempCanPotColor,
-            nextColorBallOn = tempNextColorBallOn,
             isFreeBall = tempIsFreeBall,
+            nextColorBallOn = tempNextColorBallOn,
             isFrameOver = tempIsFrameOver,
             initialReds = initialReds
         )

@@ -101,7 +101,6 @@ fun MatchDetailsScreen(
     }
 }
 
-// Reszta pliku pozostaje bez zmian
 @Composable
 private fun MatchHeader(item: MatchHistoryDisplayItem) {
     Row(
@@ -187,6 +186,7 @@ fun MatchHistoryTab(
     frameDetails: Map<Int, FrameStats>
 ) {
     var selectedFrame by remember { mutableStateOf(matchItem.match.frames.firstOrNull()) }
+    var showSafetyShots by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FrameTabs(
@@ -205,7 +205,9 @@ fun MatchHistoryTab(
                 stats = stats,
                 p1Name = matchItem.player1?.firstName,
                 p2Name = matchItem.player2?.firstName,
-                player1Id = matchItem.match.player1Id
+                player1Id = matchItem.match.player1Id,
+                showSafetyShots = showSafetyShots,
+                onShowSafetyShotsChange = { showSafetyShots = it }
             )
         }
     }
@@ -238,8 +240,16 @@ private fun FrameHistoryContent(
     stats: FrameStats?,
     p1Name: String?,
     p2Name: String?,
-    player1Id: String
+    player1Id: String,
+    showSafetyShots: Boolean,
+    onShowSafetyShotsChange: (Boolean) -> Unit
 ) {
+    val filteredHistory = if (showSafetyShots) {
+        history
+    } else {
+        history.filter { it.shot.points > 0 || it.shot.type == ShotType.FOUL }
+    }
+
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -259,10 +269,24 @@ private fun FrameHistoryContent(
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Pokaż odstawne",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Checkbox(
+                checked = showSafetyShots,
+                onCheckedChange = onShowSafetyShotsChange
+            )
+        }
 
         LazyColumn {
-            items(history) { historyItem ->
+            items(filteredHistory) { historyItem ->
                 HistoryRow(historyItem, p1Name, p2Name, player1Id)
                 Divider()
             }
@@ -273,17 +297,36 @@ private fun FrameHistoryContent(
 @Composable
 private fun HistoryRow(item: FrameShotHistory, p1Name: String?, p2Name: String?, player1Id: String) {
     val ball = SnookerBall.fromName(item.shot.ballName)
-    val pointsText = when(item.shot.type) {
-        ShotType.FOUL -> "+${item.shot.points} F"
-        else -> "+${item.shot.points} (${item.breakValueAfter})"
+    val pointsText: String
+    val showBallIcon: Boolean
+
+    when(item.shot.type) {
+        ShotType.FOUL -> {
+            pointsText = "+${item.shot.points} F"
+            showBallIcon = true
+        }
+        else -> { // Covers all other ShotType values
+            if (item.shot.points == 0) {
+                pointsText = "Odstawna"
+                showBallIcon = false // Do not show ball for safety/missed 0-point shots
+            } else {
+                pointsText = "+${item.shot.points} (${item.breakValueAfter})"
+                showBallIcon = true // Show ball for scoring shots
+            }
+        }
     }
     
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         if (item.activePlayerId == player1Id) {
             Text(pointsText, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
             Spacer(modifier = Modifier.width(8.dp))
-            ShotBallIcon(ball)
+            if (showBallIcon) {
+                ShotBallIcon(ball)
+            } else {
+                Spacer(modifier = Modifier.size(16.dp)) // Match the size of ShotBallIcon for alignment
+            }
         } else {
+            // Inactive player side: always a spacer for the ball icon, to maintain symmetric layout
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(8.dp))
             Spacer(modifier = Modifier.size(16.dp))
@@ -296,10 +339,15 @@ private fun HistoryRow(item: FrameShotHistory, p1Name: String?, p2Name: String?,
         )
 
         if (item.activePlayerId != player1Id) {
-            ShotBallIcon(ball)
+            if (showBallIcon) {
+                ShotBallIcon(ball)
+            } else {
+                Spacer(modifier = Modifier.size(16.dp)) // Match the size of ShotBallIcon for alignment
+            }
             Spacer(modifier = Modifier.width(8.dp))
             Text(pointsText, modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
         } else {
+            // Inactive player side: always a spacer for the ball icon, to maintain symmetric layout
             Spacer(modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Spacer(modifier = Modifier.weight(1f))

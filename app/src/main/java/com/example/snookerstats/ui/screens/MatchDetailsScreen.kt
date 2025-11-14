@@ -96,9 +96,7 @@ fun MatchDetailsScreen(
                         DetailsTab(
                             matchStats = uiState.matchStats,
                             frameDetails = uiState.frameDetails,
-                            frames = matchItem.match.frames,
-                            player1Name = matchItem.player1?.firstName ?: "Gracz 1",
-                            player2Name = matchItem.player2?.firstName ?: "Gracz 2"
+                            frames = matchItem.match.frames
                         )
                     } else {
                         HistoryTab(
@@ -187,9 +185,7 @@ private fun SegmentedButtonRow(selectedTabIndex: Int, onTabSelected: (Int) -> Un
 fun DetailsTab(
     matchStats: AggregatedStats?,
     frameDetails: Map<Int, AggregatedStats>,
-    frames: List<Frame>,
-    player1Name: String,
-    player2Name: String
+    frames: List<Frame>
 ) {
     var selectedFrameIndex by remember { mutableStateOf(-1) } // -1 for "Cały mecz"
 
@@ -213,19 +209,19 @@ fun DetailsTab(
             item {
                 StatsCard(
                     stats = stats,
-                    title = title,
-                    player1Name = player1Name,
-                    player2Name = player2Name
+                    title = title
                 )
             }
             if (stats != null && (stats.player1Breaks.any { it >= 20 } || stats.player2Breaks.any { it >= 20 })) {
                 item {
-                    BreaksList(
-                        player1Breaks = stats.player1Breaks,
-                        player2Breaks = stats.player2Breaks,
-                        player1Name = player1Name,
-                        player2Name = player2Name
-                    )
+                    val p1Breaks = stats.player1Breaks.filter { it >= 20 }.sortedDescending()
+                    val p2Breaks = stats.player2Breaks.filter { it >= 20 }.sortedDescending()
+                    if (p1Breaks.isNotEmpty() || p2Breaks.isNotEmpty()) {
+                        BreaksList(
+                            player1Breaks = p1Breaks,
+                            player2Breaks = p2Breaks
+                        )
+                    }
                 }
             }
         }
@@ -263,13 +259,8 @@ fun HistoryTab(
 @Composable
 fun BreaksList(
     player1Breaks: List<Int>,
-    player2Breaks: List<Int>,
-    player1Name: String,
-    player2Name: String
+    player2Breaks: List<Int>
 ) {
-    val p1BreaksFiltered = player1Breaks.filter { it >= 20 }.sortedDescending()
-    val p2BreaksFiltered = player2Breaks.filter { it >= 20 }.sortedDescending()
-
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
         shape = RoundedCornerShape(12.dp)
@@ -287,26 +278,26 @@ fun BreaksList(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = player1Name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(text = "Gracz 1", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        p1BreaksFiltered.forEach {
+                        player1Breaks.forEach {
                             AssistChip(onClick = {}, label = { Text(it.toString()) })
                         }
                     }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = player2Name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(text = "Gracz 2", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        p2BreaksFiltered.forEach {
+                        player2Breaks.forEach {
                             AssistChip(onClick = {}, label = { Text(it.toString()) })
                         }
                     }
@@ -317,7 +308,7 @@ fun BreaksList(
 }
 
 @Composable
-fun StatsCard(stats: AggregatedStats?, title: String, player1Name: String, player2Name: String) {
+fun StatsCard(stats: AggregatedStats?, title: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp)
@@ -334,18 +325,10 @@ fun StatsCard(stats: AggregatedStats?, title: String, player1Name: String, playe
             } else {
                 val totalPoints = (stats.player1TotalPoints + stats.player2TotalPoints).coerceAtLeast(1)
                 val p1PointsRatio = stats.player1TotalPoints.toFloat() / totalPoints
-                val p2PointsRatio = stats.player2TotalPoints.toFloat() / totalPoints
 
-                val maxHighestBreak = (stats.player1HighestBreak.coerceAtLeast(stats.player2HighestBreak)).coerceAtLeast(1)
-                val p1BreakRatio = stats.player1HighestBreak.toFloat() / maxHighestBreak
-                val p2BreakRatio = stats.player2HighestBreak.toFloat() / maxHighestBreak
+                val totalHighestBreak = (stats.player1HighestBreak + stats.player2HighestBreak).coerceAtLeast(1)
+                val p1BreakRatio = stats.player1HighestBreak.toFloat() / totalHighestBreak
 
-                // Player Names
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(player1Name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                    Spacer(modifier = Modifier.weight(0.5f))
-                    Text(player2Name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                }
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Points
@@ -354,27 +337,29 @@ fun StatsCard(stats: AggregatedStats?, title: String, player1Name: String, playe
                     value1 = stats.player1TotalPoints,
                     value2 = stats.player2TotalPoints,
                     ratio1 = p1PointsRatio,
-                    ratio2 = p2PointsRatio
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Highest Break
                 AnimatedComparisonBar(
                     label = "Najwyższy brejk",
                     value1 = stats.player1HighestBreak,
                     value2 = stats.player2HighestBreak,
-                    ratio1 = p1BreakRatio,
-                    ratio2 = p2BreakRatio
+                    ratio1 = p1BreakRatio
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Other stats
+                StatsRow("Skuteczność wbić", "${String.format("%.1f", stats.player1PotSuccess)}%", "${String.format("%.1f", stats.player2PotSuccess)}%")
+                Spacer(modifier = Modifier.height(16.dp))
+                StatsRow("Punkty na podejście", String.format("%.1f", stats.player1PointsPerVisit), String.format("%.1f", stats.player2PointsPerVisit))
+                Spacer(modifier = Modifier.height(16.dp))
                 StatsRow("Średnia brejka", String.format("%.1f", stats.player1AverageBreak), String.format("%.1f", stats.player2AverageBreak))
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 StatsRow("Faule", stats.player1Fouls.toString(), stats.player2Fouls.toString())
 
                 if (stats.durationMillis > 0) {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     val minutes = TimeUnit.MILLISECONDS.toMinutes(stats.durationMillis)
                     val seconds = TimeUnit.MILLISECONDS.toSeconds(stats.durationMillis) % 60
                     Row(
@@ -395,11 +380,12 @@ fun AnimatedComparisonBar(
     label: String,
     value1: Int,
     value2: Int,
-    ratio1: Float,
-    ratio2: Float
+    ratio1: Float
 ) {
     val animatedRatio1 by animateFloatAsState(targetValue = ratio1, label = "ratio1")
-    val animatedRatio2 by animateFloatAsState(targetValue = ratio2, label = "ratio2")
+
+    val color1 = MaterialTheme.colorScheme.primary
+    val color2 = MaterialTheme.colorScheme.primaryContainer
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -407,10 +393,16 @@ fun AnimatedComparisonBar(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(value1.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.width(16.dp))
-            Box(modifier = Modifier.weight(1f).height(12.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
-                Row {
-                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(animatedRatio1).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)))
-                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(1f).background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)))
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            ) {
+                Row(modifier = Modifier.clip(RoundedCornerShape(6.dp))) {
+                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(animatedRatio1).background(color1))
+                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(1f).background(color2))
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -424,7 +416,7 @@ private fun StatsRow(label: String, player1Value: String, player2Value: String) 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -529,7 +521,7 @@ private fun FrameHistorySubTab(
         LazyColumn {
             items(filteredHistory) { historyItem ->
                 HistoryRow(historyItem, p1Name, p2Name, player1Id)
-                Divider()
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }

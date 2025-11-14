@@ -13,7 +13,8 @@ data class Match(
     val matchType: MatchType = MatchType.SPARRING,
     val numberOfReds: Int = 15,
     val status: MatchStatus = MatchStatus.IN_PROGRESS,
-    val frames: List<Frame> = emptyList()
+    val frames: List<Frame> = emptyList(),
+    val hiddenFor: List<String> = emptyList()
 )
 
 enum class MatchType {

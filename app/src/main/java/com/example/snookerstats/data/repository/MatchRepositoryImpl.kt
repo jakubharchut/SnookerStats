@@ -6,6 +6,7 @@ import com.example.snookerstats.domain.model.*
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -41,7 +42,7 @@ class MatchRepositoryImpl @Inject constructor(
             }
         awaitClose { listener.remove() }
     }
-    
+
     override fun getAllMatchesStream(): Flow<List<Match>> = callbackFlow {
         val listener = matchesCollection
             .addSnapshotListener { snapshot, error ->
@@ -85,7 +86,15 @@ class MatchRepositoryImpl @Inject constructor(
             Log.e("MatchRepository", "Error updating match", e)
         }
     }
-    
+
+    override suspend fun hideMatchForUser(matchId: String, userId: String) {
+        try {
+            matchesCollection.document(matchId).update("hiddenFor", FieldValue.arrayUnion(userId)).await()
+        } catch (e: Exception) {
+            Log.e("MatchRepository", "Error hiding match", e)
+        }
+    }
+
     override suspend fun deleteMatch(matchId: String) {
         try {
             matchesCollection.document(matchId).delete().await()
@@ -105,7 +114,7 @@ class MatchRepositoryImpl @Inject constructor(
         } else {
             null
         }
-        
+
         return Pair(user1, user2)
     }
 }

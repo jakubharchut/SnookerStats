@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -402,6 +403,25 @@ fun MatchHistoryScreen(
     viewModel: MatchHistoryViewModel = hiltViewModel()
 ) {
     val matches by viewModel.matches.collectAsState()
+    var showDialog by remember { mutableStateOf(false) }
+    var selectedMatchId by remember { mutableStateOf<String?>(null) }
+
+    if (showDialog && selectedMatchId != null) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Potwierdź usunięcie") },
+            text = { Text("Czy na pewno chcesz usunąć ten mecz ze swojej historii? Ta operacja jest nieodwracalna.") },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.hideMatch(selectedMatchId!!)
+                    showDialog = false
+                }) { Text("Usuń") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) { Text("Anuluj") }
+            }
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -421,7 +441,11 @@ fun MatchHistoryScreen(
                 items(matches) { item ->
                     MatchHistoryItem(
                         item = item,
-                        onClick = { navController.navigate("match_details/${item.match.id}") }
+                        onClick = { navController.navigate("match_details/${item.match.id}") },
+                        onDeleteClick = {
+                            selectedMatchId = item.match.id
+                            showDialog = true
+                        }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -431,18 +455,27 @@ fun MatchHistoryScreen(
 }
 
 @Composable
-fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit) {
+fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDeleteClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = formatTimestamp(item.match.date),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = formatTimestamp(item.match.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onDeleteClick) {
+                    Icon(Icons.Default.Delete, contentDescription = "Usuń mecz")
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

@@ -95,7 +95,7 @@ class MatchDetailsViewModel @Inject constructor(
 
         for (shot in frame.shots) {
             when (shot.type) {
-                ShotType.POTTED, ShotType.FREE_BALL_POTTED_AS_RED, ShotType.FREE_BALL_POTTED_AS_COLOR -> {
+                ShotType.POTTED, ShotType.FREE_BALL_POTTED -> {
                     if (activePlayerId == player1Id) p1Score += shot.points else p2Score += shot.points
                     currentBreak += shot.points
                 }
@@ -126,7 +126,7 @@ class MatchDetailsViewModel @Inject constructor(
 
         for (shot in frame.shots) {
             when (shot.type) {
-                ShotType.POTTED, ShotType.FREE_BALL_POTTED_AS_RED, ShotType.FREE_BALL_POTTED_AS_COLOR -> {
+                ShotType.POTTED, ShotType.FREE_BALL_POTTED -> {
                     currentBreak += shot.points
                 }
                 ShotType.FOUL, ShotType.SAFETY, ShotType.MISS -> {

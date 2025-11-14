@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -25,6 +26,7 @@ import com.example.snookerstats.domain.model.SnookerBall
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import kotlinx.coroutines.flow.collectLatest
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ScoringScreen(
     navController: NavController,
@@ -55,7 +57,15 @@ fun ScoringScreen(
     if (state.showFoulDialog) {
         FoulDialog(
             onDismiss = viewModel::onDismissFoulDialog,
-            onConfirm = { foulPoints, redsPotted -> viewModel.onFoulConfirmed(foulPoints, false, redsPotted) }
+            onConfirm = { foulPoints, redsPotted -> viewModel.onFoulConfirmed(foulPoints, redsPotted) }
+        )
+    }
+
+    if (state.showFreeBallDialog) {
+        FreeBallDialog(
+            onDismiss = viewModel::onDismissFreeBallDialog,
+            onConfirm = viewModel::onFreeBallConfirmed,
+            redsOnTable = state.redsRemaining > 0
         )
     }
 
@@ -119,7 +129,7 @@ fun ScoringScreen(
             onSafetyClick = viewModel::onSafetyClicked,
             onMissClick = viewModel::onMissClicked,
             onUndoClick = viewModel::onUndoClicked,
-            onFreeBallClick = { viewModel.onFoulConfirmed(0, true, 0) }
+            onFreeBallClick = viewModel::onFreeBallClicked
         )
         Spacer(modifier = Modifier.weight(1f))
         
@@ -131,6 +141,81 @@ fun ScoringScreen(
         )
     }
 }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FreeBallDialog(onDismiss: () -> Unit, onConfirm: (SnookerBall, Int) -> Unit, redsOnTable: Boolean) {
+    val colors = listOf(SnookerBall.Yellow, SnookerBall.Green, SnookerBall.Brown, SnookerBall.Blue, SnookerBall.Pink, SnookerBall.Black)
+    var selectedBall by remember { mutableStateOf<SnookerBall?>(null) }
+    var points by remember { mutableStateOf(0) }
+
+    LaunchedEffect(selectedBall, redsOnTable) {
+        points = when {
+            selectedBall == null -> 0
+            redsOnTable -> 1
+            else -> selectedBall!!.points
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Wbita wolna bila") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    "Wybierz bilę i (opcjonalnie) zmień jej wartość punktową.",
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    maxItemsInEachRow = 3
+                ) {
+                    colors.forEach { ball ->
+                        val isSelected = selectedBall == ball
+                        Button(
+                            onClick = { selectedBall = ball },
+                            shape = CircleShape,
+                            modifier = Modifier.size(80.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSelected) ball.color else ball.color.copy(alpha = 0.5f),
+                                contentColor = ball.contentColor
+                            ),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text(text = ball.points.toString(), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                if (selectedBall != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Wartość punktowa:")
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { points = (points - 1).coerceAtLeast(1) }) { Icon(Icons.Default.Remove, "Odejmij") }
+                        Text(text = points.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp))
+                        IconButton(onClick = { points = (points + 1).coerceAtMost(7) }) { Icon(Icons.Default.Add, "Dodaj") }
+                    }
+                }
+            }
+        },
+        confirmButton = { 
+            Button(
+                onClick = { onConfirm(selectedBall!!, points) },
+                enabled = selectedBall != null
+            ) {
+                Text("Zatwierdź")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Anuluj")
+            }
+        }
+    )
+}
+
 
 @Composable
 private fun FrameOverDialog(

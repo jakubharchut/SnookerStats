@@ -40,6 +40,7 @@ data class ScoringState(
     val isFreeBall: Boolean = false,
     val nextColorBallOn: SnookerBall? = null,
     val showFoulDialog: Boolean = false,
+    val showFreeBallDialog: Boolean = false,
     val showRepeatFrameDialog: Boolean = false,
     val showEndMatchDialog: Boolean = false,
     val showFrameOverDialog: Boolean = false,
@@ -176,11 +177,6 @@ class ScoringViewModel @Inject constructor(
     }
 
     fun onBallClicked(ball: SnookerBall) {
-        if (uiState.value.isFreeBall) {
-            onFreeBallPotted(ball)
-            return
-        }
-
         val newState = _uiState.updateAndGet { currentState ->
             if (currentState.isFrameOver) return@updateAndGet currentState
 
@@ -209,25 +205,11 @@ class ScoringViewModel @Inject constructor(
                 canPotColorNext = (ball is SnookerBall.Red)
             } else { // ENDGAME
                 canPotColorNext = true
-                nextColorOn = when {
-                    currentState.redsRemaining > 0 && newRedsRemaining == 0 -> null
-                    currentState.nextColorBallOn == null -> SnookerBall.Yellow
-                    else -> when (ball) {
-                        is SnookerBall.Yellow -> SnookerBall.Green
-                        is SnookerBall.Green -> SnookerBall.Brown
-                        is SnookerBall.Brown -> SnookerBall.Blue
-                        is SnookerBall.Blue -> SnookerBall.Pink
-                        is SnookerBall.Pink -> SnookerBall.Black
-                        else -> null
-                    }
-                }
-
                 if (ball is SnookerBall.Black && currentState.nextColorBallOn == SnookerBall.Black) {
                     val p1FinalScore = if (currentState.activePlayerId == currentState.player1?.user?.uid) newScore else currentState.player1?.score ?: 0
                     val p2FinalScore = if (currentState.activePlayerId == currentState.player2?.user?.uid) newScore else currentState.player2?.score ?: 0
 
                     if (p1FinalScore == p2FinalScore) {
-                        // RE-SPOTTED BLACK
                         snackbarManager.showMessage("Remis! Dogrywka na czarnej bili.")
                         frameShouldEnd = false
                         nextColorOn = SnookerBall.Black
@@ -236,6 +218,20 @@ class ScoringViewModel @Inject constructor(
                         newBreakHistory = emptyList()
                     } else {
                         frameShouldEnd = true
+                        nextColorOn = null
+                    }
+                } else {
+                    nextColorOn = when {
+                        currentState.redsRemaining > 0 && newRedsRemaining == 0 -> null
+                        currentState.nextColorBallOn == null -> SnookerBall.Yellow
+                        else -> when (ball) {
+                            is SnookerBall.Yellow -> SnookerBall.Green
+                            is SnookerBall.Green -> SnookerBall.Brown
+                            is SnookerBall.Brown -> SnookerBall.Blue
+                            is SnookerBall.Blue -> SnookerBall.Pink
+                            is SnookerBall.Pink -> SnookerBall.Black
+                            else -> null
+                        }
                     }
                 }
             }
@@ -261,31 +257,18 @@ class ScoringViewModel @Inject constructor(
         }
     }
 
-    private fun onFreeBallPotted(nominatedBall: SnookerBall) {
-        if (nominatedBall is SnookerBall.Red) return
+    fun onFreeBallClicked() { _uiState.update { it.copy(showFreeBallDialog = true) } }
+    fun onDismissFreeBallDialog() { _uiState.update { it.copy(showFreeBallDialog = false) } }
 
-        val currentState = _uiState.value
-        val shot: Shot
-
-        if (currentState.redsRemaining > 0) {
-            // Scenario 1: Reds on table - free ball is treated as a red
-            val points = 1
-            shot = Shot(
-                timestamp = System.currentTimeMillis(),
-                ballName = nominatedBall.name,
-                points = points,
-                type = ShotType.FREE_BALL_POTTED_AS_RED
-            )
-        } else {
-            // Scenario 2: No reds on table - free ball as a color
-            val points = currentState.nextColorBallOn?.points ?: 0
-            shot = Shot(
-                timestamp = System.currentTimeMillis(),
-                ballName = nominatedBall.name,
-                points = points,
-                type = ShotType.FREE_BALL_POTTED_AS_COLOR
-            )
-        }
+    fun onFreeBallConfirmed(ball: SnookerBall, points: Int) {
+        startTimer()
+        _uiState.update { it.copy(showFreeBallDialog = false) }
+        val shot = Shot(
+            timestamp = System.currentTimeMillis(),
+            ballName = ball.name,
+            points = points,
+            type = ShotType.FREE_BALL_POTTED
+        )
         updateFrameWithNewShot(shot)
     }
 
@@ -303,7 +286,7 @@ class ScoringViewModel @Inject constructor(
     fun onFoulClicked() { _uiState.update { it.copy(showFoulDialog = true) } }
     fun onDismissFoulDialog() { _uiState.update { it.copy(showFoulDialog = false) } }
 
-    fun onFoulConfirmed(foulPoints: Int, isFreeBall: Boolean, redsPotted: Int) {
+    fun onFoulConfirmed(foulPoints: Int, redsPotted: Int) {
         startTimer()
 
         _uiState.update { currentState ->
@@ -330,7 +313,7 @@ class ScoringViewModel @Inject constructor(
                 currentBreak = 0,
                 breakHistory = emptyList(),
                 canPotColor = newRedsRemaining == 0,
-                isFreeBall = isFreeBall,
+                isFreeBall = false,
                 redsRemaining = newRedsRemaining,
                 pointsRemaining = calculatePointsRemaining(newRedsRemaining, nextColorOn),
                 nextColorBallOn = nextColorOn
@@ -380,8 +363,9 @@ class ScoringViewModel @Inject constructor(
         var tempIsFrameOver = false
 
         for (shot in shots) {
+            if (tempIsFrameOver) continue // Don't process shots after frame is over
             val pottedBall = SnookerBall.fromName(shot.ballName)
-            var activePlayerBeforeShot = tempActivePlayerId
+            val activePlayerBeforeShot = tempActivePlayerId
 
             when (shot.type) {
                 ShotType.POTTED -> {
@@ -391,42 +375,47 @@ class ScoringViewModel @Inject constructor(
                     if (pottedBall is SnookerBall.Red) tempRedsRemaining--
 
                     tempCurrentBreak += shot.points
-                    tempBreakHistory.add(pottedBall!!)
+                    if (pottedBall != null) {
+                        tempBreakHistory.add(pottedBall)
+                    }
 
                     if (tempRedsRemaining > 0) {
                         tempCanPotColor = (pottedBall is SnookerBall.Red)
                     } else { // ENDGAME
-                        if (pottedBall is SnookerBall.Black && tempNextColorBallOn == SnookerBall.Black) {
-                            tempIsFrameOver = true
-                        }
                         tempCanPotColor = true
-                        tempNextColorBallOn = when {
-                            redsBeforeShot > 0 && tempRedsRemaining == 0 -> null
-                            tempNextColorBallOn == null -> SnookerBall.Yellow
-                            else -> when (pottedBall) {
-                                is SnookerBall.Yellow -> SnookerBall.Green
-                                is SnookerBall.Green -> SnookerBall.Brown
-                                is SnookerBall.Brown -> SnookerBall.Blue
-                                is SnookerBall.Blue -> SnookerBall.Pink
-                                is SnookerBall.Pink -> SnookerBall.Black
-                                else -> null
+                        if (pottedBall is SnookerBall.Black && tempNextColorBallOn == SnookerBall.Black) {
+                            if (tempPlayer1Score != tempPlayer2Score) {
+                                tempIsFrameOver = true
+                                tempNextColorBallOn = null
+                            } else {
+                                tempNextColorBallOn = SnookerBall.Black
+                                tempActivePlayerId = if (activePlayerBeforeShot == player1Id) player2Id else player1Id
+                                tempCurrentBreak = 0
+                                tempBreakHistory.clear()
+                            }
+                        } else {
+                            tempNextColorBallOn = when {
+                                redsBeforeShot > 0 && tempRedsRemaining == 0 -> null
+                                tempNextColorBallOn == null -> SnookerBall.Yellow
+                                else -> when (pottedBall) {
+                                    is SnookerBall.Yellow -> SnookerBall.Green
+                                    is SnookerBall.Green -> SnookerBall.Brown
+                                    is SnookerBall.Brown -> SnookerBall.Blue
+                                    is SnookerBall.Blue -> SnookerBall.Pink
+                                    is SnookerBall.Pink -> SnookerBall.Black
+                                    else -> null
+                                }
                             }
                         }
                     }
                     tempIsFreeBall = false
                 }
-                ShotType.FREE_BALL_POTTED_AS_RED -> {
+                ShotType.FREE_BALL_POTTED -> {
                     if (tempActivePlayerId == player1Id) tempPlayer1Score += shot.points else tempPlayer2Score += shot.points
                     tempCurrentBreak += shot.points
-                    tempBreakHistory.add(pottedBall!!)
-                    tempCanPotColor = true
-                    tempIsFreeBall = false
-                }
-                ShotType.FREE_BALL_POTTED_AS_COLOR -> {
-                    if (tempActivePlayerId == player1Id) tempPlayer1Score += shot.points else tempPlayer2Score += shot.points
-                    tempCurrentBreak += shot.points
-                    tempBreakHistory.add(pottedBall!!)
-                    tempIsFreeBall = false
+                    if (pottedBall != null) {
+                        tempBreakHistory.add(pottedBall)
+                    }
                 }
                 ShotType.FOUL -> {
                     val opponentId = if (tempActivePlayerId == player1Id) player2Id else player1Id
@@ -439,11 +428,7 @@ class ScoringViewModel @Inject constructor(
                     tempCanPotColor = tempRedsRemaining == 0
                     if (tempRedsRemaining == 0 && redsBeforeFoul > 0) tempNextColorBallOn = null
                     else if (tempRedsRemaining == 0 && tempNextColorBallOn == null) tempNextColorBallOn = SnookerBall.Yellow
-
-                    // This is a simplification. Real free ball is decided by referee
-                    val foulPoints = shot.points
-                    val isSnookerAfterFoul = true // Placeholder
-                    tempIsFreeBall = foulPoints < 4 && isSnookerAfterFoul
+                    tempIsFreeBall = false
                 }
                 ShotType.SAFETY, ShotType.MISS -> {
                     tempActivePlayerId = if (tempActivePlayerId == player1Id) player2Id else player1Id
@@ -453,13 +438,6 @@ class ScoringViewModel @Inject constructor(
                     tempIsFreeBall = false
                     tempNextColorBallOn = if (tempRedsRemaining == 0) tempNextColorBallOn ?: SnookerBall.Yellow else null
                 }
-            }
-            if(tempIsFrameOver && tempPlayer1Score == tempPlayer2Score){
-                tempIsFrameOver = false
-                tempNextColorBallOn = SnookerBall.Black
-                tempActivePlayerId = if (activePlayerBeforeShot == player1Id) player2Id else player1Id
-                tempCurrentBreak = 0
-                tempBreakHistory.clear()
             }
         }
 
@@ -592,6 +570,7 @@ class ScoringViewModel @Inject constructor(
 
         val updatedFrames = match.frames.dropLast(1) + newFrame
         updateMatchInRepository(match.copy(frames = updatedFrames))
+        _uiState.update { it.copy(showRepeatFrameDialog = false) }
     }
 
     fun onEndMatchClicked() {

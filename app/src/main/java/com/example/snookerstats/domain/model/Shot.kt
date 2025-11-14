@@ -13,6 +13,5 @@ enum class ShotType {
     FOUL,
     SAFETY,
     MISS,
-    FREE_BALL_POTTED_AS_RED,
-    FREE_BALL_POTTED_AS_COLOR
+    FREE_BALL_POTTED
 }

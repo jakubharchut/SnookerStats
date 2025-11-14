@@ -1,5 +1,6 @@
 package com.example.snookerstats.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,7 +15,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,6 +33,7 @@ import com.example.snookerstats.ui.common.UserAvatar
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +52,6 @@ fun MatchDetailsScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Spójny, mały nagłówek z przyciskiem powrotu
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -270,6 +275,10 @@ private fun FrameHistoryContent(
             textAlign = TextAlign.Center
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+        FrameHistoryChart(history = history, player1Id = player1Id)
+        Spacer(modifier = Modifier.height(8.dp))
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
@@ -291,6 +300,81 @@ private fun FrameHistoryContent(
                 Divider()
             }
         }
+    }
+}
+
+@Composable
+fun FrameHistoryChart(history: List<FrameShotHistory>, player1Id: String) {
+    if (history.isEmpty()) {
+        Box(modifier = Modifier.height(100.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Text("Brak danych do wyświetlenia wykresu", style = MaterialTheme.typography.bodySmall)
+        }
+        return
+    }
+
+    val scoreDifferences = remember(history, player1Id) {
+        val diffs = mutableListOf(0)
+        history.forEach { 
+            diffs.add(it.player1ScoreAfter - it.player2ScoreAfter)
+        }
+        diffs
+    }
+
+    val maxAbsDifference = remember(scoreDifferences) {
+        scoreDifferences.maxOfOrNull { abs(it) } ?: 1
+    }
+
+    Canvas(modifier = Modifier.fillMaxWidth().height(100.dp).padding(vertical = 8.dp)) {
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+        val middleY = canvasHeight / 2f
+
+        // Draw zero line
+        drawLine(
+            start = Offset(x = 0f, y = middleY),
+            end = Offset(x = canvasWidth, y = middleY),
+            color = Color.Gray,
+            strokeWidth = 2f
+        )
+
+        val linePath = Path()
+        linePath.moveTo(0f, middleY)
+
+        val fillPath = Path()
+        fillPath.moveTo(0f, middleY)
+
+        scoreDifferences.forEachIndexed { index, diff ->
+            val x = (index.toFloat() / (scoreDifferences.size - 1).toFloat()) * canvasWidth
+            val y = middleY - (diff.toFloat() / maxAbsDifference.toFloat()) * middleY
+            linePath.lineTo(x, y)
+            fillPath.lineTo(x, y)
+        }
+
+        // Close the fill path
+        val lastX = canvasWidth
+        fillPath.lineTo(lastX, middleY)
+        fillPath.close()
+
+        // Draw the gradient fill
+        drawPath(
+            path = fillPath,
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Green.copy(alpha = 0.3f), Color.Red.copy(alpha = 0.3f)),
+                startY = 0f,
+                endY = canvasHeight
+            )
+        )
+        
+        // Draw the line
+        drawPath(
+            path = linePath,
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Green, Color.Red),
+                startY = 0f,
+                endY = canvasHeight
+            ),
+            style = Stroke(width = 4f)
+        )
     }
 }
 

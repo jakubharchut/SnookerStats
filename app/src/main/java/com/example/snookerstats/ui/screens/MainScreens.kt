@@ -42,8 +42,12 @@ fun HomeScreen() {
 @Composable
 fun PlayScreen(
     navController: NavController,
-    ongoingMatch: Match?
+    ongoingMatch: Match?,
+    selectedOpponentId: String? = null
 ) {
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     LaunchedEffect(ongoingMatch) {
         if (ongoingMatch != null) {
             navController.navigate("scoring/${ongoingMatch.id}/${ongoingMatch.numberOfReds}") {
@@ -55,7 +59,6 @@ fun PlayScreen(
     }
 
     if (ongoingMatch == null) {
-        var selectedTabIndex by remember { mutableStateOf(0) }
         val tabs = listOf("Gracze", "Gość", "Trening", "Turniej")
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -69,7 +72,7 @@ fun PlayScreen(
                 }
             }
             when (selectedTabIndex) {
-                0 -> PlayerTabContent(navController = navController)
+                0 -> PlayerTabContent(navController = navController, preselectedOpponentId = selectedOpponentId)
                 1 -> GuestTabContent(navController = navController)
                 2 -> TrainingScreen(navController = navController)
                 3 -> TournamentTabContent()
@@ -83,70 +86,146 @@ fun PlayScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerTabContent(
     navController: NavController,
-    viewModel: PlayScreenViewModel = hiltViewModel()
+    viewModel: MatchSetupViewModel = hiltViewModel(),
+    preselectedOpponentId: String? = null
 ) {
-    val playerLists by viewModel.playerLists.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    if (playerLists.isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+    LaunchedEffect(preselectedOpponentId) {
+        viewModel.loadOpponentDetails(preselectedOpponentId)
+    }
+
+    LaunchedEffect(Unit) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.navigationEvent.collectLatest { route ->
+                navController.navigate(route)
+            }
         }
-    } else {
-        Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            LazyColumn(
+    }
+
+    when (val opponent = uiState.opponentType) {
+        is OpponentType.PLAYER -> {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter)
-                    .padding(bottom = 72.dp)
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                item {
-                    PlayerSection(
-                        title = "Ulubieni",
-                        players = playerLists.favorites,
-                        favoriteIds = playerLists.favoriteIds,
-                        onPlayerClick = { user -> navController.navigate("match_setup/${user.uid}") },
-                        onToggleFavorite = viewModel::onToggleFavorite
-                    )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Mecz z ${opponent.user.username}", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 32.dp, bottom = 24.dp))
+                    UserAvatar(user = opponent.user, modifier = Modifier.size(80.dp))
                     Spacer(modifier = Modifier.height(16.dp))
+                    // Match Type Section
+                    Text("Rodzaj Meczu", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                            onClick = { viewModel.onMatchTypeChange(MatchType.SPARRING) },
+                            selected = uiState.matchType == MatchType.SPARRING
+                        ) { Text("Sparingowy") }
+                        SegmentedButton(
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                            onClick = { viewModel.onMatchTypeChange(MatchType.RANKING) },
+                            selected = uiState.matchType == MatchType.RANKING
+                        ) { Text("Rankingowy") }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Match Format Section
+                    Text("Format Meczu (liczba czerwonych)", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        MatchFormat.values().forEachIndexed { index, format ->
+                            SegmentedButton(
+                                shape = SegmentedButtonDefaults.itemShape(index = index, count = MatchFormat.values().size),
+                                onClick = { viewModel.onMatchFormatChange(format) },
+                                selected = uiState.matchFormat == format
+                            ) { Text(format.reds.toString()) }
+                        }
+                    }
                 }
-                item {
-                    PlayerSection(
-                        title = "Klubowicze",
-                        players = playerLists.clubMembers,
-                        favoriteIds = playerLists.favoriteIds,
-                        onPlayerClick = { user -> navController.navigate("match_setup/${user.uid}") },
-                        onToggleFavorite = viewModel::onToggleFavorite
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-                item {
-                    PlayerSection(
-                        title = "Pozostali znajomi",
-                        players = playerLists.otherFriends,
-                        favoriteIds = playerLists.favoriteIds,
-                        onPlayerClick = { user -> navController.navigate("match_setup/${user.uid}") },
-                        onToggleFavorite = viewModel::onToggleFavorite
-                    )
+
+                Button(
+                    onClick = viewModel::onStartMatchClicked,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Text("Rozpocznij Mecz", style = MaterialTheme.typography.titleMedium)
                 }
             }
-            OutlinedButton(
-                onClick = {
-                    navController.navigate(BottomNavItem.Community.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+        }
+        else -> {
+            val playerViewModel: PlayScreenViewModel = hiltViewModel()
+            val playerLists by playerViewModel.playerLists.collectAsState()
+
+            if (playerLists.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Box(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.TopCenter)
+                            .padding(bottom = 72.dp)
+                    ) {
+                        item {
+                            PlayerSection(
+                                title = "Ulubieni",
+                                players = playerLists.favorites,
+                                favoriteIds = playerLists.favoriteIds,
+                                onPlayerClick = { user -> navController.navigate("play?opponentId=${user.uid}") },
+                                onToggleFavorite = playerViewModel::onToggleFavorite
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
-                        launchSingleTop = true
-                        restoreState = true
+                        item {
+                            PlayerSection(
+                                title = "Klubowicze",
+                                players = playerLists.clubMembers,
+                                favoriteIds = playerLists.favoriteIds,
+                                onPlayerClick = { user -> navController.navigate("play?opponentId=${user.uid}") },
+                                onToggleFavorite = playerViewModel::onToggleFavorite
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                        item {
+                            PlayerSection(
+                                title = "Pozostali znajomi",
+                                players = playerLists.otherFriends,
+                                favoriteIds = playerLists.favoriteIds,
+                                onPlayerClick = { user -> navController.navigate("play?opponentId=${user.uid}") },
+                                onToggleFavorite = playerViewModel::onToggleFavorite
+                            )
+                        }
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-            ) {
-                Text("Szukaj gracza")
+                    OutlinedButton(
+                        onClick = {
+                            navController.navigate(BottomNavItem.Community.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter)
+                    ) {
+                        Text("Szukaj gracza")
+                    }
+                }
             }
         }
     }

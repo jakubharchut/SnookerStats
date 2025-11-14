@@ -55,11 +55,12 @@ class MatchSetupViewModel @Inject constructor(
         }
     }
 
-    fun loadOpponentDetails(opponentId: String) {
+    fun loadOpponentDetails(opponentId: String?) {
         viewModelScope.launch {
             when (opponentId) {
                 "solo" -> _uiState.value = _uiState.value.copy(opponentType = OpponentType.SOLO)
                 "guest" -> _uiState.value = _uiState.value.copy(opponentType = OpponentType.GUEST)
+                null -> { /* Handled by default state or other logic */ }
                 else -> {
                     when(val result = userRepository.getUser(opponentId)) {
                         is Resource.Success -> {

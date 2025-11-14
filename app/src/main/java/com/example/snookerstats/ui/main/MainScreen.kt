@@ -199,7 +199,7 @@ fun BottomNavigationBar(navController: NavController) {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
         items.forEach { item ->
-            val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+            val isSelected = currentDestination?.hierarchy?.any { it.route?.substringBefore('?') == item.route } == true
             NavigationBarItem(
                 icon = { Icon(imageVector = item.icon, contentDescription = item.title) },
                 label = { Text(text = item.title) },
@@ -210,7 +210,6 @@ fun BottomNavigationBar(navController: NavController) {
                             saveState = true
                         }
                         launchSingleTop = true
-                        // Zawsze resetuj stan dla MatchHistory po ponownym kliknięciu lub jeśli to nowa zakładka
                         restoreState = item.route != BottomNavItem.MatchHistory.route || !isSelected
                     }
                 }
@@ -227,10 +226,14 @@ fun NavigationGraph(
     val activity = (LocalContext.current as MainActivity)
     NavHost(internalNavController, startDestination = BottomNavItem.Home.route) {
         composable(BottomNavItem.Home.route) { HomeScreen() }
-        composable(BottomNavItem.Play.route) {
+        composable(
+            route = "play?opponentId={opponentId}",
+            arguments = listOf(navArgument("opponentId") { type = NavType.StringType; nullable = true })
+        ) { backStackEntry ->
             PlayScreen(
                 navController = internalNavController,
-                ongoingMatch = ongoingMatch
+                ongoingMatch = ongoingMatch,
+                selectedOpponentId = backStackEntry.arguments?.getString("opponentId")
             )
         }
         composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen(navController = internalNavController) }

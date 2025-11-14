@@ -60,10 +60,10 @@ fun PlayScreen(
                     Tab(
                         selected = selectedTabIndex == index,
                         onClick = {
-                            when (index) {
-                                1 -> navController.navigate("match_setup/guest")
-                                2 -> navController.navigate("match_setup/solo")
-                                else -> selectedTabIndex = index
+                            if (index == 1) { // "Gość" always navigates
+                                navController.navigate("match_setup/guest")
+                            } else {
+                                selectedTabIndex = index
                             }
                         },
                         text = { Text(title) }
@@ -72,6 +72,7 @@ fun PlayScreen(
             }
             when (selectedTabIndex) {
                 0 -> PlayerTabContent(navController = navController)
+                2 -> TrainingScreen(navController = navController)
                 3 -> TournamentTabContent()
             }
         }

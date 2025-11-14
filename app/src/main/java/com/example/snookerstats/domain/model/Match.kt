@@ -9,6 +9,7 @@ data class Match(
     val id: String = "",
     val player1Id: String = "",
     val player2Id: String? = null,
+    val participants: List<String> = emptyList(),
     val date: Long = 0L,
     val matchType: MatchType = MatchType.SPARRING,
     val numberOfReds: Int = 15,

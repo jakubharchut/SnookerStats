@@ -16,7 +16,7 @@ import com.example.snookerstats.ui.auth.LoginScreen
 import com.example.snookerstats.ui.auth.RegisterScreen
 import com.example.snookerstats.ui.auth.RegistrationSuccessScreen
 import com.example.snookerstats.ui.main.MainScreen
-import com.example.snookerstats.ui.main.SnackbarManager
+import com.example.snookerstats.util.SnackbarManager
 import com.example.snookerstats.ui.profile.SetupProfileScreen
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
 import dagger.hilt.android.AndroidEntryPoint

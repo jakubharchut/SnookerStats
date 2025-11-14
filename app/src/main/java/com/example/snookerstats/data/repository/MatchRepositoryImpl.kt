@@ -43,6 +43,24 @@ class MatchRepositoryImpl @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+    override fun getMatchesForUserStream(userId: String): Flow<List<Match>> = callbackFlow {
+        val listener = matchesCollection.whereArrayContains("participants", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("MatchRepository", "Error listening to user matches stream", error)
+                    close(error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val matches = snapshot.toObjects(Match::class.java)
+                    trySend(matches).isSuccess
+                } else {
+                    trySend(emptyList()).isSuccess
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
     override fun getAllMatchesStream(): Flow<List<Match>> = callbackFlow {
         val listener = matchesCollection
             .addSnapshotListener { snapshot, error ->

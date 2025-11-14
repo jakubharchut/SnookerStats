@@ -10,7 +10,7 @@ import com.example.snookerstats.domain.model.User
 
 @Database(
     entities = [User::class, Match::class],
-    version = 3, // PODNOSIMY WERSJĘ BAZY DANYCH
+    version = 4, 
     exportSchema = false
 )
 @TypeConverters(Converters::class)

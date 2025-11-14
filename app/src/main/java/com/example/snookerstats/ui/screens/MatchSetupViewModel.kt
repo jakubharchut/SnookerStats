@@ -95,10 +95,14 @@ class MatchSetupViewModel @Inject constructor(
                 is OpponentType.LOADING -> return@launch
             }
 
+            val participants = mutableListOf(currentUser.uid)
+            player2Id?.let { participants.add(it) }
+
             val newMatch = Match(
                 id = UUID.randomUUID().toString(),
                 player1Id = currentUser.uid,
                 player2Id = player2Id,
+                participants = participants,
                 date = System.currentTimeMillis(),
                 matchType = com.example.snookerstats.domain.model.MatchType.valueOf(currentState.matchType.name),
                 numberOfReds = currentState.matchFormat.reds,

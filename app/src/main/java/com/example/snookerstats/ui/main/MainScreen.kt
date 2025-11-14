@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -37,17 +39,18 @@ import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.ui.notifications.NotificationViewModel
 import com.example.snookerstats.ui.profile.ManageProfileScreen
 import com.example.snookerstats.ui.screens.*
+import com.example.snookerstats.util.SnackbarManager
 import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     navController: NavController,
-    snackbarManager: SnackbarManager,
     authViewModel: AuthViewModel = hiltViewModel(),
     mainViewModel: MainViewModel = hiltViewModel(),
     notificationViewModel: NotificationViewModel = hiltViewModel(),
-    scoringViewModel: ScoringViewModel = hiltViewModel()
+    scoringViewModel: ScoringViewModel = hiltViewModel(),
+    snackbarManager: SnackbarManager
 ) {
     val internalNavController = rememberNavController()
     val username by mainViewModel.username.collectAsState()
@@ -90,9 +93,9 @@ fun MainScreen(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted: Boolean ->
             if (isGranted) {
-                snackbarManager.showMessage("Zgoda na powiadomienia udzielona.")
+                mainViewModel.showSnackbar("Zgoda na powiadomienia udzielona.")
             } else {
-                snackbarManager.showMessage("Powiadomienia mogą nie działać bez zgody.")
+                mainViewModel.showSnackbar("Powiadomienia mogą nie działać bez zgody.")
             }
         }
     )
@@ -109,16 +112,27 @@ fun MainScreen(
         }
     }
 
-    val snackbarMessage by snackbarManager.messages.collectAsState()
-    LaunchedEffect(snackbarMessage) {
-        snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
-            snackbarManager.clearMessage()
+    LaunchedEffect(snackbarManager.messages) {
+        snackbarManager.messages.collect {
+            it?.let {
+                snackbarHostState.showSnackbar(it)
+                snackbarManager.clearMessage()
+            }
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = data.visuals.message,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
         topBar = {
             if (showBars) {
                 TopAppBar(

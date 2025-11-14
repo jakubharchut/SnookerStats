@@ -1,11 +1,16 @@
 package com.example.snookerstats.domain.model
 
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.DocumentId
+
+enum class MessageType {
+    TEXT,
+    MATCH_SHARE
+}
 
 data class Message(
-    @DocumentId val id: String = "",
     val senderId: String = "",
     val text: String = "",
-    val timestamp: Timestamp = Timestamp.now()
+    val timestamp: Timestamp = Timestamp.now(),
+    val type: MessageType = MessageType.TEXT,
+    val matchId: String? = null
 )

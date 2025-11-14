@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,6 +51,7 @@ fun MatchDetailsScreen(
     val viewModel: MatchDetailsViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
+    var showMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(matchId) {
         if (matchId != null) {
@@ -57,59 +59,93 @@ fun MatchDetailsScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .clickable { navController.popBackStack() },
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Cofnij", style = MaterialTheme.typography.bodyLarge)
-        }
-
-        when {
-            uiState.isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+    if (uiState.showShareDialog) {
+        ShareMatchDialog(
+            friends = uiState.friends,
+            onDismiss = { viewModel.onDismissShareDialog() },
+            onFriendSelected = { friend ->
+                viewModel.shareMatchWithFriend(friend)
             }
-            uiState.error != null -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = uiState.error!!, color = MaterialTheme.colorScheme.error)
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Szczegóły meczu") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Więcej opcji")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Udostępnij znajomemu") },
+                                onClick = {
+                                    viewModel.onShareClicked()
+                                    showMenu = false
+                                }
+                            )
+                        }
+                    }
                 }
-            }
-            uiState.matchItem != null -> {
-                val matchItem = uiState.matchItem!!
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            when {
+                uiState.isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                }
+                uiState.error != null -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(text = uiState.error!!, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                uiState.matchItem != null -> {
+                    val matchItem = uiState.matchItem!!
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    MatchHeader(item = matchItem)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        MatchHeader(item = matchItem)
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    SegmentedButtonRow(
-                        selectedTabIndex = selectedTab,
-                        onTabSelected = { selectedTab = it }
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if (selectedTab == 0) {
-                        DetailsTab(
-                            matchStats = uiState.matchStats,
-                            frameDetails = uiState.frameDetails,
-                            frames = matchItem.match.frames,
-                            player1 = uiState.matchItem?.player1,
-                            player2 = uiState.matchItem?.player2
+                        SegmentedButtonRow(
+                            selectedTabIndex = selectedTab,
+                            onTabSelected = { selectedTab = it }
                         )
-                    } else {
-                        HistoryTab(
-                            matchItem = matchItem,
-                            frameHistories = uiState.frameHistories
-                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        if (selectedTab == 0) {
+                            DetailsTab(
+                                matchStats = uiState.matchStats,
+                                frameDetails = uiState.frameDetails,
+                                frames = matchItem.match.frames,
+                                player1 = uiState.matchItem?.player1,
+                                player2 = uiState.matchItem?.player2
+                            )
+                        } else {
+                            HistoryTab(
+                                matchItem = matchItem,
+                                frameHistories = uiState.frameHistories
+                            )
+                        }
                     }
                 }
             }

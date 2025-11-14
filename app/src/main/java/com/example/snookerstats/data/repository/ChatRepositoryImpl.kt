@@ -2,6 +2,7 @@ package com.example.snookerstats.data.repository
 
 import com.example.snookerstats.domain.model.Chat
 import com.example.snookerstats.domain.model.Message
+import com.example.snookerstats.domain.model.MessageType
 import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.util.Resource
@@ -72,7 +73,8 @@ class ChatRepositoryImpl @Inject constructor(
             val messageData = mapOf(
                 "senderId" to currentUserId,
                 "text" to message,
-                "timestamp" to Timestamp.now()
+                "timestamp" to Timestamp.now(),
+                "type" to MessageType.TEXT
             )
 
             firestore.runBatch { batch ->
@@ -88,6 +90,41 @@ class ChatRepositoryImpl @Inject constructor(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Błąd wysyłania wiadomości")
+        }
+    }
+
+    override suspend fun sendMatchShareMessage(chatId: String, matchId: String, description: String): Resource<Unit> {
+        return try {
+            val chatRef = firestore.collection("chats").document(chatId)
+            val chatDoc = chatRef.get().await()
+            val participants = chatDoc.get("participants") as? List<String>
+            val recipientId = participants?.firstOrNull { it != currentUserId }
+
+            if (recipientId == null) {
+                return Resource.Error("Nie można znaleźć odbiorcy wiadomości.")
+            }
+
+            val messageData = mapOf(
+                "senderId" to currentUserId,
+                "text" to description,
+                "timestamp" to Timestamp.now(),
+                "type" to MessageType.MATCH_SHARE,
+                "matchId" to matchId
+            )
+
+            firestore.runBatch { batch ->
+                batch.set(chatRef.collection("messages").document(), messageData)
+                batch.update(
+                    chatRef, mapOf(
+                        "lastMessage" to "\uD83C\uDFC6 Udostępniono mecz", // Trophy emoji
+                        "lastMessageTimestamp" to Timestamp.now(),
+                        "unreadCounts.${recipientId}" to FieldValue.increment(1)
+                    )
+                )
+            }.await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Błąd udostępniania meczu")
         }
     }
 

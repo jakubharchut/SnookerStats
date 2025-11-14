@@ -35,46 +35,44 @@ class MatchHistoryViewModel @Inject constructor(
 
     private fun loadMatchHistory() {
         viewModelScope.launch {
-            matchRepository.getAllMatchesStream().collect { matches ->
-                val visibleMatches = matches.filter { !it.hiddenFor.contains(currentUserId) }
+            currentUserId?.let { userId ->
+                matchRepository.getMatchesForUserStream(userId).collect { matches ->
+                    val visibleMatches = matches.filter { !it.hiddenFor.contains(currentUserId) }
 
-                val displayItems = coroutineScope {
-                    visibleMatches.map { match ->
-                        async {
-                            // Correctly call the suspend function to get the Resource for Player 1
-                            val p1Resource = userRepository.getUser(match.player1Id)
-                            val player1 = if (p1Resource is Resource.Success) p1Resource.data else null
+                    val displayItems = coroutineScope {
+                        visibleMatches.map { match ->
+                            async {
+                                val p1Resource = userRepository.getUser(match.player1Id)
+                                val player1 = if (p1Resource is Resource.Success) p1Resource.data else null
 
-                            // Handle guest or fetch player 2
-                            val player2: User? = if (match.player2Id?.startsWith("guest_") == true) {
-                                val guestName = match.player2Id.removePrefix("guest_")
-                                User(uid = match.player2Id, username = guestName, firstName = guestName, lastName = "")
-                            } else {
-                                match.player2Id?.let {
-                                    // Correctly call the suspend function for Player 2
-                                    val p2Resource = userRepository.getUser(it)
-                                    if (p2Resource is Resource.Success) p2Resource.data else null
+                                val player2: User? = if (match.player2Id?.startsWith("guest_") == true) {
+                                    val guestName = match.player2Id.removePrefix("guest_")
+                                    User(uid = match.player2Id, username = guestName, firstName = guestName, lastName = "")
+                                } else {
+                                    match.player2Id?.let {
+                                        val p2Resource = userRepository.getUser(it)
+                                        if (p2Resource is Resource.Success) p2Resource.data else null
+                                    }
+                                }
+
+                                if (player1 != null) {
+                                    val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
+                                    val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
+                                    MatchHistoryDisplayItem(
+                                        match = match,
+                                        player1 = player1,
+                                        player2 = player2,
+                                        p1FramesWon = p1FramesWon,
+                                        p2FramesWon = p2FramesWon
+                                    )
+                                } else {
+                                    null
                                 }
                             }
-
-                            // Create the display item if player1 was found
-                            if (player1 != null) {
-                                val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
-                                val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
-                                MatchHistoryDisplayItem(
-                                    match = match,
-                                    player1 = player1,
-                                    player2 = player2,
-                                    p1FramesWon = p1FramesWon,
-                                    p2FramesWon = p2FramesWon
-                                )
-                            } else {
-                                null // This item will be filtered out later
-                            }
-                        }
-                    }.awaitAll().filterNotNull() // Await all async calls and remove any nulls
+                        }.awaitAll().filterNotNull()
+                    }
+                    _matches.value = displayItems.sortedByDescending { it.match.date }
                 }
-                _matches.value = displayItems.sortedByDescending { it.match.date }
             }
         }
     }

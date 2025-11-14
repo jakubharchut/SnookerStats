@@ -3,12 +3,15 @@ package com.example.snookerstats.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.*
+import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
+import com.example.snookerstats.util.SnackbarManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,7 +21,9 @@ data class MatchDetailsUiState(
     val error: String? = null,
     val frameDetails: Map<Int, AggregatedStats> = emptyMap(),
     val frameHistories: Map<Int, List<FrameShotHistory>> = emptyMap(),
-    val matchStats: AggregatedStats? = null
+    val matchStats: AggregatedStats? = null,
+    val friends: List<User> = emptyList(),
+    val showShareDialog: Boolean = false
 )
 
 data class Break(
@@ -87,15 +92,48 @@ data class FrameShotHistory(
 @HiltViewModel
 class MatchDetailsViewModel @Inject constructor(
     private val matchRepository: MatchRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val chatRepository: ChatRepository,
+    private val snackbarManager: SnackbarManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MatchDetailsUiState())
     val uiState = _uiState.asStateFlow()
 
+    fun onShareClicked() {
+        _uiState.value = _uiState.value.copy(showShareDialog = true)
+    }
+
+    fun onDismissShareDialog() {
+        _uiState.value = _uiState.value.copy(showShareDialog = false)
+    }
+
+    fun shareMatchWithFriend(friend: User) {
+        viewModelScope.launch {
+            val matchItem = _uiState.value.matchItem ?: return@launch
+            val matchId = matchItem.match.id
+            val description = "${matchItem.player1?.firstName} ${matchItem.player1?.lastName} vs ${matchItem.player2?.firstName} ${matchItem.player2?.lastName} (${matchItem.p1FramesWon} - ${matchItem.p2FramesWon})"
+
+            val createChatResource = chatRepository.createOrGetChat(friend.uid)
+            if (createChatResource is Resource.Success) {
+                val chatId = createChatResource.data!!
+                val sendResource = chatRepository.sendMatchShareMessage(chatId, matchId, description)
+                if (sendResource is Resource.Success) {
+                    snackbarManager.showMessage("Mecz udostępniony dla ${friend.firstName} ${friend.lastName}")
+                } else {
+                    snackbarManager.showMessage("Błąd udostępniania meczu")
+                }
+            }
+            onDismissShareDialog()
+        }
+    }
+
     fun loadMatchDetails(matchId: String) {
         viewModelScope.launch {
-            _uiState.value = MatchDetailsUiState(isLoading = true)
+            _uiState.value = _uiState.value.copy(isLoading = true)
+
+            val friendsResource = userRepository.getFriends().first { it !is Resource.Loading }
+            val friends = (friendsResource as? Resource.Success)?.data ?: emptyList()
 
             matchRepository.getMatchStream(matchId).collect { match ->
                 if (match != null) {
@@ -133,18 +171,19 @@ class MatchDetailsViewModel @Inject constructor(
                             p1FramesWon = p1FramesWon,
                             p2FramesWon = p2FramesWon
                         )
-                        _uiState.value = MatchDetailsUiState(
+                        _uiState.value = _uiState.value.copy(
                             matchItem = displayItem,
                             isLoading = false,
+                            friends = friends,
                             frameDetails = frameDetails,
                             frameHistories = frameHistories,
                             matchStats = matchStats
                         )
                     } else {
-                        _uiState.value = MatchDetailsUiState(isLoading = false, error = "Nie znaleziono gracza 1")
+                        _uiState.value = _uiState.value.copy(isLoading = false, error = "Nie znaleziono gracza 1", friends = friends)
                     }
                 } else {
-                    _uiState.value = MatchDetailsUiState(isLoading = false, error = "Nie znaleziono meczu")
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = "Nie znaleziono meczu", friends = friends)
                 }
             }
         }

@@ -1,16 +1,19 @@
 package com.example.snookerstats.ui.main
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Match
-import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
+import com.example.snookerstats.util.SnackbarManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,58 +21,33 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     private val authRepository: IAuthRepository,
     private val userRepository: UserRepository,
+    private val matchRepository: MatchRepository,
     private val chatRepository: ChatRepository,
-    private val matchRepository: MatchRepository
+    private val snackbarManager: SnackbarManager
 ) : ViewModel() {
 
-    private val _username = MutableStateFlow("...")
-    val username = _username.asStateFlow()
+    val username: StateFlow<String> = flow {
+        val user = (userRepository.getUser(authRepository.currentUser!!.uid) as? Resource.Success)?.data
+        emit(user?.username ?: "...")
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "...")
 
-    private val _unreadChatCount = MutableStateFlow(0)
-    val unreadChatCount = _unreadChatCount.asStateFlow()
-
-    private val _ongoingMatch = MutableStateFlow<Match?>(null)
-    val ongoingMatch: StateFlow<Match?> = _ongoingMatch.asStateFlow()
-
-    init {
-        loadUserData()
-        observeUnreadChats()
-        observeOngoingMatch()
-    }
-
-    private fun observeOngoingMatch() {
-        viewModelScope.launch {
-            matchRepository.getOngoingMatch().collect { match ->
-                Log.d("MainViewModel", "Observed ongoing match: $match")
-                _ongoingMatch.value = match
+    val unreadChatCount: StateFlow<Int> = flow {
+        chatRepository.getChats().collect { resource ->
+            if (resource is Resource.Success) {
+                val count = resource.data?.count { chat ->
+                    (chat.unreadCounts[authRepository.currentUser!!.uid] ?: 0) > 0
+                } ?: 0
+                emit(count)
             }
         }
-    }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    private fun loadUserData() {
-        viewModelScope.launch {
-            authRepository.currentUser?.let { user ->
-                when (val result = userRepository.getUser(user.uid)) {
-                    is Resource.Success -> {
-                        _username.value = result.data?.username ?: "Użytkownik"
-                    }
-                    else -> _username.value = "Użytkownik"
-                }
-            }
-        }
-    }
+    val ongoingMatch: StateFlow<Match?> = matchRepository.getOngoingMatch()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    private fun observeUnreadChats() {
+    fun showSnackbar(message: String) {
         viewModelScope.launch {
-            val currentUserId = authRepository.currentUser?.uid ?: return@launch
-            chatRepository.getChats().collectLatest { resource ->
-                if (resource is Resource.Success) {
-                    val count = resource.data?.count { chat ->
-                        (chat.unreadCounts[currentUserId] ?: 0) > 0
-                    } ?: 0
-                    _unreadChatCount.value = count
-                }
-            }
+            snackbarManager.showMessage(message)
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.snookerstats.ui.chats
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
@@ -17,12 +18,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.snookerstats.R
 import com.example.snookerstats.domain.model.Message
+import com.example.snookerstats.domain.model.MessageType
 import com.example.snookerstats.domain.repository.IAuthRepository
 import com.example.snookerstats.util.Resource
 import java.text.SimpleDateFormat
@@ -118,7 +122,7 @@ fun ConversationScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Wróć")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
                     }
                 },
                 actions = {
@@ -171,7 +175,10 @@ fun ConversationScreen(
                         items(messageGroups) { group ->
                             MessageGroup(
                                 messages = group,
-                                isSentByCurrentUser = group.first().senderId == currentUserId
+                                isSentByCurrentUser = group.first().senderId == currentUserId,
+                                onMatchClick = { matchId ->
+                                    navController.navigate("match_details/$matchId")
+                                }
                             )
                         }
                     }
@@ -193,7 +200,11 @@ fun ConversationScreen(
 }
 
 @Composable
-fun MessageGroup(messages: List<Message>, isSentByCurrentUser: Boolean) {
+fun MessageGroup(
+    messages: List<Message>,
+    isSentByCurrentUser: Boolean,
+    onMatchClick: (String) -> Unit
+) {
     val alignment = if (isSentByCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
     val dateFormat = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()) }
 
@@ -205,7 +216,8 @@ fun MessageGroup(messages: List<Message>, isSentByCurrentUser: Boolean) {
             messages.forEach { message ->
                 MessageBubble(
                     message = message,
-                    isSentByCurrentUser = isSentByCurrentUser
+                    isSentByCurrentUser = isSentByCurrentUser,
+                    onMatchClick = onMatchClick
                 )
             }
             Text(
@@ -219,27 +231,78 @@ fun MessageGroup(messages: List<Message>, isSentByCurrentUser: Boolean) {
 }
 
 @Composable
-fun MessageBubble(message: Message, isSentByCurrentUser: Boolean) {
-    val backgroundColor = if (isSentByCurrentUser) Color(0xFFD0E4FF) else Color(0xFFEBEBEB)
+fun MessageBubble(
+    message: Message,
+    isSentByCurrentUser: Boolean,
+    onMatchClick: (String) -> Unit
+) {
     val bubbleShape = if (isSentByCurrentUser) {
         RoundedCornerShape(topStart = 16.dp, topEnd = 4.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
     } else {
         RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp)
     }
 
-    Surface(
-        color = backgroundColor,
-        shape = bubbleShape,
-        modifier = Modifier.padding(vertical = 2.dp)
-    ) {
-        Text(
-            text = message.text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            color = Color.Black
-        )
+    when (message.type) {
+        MessageType.TEXT -> {
+            val backgroundColor = if (isSentByCurrentUser) Color(0xFFD0E4FF) else Color(0xFFEBEBEB)
+            Surface(
+                color = backgroundColor,
+                shape = bubbleShape,
+                modifier = Modifier.padding(vertical = 2.dp)
+            ) {
+                Text(
+                    text = message.text,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    color = Color.Black
+                )
+            }
+        }
+        MessageType.MATCH_SHARE -> {
+            if (message.matchId != null) {
+                MatchShareBubble(message = message, onMatchClick = onMatchClick)
+            }
+        }
     }
 }
 
+@Composable
+fun MatchShareBubble(message: Message, onMatchClick: (String) -> Unit) {
+    Card(
+        modifier = Modifier
+            .padding(vertical = 4.dp)
+            .widthIn(max = 250.dp)
+            .clickable { onMatchClick(message.matchId!!) },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_trophy),
+                    contentDescription = "Ikona pucharu",
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Udostępniono mecz",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = message.text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+        }
+    }
+}
 
 @Composable
 fun MessageInput(

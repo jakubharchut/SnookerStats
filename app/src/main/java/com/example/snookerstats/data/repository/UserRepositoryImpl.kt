@@ -6,7 +6,13 @@ import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
+import java.util.concurrent.CancellationException
 import javax.inject.Inject
 
 class UserRepositoryImpl @Inject constructor(
@@ -25,6 +31,35 @@ class UserRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Wystąpił nieznany błąd")
+        }
+    }
+
+    override fun getFriends(): Flow<Resource<List<User>>> = flow {
+        emit(Resource.Loading)
+        try {
+            val currentUserId = authRepository.currentUser?.uid ?: run {
+                emit(Resource.Error("Użytkownik niezalogowany"))
+                return@flow
+            }
+            val userDoc = firestore.collection("users").document(currentUserId).get().await()
+            val friendIds = userDoc.toObject(User::class.java)?.friends ?: emptyList()
+
+            if (friendIds.isEmpty()) {
+                emit(Resource.Success(emptyList()))
+                return@flow
+            }
+
+            val friends = coroutineScope {
+                friendIds.map {
+                    async { firestore.collection("users").document(it).get().await() }
+                }.awaitAll()
+            }.mapNotNull { it.toObject(User::class.java) }
+
+            emit(Resource.Success(friends))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Błąd pobierania znajomych"))
         }
     }
 

@@ -21,28 +21,38 @@ data class MatchDetailsUiState(
     val matchStats: AggregatedStats? = null
 )
 
+data class Break(
+    val value: Int,
+    val balls: List<SnookerBall>,
+    val frameNumber: Int
+)
+
 data class AggregatedStats(
-    // Base stats
     val player1HighestBreak: Int,
     val player2HighestBreak: Int,
     val player1TotalPoints: Int,
     val player2TotalPoints: Int,
     val player1Fouls: Int,
     val player2Fouls: Int,
-    val player1Breaks: List<Int>,
-    val player2Breaks: List<Int>,
+    val player1Breaks: List<Break>,
+    val player2Breaks: List<Break>,
     val durationMillis: Long,
-
-    // Raw data for calculations
     val player1Pots: Int,
     val player2Pots: Int,
     val player1Misses: Int,
     val player2Misses: Int,
-    val player1Visits: Int,
-    val player2Visits: Int
+    val player1Safeties: Int,
+    val player2Safeties: Int,
+    val player1SafetySuccessCount: Int,
+    val player2SafetySuccessCount: Int,
+    val player1ShotTotalTime: Long,
+    val player2ShotTotalTime: Long,
+    val player1ShotCount: Int,
+    val player2ShotCount: Int,
+    val winnerId: String?
 ) {
-    val player1AverageBreak: Double get() = if (player1Breaks.isNotEmpty()) player1Breaks.average() else 0.0
-    val player2AverageBreak: Double get() = if (player2Breaks.isNotEmpty()) player2Breaks.average() else 0.0
+    val player1AverageBreak: Double get() = if (player1Breaks.isNotEmpty()) player1Breaks.map { it.value }.average() else 0.0
+    val player2AverageBreak: Double get() = if (player2Breaks.isNotEmpty()) player2Breaks.map { it.value }.average() else 0.0
 
     val player1PotSuccess: Double get() {
         val totalAttempts = player1Pots + player1Misses
@@ -53,8 +63,15 @@ data class AggregatedStats(
         return if (totalAttempts > 0) (player2Pots.toDouble() / totalAttempts) * 100 else 0.0
     }
 
-    val player1PointsPerVisit: Double get() = if (player1Visits > 0) player1TotalPoints.toDouble() / player1Visits else 0.0
-    val player2PointsPerVisit: Double get() = if (player2Visits > 0) player2TotalPoints.toDouble() / player2Visits else 0.0
+    val player1SafetySuccess: Double get() {
+        return if (player1Safeties > 0) (player1SafetySuccessCount.toDouble() / player1Safeties) * 100 else 0.0
+    }
+    val player2SafetySuccess: Double get() {
+        return if (player2Safeties > 0) (player2SafetySuccessCount.toDouble() / player2Safeties) * 100 else 0.0
+    }
+
+    val player1AverageShotTime: Double get() = if (player1ShotCount > 0) player1ShotTotalTime.toDouble() / player1ShotCount / 1000.0 else 0.0
+    val player2AverageShotTime: Double get() = if (player2ShotCount > 0) player2ShotTotalTime.toDouble() / player2ShotCount / 1000.0 else 0.0
 }
 
 data class FrameShotHistory(
@@ -133,16 +150,11 @@ class MatchDetailsViewModel @Inject constructor(
 
     private fun calculateMatchStats(frameDetails: Map<Int, AggregatedStats>): AggregatedStats {
         val allStats = frameDetails.values
-        val p1TotalPoints = allStats.sumOf { it.player1TotalPoints }
-        val p2TotalPoints = allStats.sumOf { it.player2TotalPoints }
-        val p1Visits = allStats.sumOf { it.player1Visits }
-        val p2Visits = allStats.sumOf { it.player2Visits }
-
         return AggregatedStats(
             player1HighestBreak = allStats.maxOfOrNull { it.player1HighestBreak } ?: 0,
             player2HighestBreak = allStats.maxOfOrNull { it.player2HighestBreak } ?: 0,
-            player1TotalPoints = p1TotalPoints,
-            player2TotalPoints = p2TotalPoints,
+            player1TotalPoints = allStats.sumOf { it.player1TotalPoints },
+            player2TotalPoints = allStats.sumOf { it.player2TotalPoints },
             player1Fouls = allStats.sumOf { it.player1Fouls },
             player2Fouls = allStats.sumOf { it.player2Fouls },
             player1Breaks = allStats.flatMap { it.player1Breaks },
@@ -152,8 +164,15 @@ class MatchDetailsViewModel @Inject constructor(
             player2Pots = allStats.sumOf { it.player2Pots },
             player1Misses = allStats.sumOf { it.player1Misses },
             player2Misses = allStats.sumOf { it.player2Misses },
-            player1Visits = p1Visits,
-            player2Visits = p2Visits
+            player1Safeties = allStats.sumOf { it.player1Safeties },
+            player2Safeties = allStats.sumOf { it.player2Safeties },
+            player1SafetySuccessCount = allStats.sumOf { it.player1SafetySuccessCount },
+            player2SafetySuccessCount = allStats.sumOf { it.player2SafetySuccessCount },
+            player1ShotTotalTime = allStats.sumOf { it.player1ShotTotalTime },
+            player2ShotTotalTime = allStats.sumOf { it.player2ShotTotalTime },
+            player1ShotCount = allStats.sumOf { it.player1ShotCount },
+            player2ShotCount = allStats.sumOf { it.player2ShotCount },
+            winnerId = null // Winner is a frame-level stat
         )
     }
 
@@ -193,83 +212,94 @@ class MatchDetailsViewModel @Inject constructor(
         var p2Highest = 0
         var p1Fouls = 0
         var p2Fouls = 0
-        val p1Breaks = mutableListOf<Int>()
-        val p2Breaks = mutableListOf<Int>()
+        val p1Breaks = mutableListOf<Break>()
+        val p2Breaks = mutableListOf<Break>()
         var p1Pots = 0
         var p2Pots = 0
         var p1Misses = 0
         var p2Misses = 0
-        var p1Visits = 0
-        var p2Visits = 0
+        var p1Safeties = 0
+        var p2Safeties = 0
+        var p1SafetySuccess = 0
+        var p2SafetySuccess = 0
+        var p1ShotTotalTime = 0L
+        var p2ShotTotalTime = 0L
+        var p1ShotCount = 0
+        var p2ShotCount = 0
 
-        var currentBreak = 0
+        var currentBreakValue = 0
+        var currentBreakBalls = mutableListOf<SnookerBall>()
         var activePlayerId = player1Id
+        var lastShotTimestamp = frame.shots.firstOrNull()?.timestamp ?: 0
 
-        if (frame.shots.isNotEmpty()) {
-            p1Visits = 1 // The first player always starts with one visit
-        }
+        for ((index, shot) in frame.shots.withIndex()) {
+            val shotTime = shot.timestamp - lastShotTimestamp
+            if (activePlayerId == player1Id) {
+                p1ShotTotalTime += shotTime
+                p1ShotCount++
+            } else {
+                p2ShotTotalTime += shotTime
+                p2ShotCount++
+            }
+            lastShotTimestamp = shot.timestamp
 
-        for (shot in frame.shots) {
+            if (shot.type == ShotType.SAFETY) {
+                if (activePlayerId == player1Id) p1Safeties++ else p2Safeties++
+                val nextShotIndex = index + 1
+                if (nextShotIndex < frame.shots.size) {
+                    val nextShot = frame.shots[nextShotIndex]
+                    if (nextShot.type != ShotType.POTTED && nextShot.type != ShotType.FREE_BALL_POTTED) {
+                        if (activePlayerId == player1Id) p1SafetySuccess++ else p2SafetySuccess++
+                    }
+                }
+            }
+
             when (shot.type) {
                 ShotType.POTTED, ShotType.FREE_BALL_POTTED -> {
-                    currentBreak += shot.points
+                    currentBreakValue += shot.points
+                    SnookerBall.fromName(shot.ballName)?.let { currentBreakBalls.add(it) }
                     if (activePlayerId == player1Id) p1Pots++ else p2Pots++
                 }
-                ShotType.FOUL -> {
-                    if (activePlayerId == player1Id) {
-                        p1Highest = maxOf(p1Highest, currentBreak)
-                        if (currentBreak > 0) p1Breaks.add(currentBreak)
-                        p1Fouls++
-                    } else {
-                        p2Highest = maxOf(p2Highest, currentBreak)
-                        if (currentBreak > 0) p2Breaks.add(currentBreak)
-                        p2Fouls++
-                    }
-                    currentBreak = 0
-                    activePlayerId = if (activePlayerId == player1Id) {
-                        p2Visits++
-                        player2Id ?: ""
-                    } else {
-                        p1Visits++
-                        player1Id
-                    }
-                }
-                ShotType.SAFETY, ShotType.MISS -> {
+                ShotType.FOUL, ShotType.SAFETY, ShotType.MISS -> {
                     if (shot.type == ShotType.MISS) {
                         if (activePlayerId == player1Id) p1Misses++ else p2Misses++
                     }
+                    if (shot.type == ShotType.FOUL) {
+                        if (activePlayerId == player1Id) p1Fouls++ else p2Fouls++
+                    }
 
-                    if (activePlayerId == player1Id) {
-                        p1Highest = maxOf(p1Highest, currentBreak)
-                        if (currentBreak > 0) p1Breaks.add(currentBreak)
-                    } else {
-                        p2Highest = maxOf(p2Highest, currentBreak)
-                        if (currentBreak > 0) p2Breaks.add(currentBreak)
+                    if (currentBreakValue > 0) {
+                        if (activePlayerId == player1Id) {
+                            p1Highest = maxOf(p1Highest, currentBreakValue)
+                            p1Breaks.add(Break(currentBreakValue, currentBreakBalls.toList(), frame.frameNumber))
+                        } else {
+                            p2Highest = maxOf(p2Highest, currentBreakValue)
+                            p2Breaks.add(Break(currentBreakValue, currentBreakBalls.toList(), frame.frameNumber))
+                        }
                     }
-                    currentBreak = 0
-                    activePlayerId = if (activePlayerId == player1Id) {
-                        p2Visits++
-                        player2Id ?: ""
-                    } else {
-                        p1Visits++
-                        player1Id
-                    }
+                    currentBreakValue = 0
+                    currentBreakBalls.clear()
+
+                    activePlayerId = if (activePlayerId == player1Id) player2Id ?: "" else player1Id
                 }
             }
         }
 
-        // Capture the last break of the frame
-        if (currentBreak > 0) {
+        if (currentBreakValue > 0) {
             if (activePlayerId == player1Id) {
-                p1Highest = maxOf(p1Highest, currentBreak)
-                p1Breaks.add(currentBreak)
+                p1Highest = maxOf(p1Highest, currentBreakValue)
+                p1Breaks.add(Break(currentBreakValue, currentBreakBalls.toList(), frame.frameNumber))
             } else {
-                p2Highest = maxOf(p2Highest, currentBreak)
-                p2Breaks.add(currentBreak)
+                p2Highest = maxOf(p2Highest, currentBreakValue)
+                p2Breaks.add(Break(currentBreakValue, currentBreakBalls.toList(), frame.frameNumber))
             }
         }
 
-        val duration = if (frame.shots.isNotEmpty()) frame.shots.last().timestamp - frame.shots.first().timestamp else 0
+        val winnerId = when {
+            frame.player1Points > frame.player2Points -> player1Id
+            frame.player2Points > frame.player1Points -> player2Id
+            else -> null
+        }
 
         return AggregatedStats(
             player1HighestBreak = p1Highest,
@@ -280,13 +310,20 @@ class MatchDetailsViewModel @Inject constructor(
             player2Fouls = p2Fouls,
             player1Breaks = p1Breaks,
             player2Breaks = p2Breaks,
-            durationMillis = duration,
+            durationMillis = if (frame.shots.size > 1) frame.shots.last().timestamp - frame.shots.first().timestamp else 0,
             player1Pots = p1Pots,
             player2Pots = p2Pots,
             player1Misses = p1Misses,
             player2Misses = p2Misses,
-            player1Visits = p1Visits,
-            player2Visits = p2Visits
+            player1Safeties = p1Safeties,
+            player2Safeties = p2Safeties,
+            player1SafetySuccessCount = p1SafetySuccess,
+            player2SafetySuccessCount = p2SafetySuccess,
+            player1ShotTotalTime = p1ShotTotalTime,
+            player2ShotTotalTime = p2ShotTotalTime,
+            player1ShotCount = p1ShotCount,
+            player2ShotCount = p2ShotCount,
+            winnerId = winnerId
         )
     }
 }

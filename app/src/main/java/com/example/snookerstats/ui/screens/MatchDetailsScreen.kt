@@ -27,11 +27,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.Frame
 import com.example.snookerstats.domain.model.ShotType
 import com.example.snookerstats.domain.model.SnookerBall
+import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.common.UserAvatar
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
@@ -96,7 +98,9 @@ fun MatchDetailsScreen(
                         DetailsTab(
                             matchStats = uiState.matchStats,
                             frameDetails = uiState.frameDetails,
-                            frames = matchItem.match.frames
+                            frames = matchItem.match.frames,
+                            player1 = uiState.matchItem?.player1,
+                            player2 = uiState.matchItem?.player2
                         )
                     } else {
                         HistoryTab(
@@ -177,7 +181,7 @@ private fun SegmentedButtonRow(selectedTabIndex: Int, onTabSelected: (Int) -> Un
             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
             onClick = { onTabSelected(1) },
             selected = selectedTabIndex == 1
-        ) { Text("Historia Ciosów") }
+        ) { Text("Historia wbić") }
     }
 }
 
@@ -185,7 +189,9 @@ private fun SegmentedButtonRow(selectedTabIndex: Int, onTabSelected: (Int) -> Un
 fun DetailsTab(
     matchStats: AggregatedStats?,
     frameDetails: Map<Int, AggregatedStats>,
-    frames: List<Frame>
+    frames: List<Frame>,
+    player1: User?,
+    player2: User?
 ) {
     var selectedFrameIndex by remember { mutableStateOf(-1) } // -1 for "Cały mecz"
 
@@ -209,17 +215,21 @@ fun DetailsTab(
             item {
                 StatsCard(
                     stats = stats,
-                    title = title
+                    title = title,
+                    player1 = player1,
+                    player2 = player2
                 )
             }
-            if (stats != null && (stats.player1Breaks.any { it >= 20 } || stats.player2Breaks.any { it >= 20 })) {
+            if (stats != null && (stats.player1Breaks.any { it.value >= 20 } || stats.player2Breaks.any { it.value >= 20 })) {
                 item {
-                    val p1Breaks = stats.player1Breaks.filter { it >= 20 }.sortedDescending()
-                    val p2Breaks = stats.player2Breaks.filter { it >= 20 }.sortedDescending()
+                    val p1Breaks = stats.player1Breaks.filter { it.value >= 20 }.sortedByDescending { it.value }
+                    val p2Breaks = stats.player2Breaks.filter { it.value >= 20 }.sortedByDescending { it.value }
                     if (p1Breaks.isNotEmpty() || p2Breaks.isNotEmpty()) {
                         BreaksList(
-                            player1Breaks = p1Breaks,
-                            player2Breaks = p2Breaks
+                            player1Breaks = p1Breaks.map { it.value },
+                            player2Breaks = p2Breaks.map { it.value },
+                            player1Name = player1?.firstName ?: "Gracz 1",
+                            player2Name = player2?.firstName ?: "Gracz 2"
                         )
                     }
                 }
@@ -259,7 +269,9 @@ fun HistoryTab(
 @Composable
 fun BreaksList(
     player1Breaks: List<Int>,
-    player2Breaks: List<Int>
+    player2Breaks: List<Int>,
+    player1Name: String,
+    player2Name: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -278,7 +290,7 @@ fun BreaksList(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "Gracz 1", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(text = player1Name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
@@ -291,7 +303,7 @@ fun BreaksList(
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "Gracz 2", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(text = player2Name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
@@ -307,8 +319,66 @@ fun BreaksList(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun StatsCard(stats: AggregatedStats?, title: String) {
+fun BreaksInfoDialog(
+    breaks: List<Break>,
+    playerName: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Podejścia punktowe - $playerName",
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(16.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(breaks) { breakEntry ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("F${breakEntry.frameNumber}: ${breakEntry.value}:", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                breakEntry.balls.forEach { ball ->
+                                    ShotBallIcon(ball)
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                    Text("Zamknij")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun StatsCard(stats: AggregatedStats?, title: String, player1: User?, player2: User?) {
+    var showPlayer1BreaksDialog by remember { mutableStateOf(false) }
+    var showPlayer2BreaksDialog by remember { mutableStateOf(false) }
+
+    if (showPlayer1BreaksDialog) {
+        BreaksInfoDialog(
+            breaks = stats?.player1Breaks ?: emptyList(),
+            playerName = player1?.firstName ?: "Gracz 1",
+            onDismiss = { showPlayer1BreaksDialog = false }
+        )
+    }
+
+    if (showPlayer2BreaksDialog) {
+        BreaksInfoDialog(
+            breaks = stats?.player2Breaks ?: emptyList(),
+            playerName = player2?.firstName ?: "Gracz 2",
+            onDismiss = { showPlayer2BreaksDialog = false }
+        )
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp)
@@ -317,7 +387,7 @@ fun StatsCard(stats: AggregatedStats?, title: String) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
             if (stats == null) {
@@ -328,6 +398,20 @@ fun StatsCard(stats: AggregatedStats?, title: String) {
 
                 val totalHighestBreak = (stats.player1HighestBreak + stats.player2HighestBreak).coerceAtLeast(1)
                 val p1BreakRatio = stats.player1HighestBreak.toFloat() / totalHighestBreak
+
+                val totalTimeAtTable = (stats.player1ShotTotalTime + stats.player2ShotTotalTime).coerceAtLeast(1)
+                val p1TimeRatio = stats.player1ShotTotalTime.toFloat() / totalTimeAtTable
+
+                if (stats.winnerId != null) {
+                    val p1FrameScore = if (stats.winnerId == player1?.uid) 1 else 0
+                    val p2FrameScore = if (stats.winnerId == player2?.uid) 1 else 0
+                    Spacer(modifier = Modifier.height(16.dp))
+                    StatsRow(
+                        label = "Zwycięzca",
+                        player1Content = { Text(p1FrameScore.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) },
+                        player2Content = { Text(p2FrameScore.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -349,27 +433,72 @@ fun StatsCard(stats: AggregatedStats?, title: String) {
                 )
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Other stats
-                StatsRow("Skuteczność wbić", "${String.format("%.1f", stats.player1PotSuccess)}%", "${String.format("%.1f", stats.player2PotSuccess)}%")
-                Spacer(modifier = Modifier.height(16.dp))
-                StatsRow("Punkty na podejście", String.format("%.1f", stats.player1PointsPerVisit), String.format("%.1f", stats.player2PointsPerVisit))
-                Spacer(modifier = Modifier.height(16.dp))
-                StatsRow("Średnia brejka", String.format("%.1f", stats.player1AverageBreak), String.format("%.1f", stats.player2AverageBreak))
-                Spacer(modifier = Modifier.height(16.dp))
-                StatsRow("Faule", stats.player1Fouls.toString(), stats.player2Fouls.toString())
+                // Time at table
+                AnimatedComparisonBar(
+                    label = "Czas przy stole",
+                    value1 = stats.player1ShotTotalTime.toInt(),
+                    value2 = stats.player2ShotTotalTime.toInt(),
+                    ratio1 = p1TimeRatio,
+                    isTime = true
+                )
+                Spacer(modifier = Modifier.height(24.dp))
 
-                if (stats.durationMillis > 0) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    val minutes = TimeUnit.MILLISECONDS.toMinutes(stats.durationMillis)
-                    val seconds = TimeUnit.MILLISECONDS.toSeconds(stats.durationMillis) % 60
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text("Czas trwania: ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(String.format("%02d:%02d", minutes, seconds), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                // Other stats
+                StatsRow(
+                    label = "Skuteczność wbić",
+                    player1Content = {
+                        Text(text = "${String.format("%.1f", stats.player1PotSuccess)}%", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        Text(text = "(${stats.player1Pots}/${stats.player1Pots + stats.player1Misses})", style = MaterialTheme.typography.bodySmall)
+                    },
+                    player2Content = {
+                        Text(text = "${String.format("%.1f", stats.player2PotSuccess)}%", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        Text(text = "(${stats.player2Pots}/${stats.player2Pots + stats.player2Misses})", style = MaterialTheme.typography.bodySmall)
                     }
-                }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                StatsRow(
+                    label = "Skuteczność odstawnych",
+                    player1Content = {
+                        Text(text = "${String.format("%.1f", stats.player1SafetySuccess)}%", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        Text(text = "(${stats.player1SafetySuccessCount}/${stats.player1Safeties})", style = MaterialTheme.typography.bodySmall)
+                    },
+                    player2Content = {
+                        Text(text = "${String.format("%.1f", stats.player2SafetySuccess)}%", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        Text(text = "(${stats.player2SafetySuccessCount}/${stats.player2Safeties})", style = MaterialTheme.typography.bodySmall)
+                    }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                StatsRow(
+                    label = "Średnie punktowanie",
+                    player1Content = {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { showPlayer1BreaksDialog = true }
+                        ) {
+                            Text(String.format("%.1f", stats.player1AverageBreak), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    player2Content = {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { showPlayer2BreaksDialog = true }
+                        ) {
+                            Text(String.format("%.1f", stats.player2AverageBreak), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                StatsRow(
+                    label = "Śr. czas uderzenia",
+                    player1Content = { Text("${String.format("%.1f", stats.player1AverageShotTime)} s", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) },
+                    player2Content = { Text("${String.format("%.1f", stats.player2AverageShotTime)} s", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                StatsRow(
+                    label = "Faule",
+                    player1Content = { Text(stats.player1Fouls.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) },
+                    player2Content = { Text(stats.player2Fouls.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) }
+                )
             }
         }
     }
@@ -380,18 +509,22 @@ fun AnimatedComparisonBar(
     label: String,
     value1: Int,
     value2: Int,
-    ratio1: Float
+    ratio1: Float,
+    isTime: Boolean = false
 ) {
     val animatedRatio1 by animateFloatAsState(targetValue = ratio1, label = "ratio1")
 
     val color1 = MaterialTheme.colorScheme.primary
     val color2 = MaterialTheme.colorScheme.primaryContainer
 
+    val displayValue1 = if (isTime) formatMillisToTime(value1.toLong()) else value1.toString()
+    val displayValue2 = if (isTime) formatMillisToTime(value2.toLong()) else value2.toString()
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(value1.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Text(displayValue1, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.width(16.dp))
             Box(
                 modifier = Modifier
@@ -406,13 +539,23 @@ fun AnimatedComparisonBar(
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Text(value2.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Text(displayValue2, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
         }
     }
 }
 
+private fun formatMillisToTime(millis: Long): String {
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(millis)
+    val seconds = TimeUnit.MILLISECONDS.toSeconds(millis) % 60
+    return String.format("%02d:%02d", minutes, seconds)
+}
+
 @Composable
-private fun StatsRow(label: String, player1Value: String, player2Value: String) {
+private fun StatsRow(
+    label: String,
+    player1Content: @Composable ColumnScope.() -> Unit,
+    player2Content: @Composable ColumnScope.() -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -420,9 +563,9 @@ private fun StatsRow(label: String, player1Value: String, player2Value: String) 
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(player1Value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) { player1Content() }
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1.5f), textAlign = TextAlign.Center)
-        Text(player2Value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) { player2Content() }
     }
 }
 

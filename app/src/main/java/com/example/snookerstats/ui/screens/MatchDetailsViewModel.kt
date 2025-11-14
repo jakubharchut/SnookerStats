@@ -34,6 +34,8 @@ data class AggregatedStats(
     val player2TotalPoints: Int,
     val player1Fouls: Int,
     val player2Fouls: Int,
+    val player1FoulPointsGiven: Int,
+    val player2FoulPointsGiven: Int,
     val player1Breaks: List<Break>,
     val player2Breaks: List<Break>,
     val durationMillis: Long,
@@ -157,6 +159,8 @@ class MatchDetailsViewModel @Inject constructor(
             player2TotalPoints = allStats.sumOf { it.player2TotalPoints },
             player1Fouls = allStats.sumOf { it.player1Fouls },
             player2Fouls = allStats.sumOf { it.player2Fouls },
+            player1FoulPointsGiven = allStats.sumOf { it.player1FoulPointsGiven },
+            player2FoulPointsGiven = allStats.sumOf { it.player2FoulPointsGiven },
             player1Breaks = allStats.flatMap { it.player1Breaks },
             player2Breaks = allStats.flatMap { it.player2Breaks },
             durationMillis = allStats.sumOf { it.durationMillis },
@@ -212,6 +216,8 @@ class MatchDetailsViewModel @Inject constructor(
         var p2Highest = 0
         var p1Fouls = 0
         var p2Fouls = 0
+        var p1FoulPointsGiven = 0
+        var p2FoulPointsGiven = 0
         val p1Breaks = mutableListOf<Break>()
         val p2Breaks = mutableListOf<Break>()
         var p1Pots = 0
@@ -265,7 +271,13 @@ class MatchDetailsViewModel @Inject constructor(
                         if (activePlayerId == player1Id) p1Misses++ else p2Misses++
                     }
                     if (shot.type == ShotType.FOUL) {
-                        if (activePlayerId == player1Id) p1Fouls++ else p2Fouls++
+                        if (activePlayerId == player1Id) {
+                            p1Fouls++
+                            p2FoulPointsGiven += shot.points
+                        } else {
+                            p2Fouls++
+                            p1FoulPointsGiven += shot.points
+                        }
                     }
 
                     if (currentBreakValue > 0) {
@@ -308,6 +320,8 @@ class MatchDetailsViewModel @Inject constructor(
             player2TotalPoints = frame.player2Points,
             player1Fouls = p1Fouls,
             player2Fouls = p2Fouls,
+            player1FoulPointsGiven = p1FoulPointsGiven,
+            player2FoulPointsGiven = p2FoulPointsGiven,
             player1Breaks = p1Breaks,
             player2Breaks = p2Breaks,
             durationMillis = if (frame.shots.size > 1) frame.shots.last().timestamp - frame.shots.first().timestamp else 0,

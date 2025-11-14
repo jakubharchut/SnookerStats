@@ -23,8 +23,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -319,7 +322,6 @@ fun BreaksList(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BreaksInfoDialog(
     breaks: List<Break>,
@@ -338,12 +340,27 @@ fun BreaksInfoDialog(
                 Spacer(Modifier.height(16.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(breaks) { breakEntry ->
+                        val groupedBalls = breakEntry.balls
+                            .groupBy { it }
+                            .map { (ball, list) -> ball to list.size }
+                            .sortedBy { (ball, _) -> ball.points }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("F${breakEntry.frameNumber}: ${breakEntry.value}:", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                            Text(
+                                modifier = Modifier.width(90.dp),
+                                style = MaterialTheme.typography.bodyLarge,
+                                text = buildAnnotatedString {
+                                    append("F${breakEntry.frameNumber}: ")
+                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                        append("${breakEntry.value}")
+                                    }
+                                    append(" pkt:")
+                                }
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                breakEntry.balls.forEach { ball ->
-                                    ShotBallIcon(ball)
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                items(groupedBalls) { (ball, count) ->
+                                    ShotBallIcon(ball, count)
                                 }
                             }
                         }
@@ -402,6 +419,8 @@ fun StatsCard(stats: AggregatedStats?, title: String, player1: User?, player2: U
                 val totalTimeAtTable = (stats.player1ShotTotalTime + stats.player2ShotTotalTime).coerceAtLeast(1)
                 val p1TimeRatio = stats.player1ShotTotalTime.toFloat() / totalTimeAtTable
 
+                val totalFoulPoints = (stats.player1FoulPointsGiven + stats.player2FoulPointsGiven).coerceAtLeast(1)
+
                 if (stats.winnerId != null) {
                     val p1FrameScore = if (stats.winnerId == player1?.uid) 1 else 0
                     val p2FrameScore = if (stats.winnerId == player2?.uid) 1 else 0
@@ -440,6 +459,17 @@ fun StatsCard(stats: AggregatedStats?, title: String, player1: User?, player2: U
                     value2 = stats.player2ShotTotalTime.toInt(),
                     ratio1 = p1TimeRatio,
                     isTime = true
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Fouls
+                AnimatedComparisonBar(
+                    label = "Punkty po faulach",
+                    value1 = stats.player2FoulPointsGiven, // p1 gets points from p2's fouls
+                    value2 = stats.player1FoulPointsGiven, // p2 gets points from p1's fouls
+                    ratio1 = if(totalFoulPoints > 0) stats.player2FoulPointsGiven.toFloat() / totalFoulPoints else 0.5f,
+                    subValue1 = "(${stats.player2Fouls} faule)",
+                    subValue2 = "(${stats.player1Fouls} faule)"
                 )
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -493,12 +523,6 @@ fun StatsCard(stats: AggregatedStats?, title: String, player1: User?, player2: U
                     player1Content = { Text("${String.format("%.1f", stats.player1AverageShotTime)} s", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) },
                     player2Content = { Text("${String.format("%.1f", stats.player2AverageShotTime)} s", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) }
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                StatsRow(
-                    label = "Faule",
-                    player1Content = { Text(stats.player1Fouls.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) },
-                    player2Content = { Text(stats.player2Fouls.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold) }
-                )
             }
         }
     }
@@ -510,7 +534,9 @@ fun AnimatedComparisonBar(
     value1: Int,
     value2: Int,
     ratio1: Float,
-    isTime: Boolean = false
+    isTime: Boolean = false,
+    subValue1: String? = null,
+    subValue2: String? = null
 ) {
     val animatedRatio1 by animateFloatAsState(targetValue = ratio1, label = "ratio1")
 
@@ -524,7 +550,10 @@ fun AnimatedComparisonBar(
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(displayValue1, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(displayValue1, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                if (subValue1 != null) Text(subValue1, style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Box(
                 modifier = Modifier
@@ -539,7 +568,10 @@ fun AnimatedComparisonBar(
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Text(displayValue2, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(displayValue2, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                if (subValue2 != null) Text(subValue2, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
@@ -746,27 +778,14 @@ fun FrameHistoryChart(history: List<FrameShotHistory>, player1Id: String) {
 
 @Composable
 private fun HistoryRow(item: FrameShotHistory, p1Name: String?, p2Name: String?, player1Id: String) {
-    val ball = SnookerBall.fromName(item.shot.ballName)
-    val pointsText: String
-    val showBallIcon: Boolean
-
-    when(item.shot.type) {
-        ShotType.FOUL -> {
-            pointsText = "+${item.shot.points} F"
-            showBallIcon = true
-        }
-        else -> { // Covers all other ShotType values
-            if (item.shot.points == 0) {
-                pointsText = "Odstawna"
-                showBallIcon = false // Do not show ball for safety/missed 0-point shots
-            } else {
-                pointsText = "+${item.shot.points} (${item.breakValueAfter})"
-                showBallIcon = true // Show ball for scoring shots
-            }
-        }
+    val isFoul = item.shot.type == ShotType.FOUL
+    val pointsText = when {
+        isFoul -> "+${item.shot.points} F"
+        item.shot.points == 0 -> "Odstawna"
+        else -> "+${item.shot.points} (${item.breakValueAfter})"
     }
 
-    val playerName = if (item.activePlayerId == player1Id) p1Name else p2Name
+    val isPlayer1Beneficiary = (isFoul && item.activePlayerId != player1Id) || (!isFoul && item.activePlayerId == player1Id)
 
     Row(
         modifier = Modifier
@@ -775,12 +794,16 @@ private fun HistoryRow(item: FrameShotHistory, p1Name: String?, p2Name: String?,
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Player 1 side
-        Box(modifier = Modifier.weight(1f), contentAlignment = if (item.activePlayerId == player1Id) Alignment.CenterEnd else Alignment.CenterStart) {
-            if (item.activePlayerId == player1Id) {
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+            if (isPlayer1Beneficiary) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(pointsText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(8.dp))
-                    if (showBallIcon) ShotBallIcon(ball) else Spacer(Modifier.size(16.dp))
+                    when {
+                        isFoul -> FoulIcon()
+                        item.shot.points > 0 -> ShotBallIcon(SnookerBall.fromName(item.shot.ballName))
+                        else -> SafetyIcon()
+                    }
                 }
             }
         }
@@ -794,10 +817,14 @@ private fun HistoryRow(item: FrameShotHistory, p1Name: String?, p2Name: String?,
         )
 
         // Player 2 side
-        Box(modifier = Modifier.weight(1f), contentAlignment = if (item.activePlayerId != player1Id) Alignment.CenterStart else Alignment.CenterEnd) {
-            if (item.activePlayerId != player1Id) {
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+            if (!isPlayer1Beneficiary) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (showBallIcon) ShotBallIcon(ball) else Spacer(Modifier.size(16.dp))
+                    when {
+                        isFoul -> FoulIcon()
+                        item.shot.points > 0 -> ShotBallIcon(SnookerBall.fromName(item.shot.ballName))
+                        else -> SafetyIcon()
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(pointsText, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
@@ -807,11 +834,49 @@ private fun HistoryRow(item: FrameShotHistory, p1Name: String?, p2Name: String?,
 }
 
 @Composable
-private fun ShotBallIcon(ball: SnookerBall?) {
+private fun FoulIcon() {
     Box(
         modifier = Modifier
-            .size(16.dp)
-            .clip(CircleShape)
-            .background(ball?.color ?: Color.Transparent)
+            .size(24.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.error),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "F",
+            color = MaterialTheme.colorScheme.onError,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun SafetyIcon() {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
     )
+}
+
+@Composable
+private fun ShotBallIcon(ball: SnookerBall?, count: Int = 1) {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(ball?.color ?: Color.Transparent),
+        contentAlignment = Alignment.Center
+    ) {
+        if (count > 0) {
+            Text(
+                text = count.toString(),
+                color = ball?.contentColor ?: Color.Black,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
 }

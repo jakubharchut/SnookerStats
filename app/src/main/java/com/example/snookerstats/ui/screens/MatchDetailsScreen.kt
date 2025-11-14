@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -23,7 +24,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.Frame
@@ -43,7 +43,7 @@ fun MatchDetailsScreen(
 ) {
     val viewModel: MatchDetailsViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
-    var selectedTab by remember { mutableStateOf(1) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     LaunchedEffect(matchId) {
         if (matchId != null) {
@@ -92,12 +92,15 @@ fun MatchDetailsScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     if (selectedTab == 0) {
-                        MatchDetailsTab(matchItem = matchItem)
+                        DetailsTab(
+                            matchStats = uiState.matchStats,
+                            frameDetails = uiState.frameDetails,
+                            frames = matchItem.match.frames
+                        )
                     } else {
-                        MatchHistoryTab(
+                        HistoryTab(
                             matchItem = matchItem,
-                            frameHistories = uiState.frameHistories,
-                            frameDetails = uiState.frameDetails
+                            frameHistories = uiState.frameHistories
                         )
                     }
                 }
@@ -178,20 +181,39 @@ private fun SegmentedButtonRow(selectedTabIndex: Int, onTabSelected: (Int) -> Un
 }
 
 @Composable
-fun MatchDetailsTab(matchItem: MatchHistoryDisplayItem) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("Ogólne statystyki meczu (w budowie)")
+fun DetailsTab(
+    matchStats: AggregatedStats?,
+    frameDetails: Map<Int, AggregatedStats>,
+    frames: List<Frame>
+) {
+    var selectedFrameIndex by remember { mutableStateOf(-1) } // -1 for "Cały mecz"
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        DetailScopeTabs(
+            frames = frames,
+            selectedIndex = selectedFrameIndex,
+            onFrameSelected = { selectedFrameIndex = it }
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        val stats = if (selectedFrameIndex == -1) {
+            matchStats
+        } else {
+            frameDetails[frames[selectedFrameIndex].frameNumber]
+        }
+
+        val title = if (selectedFrameIndex == -1) "Statystyki całego meczu" else "Statystyki frejma ${frames[selectedFrameIndex].frameNumber}"
+
+        StatsDisplay(stats = stats, title = title)
     }
 }
 
 @Composable
-fun MatchHistoryTab(
+fun HistoryTab(
     matchItem: MatchHistoryDisplayItem,
-    frameHistories: Map<Int, List<FrameShotHistory>>,
-    frameDetails: Map<Int, FrameStats>
+    frameHistories: Map<Int, List<FrameShotHistory>>
 ) {
     var selectedFrame by remember { mutableStateOf(matchItem.match.frames.firstOrNull()) }
-    var showSafetyShots by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FrameTabs(
@@ -201,18 +223,85 @@ fun MatchHistoryTab(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        selectedFrame?.let { frame ->
-            val history = frameHistories[frame.frameNumber] ?: emptyList()
-            val stats = frameDetails[frame.frameNumber]
-            FrameHistoryContent(
-                frame = frame,
-                history = history,
-                stats = stats,
-                p1Name = matchItem.player1?.firstName,
-                p2Name = matchItem.player2?.firstName,
-                player1Id = matchItem.match.player1Id,
-                showSafetyShots = showSafetyShots,
-                onShowSafetyShotsChange = { showSafetyShots = it }
+        val history = frameHistories[selectedFrame?.frameNumber] ?: emptyList()
+
+        FrameHistorySubTab(
+            frame = selectedFrame,
+            history = history,
+            p1Name = matchItem.player1?.firstName,
+            p2Name = matchItem.player2?.firstName,
+            player1Id = matchItem.match.player1Id
+        )
+    }
+}
+
+@Composable
+fun StatsDisplay(stats: AggregatedStats?, title: String) {
+    if (stats == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Brak statystyk do wyświetlenia")
+        }
+        return
+    }
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            textAlign = TextAlign.Center
+        )
+
+        val duration = stats.durationMillis
+        val minutes = TimeUnit.MILLISECONDS.toMinutes(duration)
+        val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
+
+        StatsRow("Punkty", stats.player1TotalPoints.toString(), stats.player2TotalPoints.toString())
+        Divider()
+        StatsRow("Najwyższy brejk", stats.player1HighestBreak.toString(), stats.player2HighestBreak.toString())
+        Divider()
+        StatsRow("Średnia brejka", String.format("%.2f", stats.player1AverageBreak), String.format("%.2f", stats.player2AverageBreak))
+        Divider()
+        StatsRow("Faule", stats.player1Fouls.toString(), stats.player2Fouls.toString())
+        Divider()
+        if (stats.durationMillis > 0) {
+            StatsRow("Czas trwania", String.format("%02d:%02d", minutes, seconds), "")
+        }
+    }
+}
+
+@Composable
+private fun StatsRow(label: String, player1Value: String, player2Value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(player1Value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1.5f), textAlign = TextAlign.Center)
+        Text(player2Value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun DetailScopeTabs(
+    frames: List<Frame>,
+    selectedIndex: Int,
+    onFrameSelected: (Int) -> Unit
+) {
+    val items = listOf("Cały mecz") + frames.map { "FREJM ${it.frameNumber}" }
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+    ) {
+        items(items.size) { index ->
+            val title = items[index]
+            val adjustedIndex = index - 1
+            FilterChip(
+                selected = selectedIndex == adjustedIndex,
+                onClick = { onFrameSelected(adjustedIndex) },
+                label = { Text(title) }
             )
         }
     }
@@ -239,16 +328,20 @@ private fun FrameTabs(
 }
 
 @Composable
-private fun FrameHistoryContent(
-    frame: Frame,
+private fun FrameHistorySubTab(
+    frame: Frame?,
     history: List<FrameShotHistory>,
-    stats: FrameStats?,
     p1Name: String?,
     p2Name: String?,
-    player1Id: String,
-    showSafetyShots: Boolean,
-    onShowSafetyShotsChange: (Boolean) -> Unit
+    player1Id: String
 ) {
+    if (frame == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Wybierz frejm, aby zobaczyć historię")
+        }
+        return
+    }
+    var showSafetyShots by remember { mutableStateOf(false) }
     val filteredHistory = if (showSafetyShots) {
         history
     } else {
@@ -259,21 +352,10 @@ private fun FrameHistoryContent(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.Center
         ) {
-            Text("HB: ${stats?.player1HighestBreak ?: 0}", style = MaterialTheme.typography.bodyLarge)
             Text("${frame.player1Points} - ${frame.player2Points}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text("HB: ${stats?.player2HighestBreak ?: 0}", style = MaterialTheme.typography.bodyLarge)
         }
-        val duration = stats?.durationMillis ?: 0
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(duration)
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(duration) % 60
-        Text(
-            String.format("Czas trwania: %02d:%02d", minutes, seconds),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
 
         Spacer(modifier = Modifier.height(8.dp))
         FrameHistoryChart(history = history, player1Id = player1Id)
@@ -290,7 +372,7 @@ private fun FrameHistoryContent(
             )
             Checkbox(
                 checked = showSafetyShots,
-                onCheckedChange = onShowSafetyShotsChange
+                onCheckedChange = { showSafetyShots = it }
             )
         }
 

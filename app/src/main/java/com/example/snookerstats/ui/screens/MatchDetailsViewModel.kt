@@ -16,15 +16,25 @@ data class MatchDetailsUiState(
     val matchItem: MatchHistoryDisplayItem? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
-    val frameDetails: Map<Int, FrameStats> = emptyMap(),
-    val frameHistories: Map<Int, List<FrameShotHistory>> = emptyMap()
+    val frameDetails: Map<Int, AggregatedStats> = emptyMap(),
+    val frameHistories: Map<Int, List<FrameShotHistory>> = emptyMap(),
+    val matchStats: AggregatedStats? = null
 )
 
-data class FrameStats(
+data class AggregatedStats(
     val player1HighestBreak: Int,
     val player2HighestBreak: Int,
+    val player1TotalPoints: Int,
+    val player2TotalPoints: Int,
+    val player1Fouls: Int,
+    val player2Fouls: Int,
+    val player1Breaks: List<Int>,
+    val player2Breaks: List<Int>,
     val durationMillis: Long
-)
+) {
+    val player1AverageBreak: Double get() = if (player1Breaks.isNotEmpty()) player1Breaks.average() else 0.0
+    val player2AverageBreak: Double get() = if (player2Breaks.isNotEmpty()) player2Breaks.average() else 0.0
+}
 
 data class FrameShotHistory(
     val shot: Shot,
@@ -66,13 +76,15 @@ class MatchDetailsViewModel @Inject constructor(
                         val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
                         val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
 
-                        val frameDetails = mutableMapOf<Int, FrameStats>()
+                        val frameDetails = mutableMapOf<Int, AggregatedStats>()
                         val frameHistories = mutableMapOf<Int, List<FrameShotHistory>>()
 
                         match.frames.forEach { frame ->
                             frameDetails[frame.frameNumber] = calculateFrameStats(frame, match.player1Id, match.player2Id)
                             frameHistories[frame.frameNumber] = generateFrameHistory(frame, match.player1Id, match.player2Id)
                         }
+
+                        val matchStats = calculateMatchStats(frameDetails)
 
                         val displayItem = MatchHistoryDisplayItem(
                             match = match,
@@ -85,7 +97,8 @@ class MatchDetailsViewModel @Inject constructor(
                             matchItem = displayItem,
                             isLoading = false,
                             frameDetails = frameDetails,
-                            frameHistories = frameHistories
+                            frameHistories = frameHistories,
+                            matchStats = matchStats
                         )
                     } else {
                         _uiState.value = MatchDetailsUiState(isLoading = false, error = "Nie znaleziono gracza 1")
@@ -95,6 +108,21 @@ class MatchDetailsViewModel @Inject constructor(
                 }
             }
         }
+    }
+    
+    private fun calculateMatchStats(frameDetails: Map<Int, AggregatedStats>): AggregatedStats {
+        val allStats = frameDetails.values
+        return AggregatedStats(
+            player1HighestBreak = allStats.maxOfOrNull { it.player1HighestBreak } ?: 0,
+            player2HighestBreak = allStats.maxOfOrNull { it.player2HighestBreak } ?: 0,
+            player1TotalPoints = allStats.sumOf { it.player1TotalPoints },
+            player2TotalPoints = allStats.sumOf { it.player2TotalPoints },
+            player1Fouls = allStats.sumOf { it.player1Fouls },
+            player2Fouls = allStats.sumOf { it.player2Fouls },
+            player1Breaks = allStats.flatMap { it.player1Breaks },
+            player2Breaks = allStats.flatMap { it.player2Breaks },
+            durationMillis = allStats.sumOf { it.durationMillis }
+        )
     }
 
     private fun generateFrameHistory(frame: Frame, player1Id: String, player2Id: String?): List<FrameShotHistory> {
@@ -121,7 +149,6 @@ class MatchDetailsViewModel @Inject constructor(
 
             history.add(FrameShotHistory(shot, p1Score, p2Score, currentBreak, activePlayerId))
 
-            // Zmiana gracza po faulu lub chybieniu
             if (shot.type == ShotType.FOUL || shot.type == ShotType.SAFETY || shot.type == ShotType.MISS) {
                 activePlayerId = if (activePlayerId == player1Id) player2Id ?: "" else player1Id
             }
@@ -129,9 +156,14 @@ class MatchDetailsViewModel @Inject constructor(
         return history
     }
 
-    private fun calculateFrameStats(frame: Frame, player1Id: String, player2Id: String?): FrameStats {
+    private fun calculateFrameStats(frame: Frame, player1Id: String, player2Id: String?): AggregatedStats {
         var p1Highest = 0
         var p2Highest = 0
+        var p1Fouls = 0
+        var p2Fouls = 0
+        val p1Breaks = mutableListOf<Int>()
+        val p2Breaks = mutableListOf<Int>()
+
         var currentBreak = 0
         var activePlayerId = player1Id
 
@@ -140,19 +172,52 @@ class MatchDetailsViewModel @Inject constructor(
                 ShotType.POTTED, ShotType.FREE_BALL_POTTED -> {
                     currentBreak += shot.points
                 }
-                ShotType.FOUL, ShotType.SAFETY, ShotType.MISS -> {
-                    if (activePlayerId == player1Id) p1Highest = maxOf(p1Highest, currentBreak)
-                    else p2Highest = maxOf(p2Highest, currentBreak)
+                ShotType.FOUL -> {
+                    if (activePlayerId == player1Id) {
+                        p1Highest = maxOf(p1Highest, currentBreak)
+                        if(currentBreak > 0) p1Breaks.add(currentBreak)
+                        p2Fouls++
+                    } else {
+                        p2Highest = maxOf(p2Highest, currentBreak)
+                        if(currentBreak > 0) p2Breaks.add(currentBreak)
+                        p1Fouls++
+                    }
+                    currentBreak = 0
+                    activePlayerId = if (activePlayerId == player1Id) player2Id ?: "" else player1Id
+                }
+                ShotType.SAFETY, ShotType.MISS -> {
+                    if (activePlayerId == player1Id) {
+                        p1Highest = maxOf(p1Highest, currentBreak)
+                        if(currentBreak > 0) p1Breaks.add(currentBreak)
+                    } else {
+                        p2Highest = maxOf(p2Highest, currentBreak)
+                        if(currentBreak > 0) p2Breaks.add(currentBreak)
+                    }
                     currentBreak = 0
                     activePlayerId = if (activePlayerId == player1Id) player2Id ?: "" else player1Id
                 }
             }
         }
-        if (activePlayerId == player1Id) p1Highest = maxOf(p1Highest, currentBreak)
-        else p2Highest = maxOf(p2Highest, currentBreak)
+        if (activePlayerId == player1Id) {
+            p1Highest = maxOf(p1Highest, currentBreak)
+            if(currentBreak > 0) p1Breaks.add(currentBreak)
+        } else {
+            p2Highest = maxOf(p2Highest, currentBreak)
+            if(currentBreak > 0) p2Breaks.add(currentBreak)
+        }
 
         val duration = if (frame.shots.isNotEmpty()) frame.shots.last().timestamp - frame.shots.first().timestamp else 0
 
-        return FrameStats(p1Highest, p2Highest, duration)
+        return AggregatedStats(
+            player1HighestBreak = p1Highest,
+            player2HighestBreak = p2Highest,
+            player1TotalPoints = frame.player1Points,
+            player2TotalPoints = frame.player2Points,
+            player1Fouls = p1Fouls,
+            player2Fouls = p2Fouls,
+            player1Breaks = p1Breaks,
+            player2Breaks = p2Breaks,
+            durationMillis = duration
+        )
     }
 }

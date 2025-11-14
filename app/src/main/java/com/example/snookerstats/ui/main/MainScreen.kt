@@ -59,7 +59,7 @@ fun MainScreen(
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    val screensWithoutBars = listOf("match_details/{matchId}")
+    val screensWithoutBars = listOf("match_details/{matchId}", "user_profile/{userId}", "manage_profile", "conversation/{chatId}")
     val showBars = currentDestination?.route !in screensWithoutBars
 
     LaunchedEffect(Unit) {
@@ -179,6 +179,7 @@ fun MainScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             NavigationGraph(
+                mainNavController = navController,
                 internalNavController = internalNavController,
                 ongoingMatch = ongoingMatch
             )
@@ -220,6 +221,7 @@ fun BottomNavigationBar(navController: NavController) {
 
 @Composable
 fun NavigationGraph(
+    mainNavController: NavController,
     internalNavController: NavHostController,
     ongoingMatch: Match?
 ) {
@@ -278,7 +280,7 @@ fun NavigationGraph(
                 defaultValue = null
             })
         ) {
-            UserProfileScreen(navController = internalNavController)
+            UserProfileScreen(navController = mainNavController) // Use main NavController
         }
         composable("manage_profile") {
             ManageProfileScreen(navController = internalNavController)

@@ -460,7 +460,7 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -471,11 +471,11 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onDeleteClick) {
-                    Icon(Icons.Default.Delete, contentDescription = "Usuń mecz")
+                IconButton(onClick = onDeleteClick, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Usuń mecz", modifier = Modifier.size(20.dp))
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -487,8 +487,8 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
                 ) {
-                    UserAvatar(user = item.player1, modifier = Modifier.size(48.dp))
-                    Spacer(modifier = Modifier.height(4.dp))
+                    UserAvatar(user = item.player1, modifier = Modifier.size(40.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = item.player1?.username ?: "Gracz 1",
                         style = MaterialTheme.typography.bodyLarge,
@@ -499,7 +499,7 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
                 // Score
                 Text(
                     text = "${item.p1FramesWon} - ${item.p2FramesWon}",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
@@ -509,8 +509,8 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.weight(1f)
                 ) {
-                    UserAvatar(user = item.player2, modifier = Modifier.size(48.dp))
-                    Spacer(modifier = Modifier.height(4.dp))
+                    UserAvatar(user = item.player2, modifier = Modifier.size(40.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = item.player2?.username ?: "Gracz 2",
                         style = MaterialTheme.typography.bodyLarge,
@@ -518,7 +518,7 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = item.match.matchType.name,
                 style = MaterialTheme.typography.labelSmall,

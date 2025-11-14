@@ -1,6 +1,6 @@
 # Specyfikacja Projektu: Aplikacja "Snooker Stats"
 
-## Wersja: 1.8 (stan na 2025-11-14)
+## Wersja: 1.9 (stan na 2025-11-14)
 
 ---
 
@@ -61,7 +61,8 @@ Lokalna baza danych **Room** będzie pełnić rolę **pamięci podręcznej (cach
     1.  **Mecz Online (Live):** Rozgrywka w czasie rzeczywistym ze sparing partnerem. Obaj gracze korzystają z współdzielonego ekranu do wprowadzania wyników uderzenie po uderzeniu.
     2.  **Mecz Lokalny (Solo lub z Gościem):** Możliwość samodzielnego wprowadzenia wyników meczu rozegranego offline.
 *   **Kategoryzacja Meczu:** Każdy mecz musi być oznaczony jako **Rankingowy** (liczony do oficjalnych statystyk) lub **Sparingowy** (towarzyski).
-*   **Współdzielona Historia:** Wynik meczu automatycznie pojawia się w historii obu graczy (jeśli obaj są użytkownikami aplikacji). Każdy z nich ma możliwość niezależnego usunięcia meczu ze swojego profilu.
+*   **Współdzielona Historia:** Wynik meczu automatycznie pojawia się w historii obu graczy (jeśli obaj są użytkownikami aplikacji).
+*   **Ukrywanie Meczów:** Każdy użytkownik ma możliwość "ukrycia" dowolnego meczu w swojej historii. Mecz taki znika tylko z jego widoku, pozostając widocznym dla przeciwnika. Jest to realizowane przez dodanie ID użytkownika do listy `hiddenFor` w dokumencie meczu.
 *   **Format Gry:** Przed rozpoczęciem meczu użytkownik będzie mógł wybrać liczbę czerwonych bil (15, 10, 6, 3).
 *   **Historia Uderzeń:** Aplikacja będzie zapisywać każde uderzenie w meczu (bila, czas, punkty), aby umożliwić szczegółową analizę i odtwarzanie przebiegu gry.
 
@@ -103,7 +104,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 *   **Górny Pasek Aplikacji (`TopAppBar`):** Zawiera tytuł aplikacji. Będzie również zawierał ikony akcji, takie jak **Wiadomości (Czat)**, **Profil** i **Wyloguj**.
 *   **Dolny Pasek Nawigacyjny (`BottomNavigationBar`):** Główna nawigacja między kluczowymi sekcjami (Dashboard, Graj, Historia, Statystyki, Ludzie, Profil).
 *   **Obszar Treści:** Centralna część ekranu, w której wyświetlana jest zawartość.
-*   **Menu Zakładek (`TabRow`):** W przypadku złożonych ekranów (takich jak Społeczność), do dalszej organizacji treści będzie używany system zakadek umieszczony pod `TopAppBar`. Szczegółowy opis tego wzorca znajduje się w odpowiedniej specyfikacji modułu.
+*   **Menu Zakładek (`TabRow`):** W przypadku złożonych ekranów (takich jak Społeczność czy Graj), do dalszej organizacji treści będzie używany system zakadek umieszczony pod `TopAppBar`. Szczegółowy opis tego wzorca znajduje się w odpowiedniej specyfikacji modułu.
 *   **Potwierdzenia Akcji (Snackbar):** Zaimplementowano globalny `SnackbarManager`, który pozwala na wyświetlanie krótkich komunikatów na dole ekranu, potwierdzających wykonanie akcji (np. "Wysłano zaproszenie").
 
 ### 4.3. Priorytety Projektowe
@@ -146,55 +147,44 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 ### Etap 3: Szkielet UI i Nawigacja Główna
 - [x] Implementacja głównego ekranu z `Scaffold`.
 - [x] Implementacja `BottomNavigationBar`, która umożliwia nawigację między głównymi sekcjami aplikacji.
-- [x] **Uproszczony przepływ gry:** Kliknięcie zakładek "Gość" lub "Trening" w sekcji "Graj" **bezpośrednio przenosi** użytkownika do ekranu konfiguracji meczu (`MatchSetupScreen`), pomijając zbędne ekrany pośrednie.
-- [x] Stworzenie pustych ekranów dla każdej sekcji (`HomeScreen`, `PlayScreen`, `MatchHistoryScreen`, `StatsScreen`, `CommunityScreen`, `ProfileScreen`, `ChatListScreen`).
+- [x] **Refaktoryzacja ekranu "Graj":** Przepływ rozpoczynania meczu został ujednolicony. Ekran "Graj" zawiera teraz dynamiczne zakładki "Gracze", "Gość" i "Trening", których zawartość wyświetlana jest bezpośrednio, bez przechodzenia do osobnych ekranów.
+- [x] Stworzenie pustych ekranów dla każdej sekcji.
 - [x] Implementacja nawigacji do ekranu profilu oraz akcji wylogowania w `TopAppBar`.
 - [x] W formularzu logowania (`LoginScreen.kt`) zaimplementowano obsługę klawiatury.
 - [x] Zaimplementowano funkcję "Zapamiętaj mnie" (automatyczne wypełnianie formularza).
 
-### Etap 4: Modele Danych i Baza Lokalna (ZREALIZOWANO)
-- [x] **Zdefiniowanie Modeli Danych:** Stworzono klasy `data class` dla `User`, `Shot`, `Frame` i `Match` w pakiecie `domain/model`. Zastosowano następujące pola:
-    *   `User`: `uid` (PrimaryKey), `username`, `email`, `publicProfile`, `club?`, `profileImageUrl?`, `friends: List<String>`, `friendRequestsSent: List<String>`, `friendRequestsReceived: List<String>`.
-    *   `Shot`: `id` (PrimaryKey, autoGenerate), `frameId`, `timestamp`, `ball`, `points`, `isFoul`.
-    *   `Frame`: `id` (PrimaryKey, autoGenerate), `matchId`, `frameNumber`, `player1Points`, `player2Points`, `shots: List<Shot>`.
-    *   `Match`: `id: String` (unikalny identyfikator), `player1Id: String`, `player2Id: String?` (opcjonalny, np. dla treningu solo), `date: Long`, `matchType: String` (np. "RANKING", "SPARRING"), `numberOfReds: Int`, `status: String` (np. "IN_PROGRESS", "COMPLETED"), `frames: List<Frame>`.
+### Etap 4: Modele Danych i Baza Lokalna
+- [x] **Zdefiniowanie Modeli Danych:** Stworzono klasy `data class` dla `User`, `Shot`, `Frame` i `Match`. Do klasy `Match` dodano pole `hiddenFor: List<String>` w celu obsługi ukrywania meczy.
 - [x] **Konfiguracja Bazy Danych Room:**
-    *   **Encje:** Klasy `User`, `Match` i `Frame` zostały oznaczone jako encje (`@Entity`). Klasa `Shot` jest używana jako obiekt osadzony w `Frame` za pomocą `TypeConverter`.
-    *   **Konwertery Typów (`TypeConverter`):** Stworzono `Converters.kt` (`data/local/Converters.kt`) z użyciem biblioteki Gson do serializacji/deserializacji `List<String>`, `List<Shot>` i `List<Frame>` na format JSON, co umożliwia ich przechowywanie w Room. Zależność `com.google.code.gson:gson` została dodana do projektu.
-    *   **DAO (Data Access Objects):** Stworzono interfejsy `UserDao.kt` i `MatchDao.kt` (`data/local/dao`) z podstawowymi operacjami CRUD oraz zapytaniami do pobierania danych.
-    *   **Klasa Bazy Danych:** Stworzono główną klasę `SnookerStatsDatabase.kt` (`data/local`) z adnotacją `@Database` i podłączeniem `TypeConverter`.
-    *   **Hilt Module dla Room:** Stworzono `DatabaseModule.kt` (`di`) do dostarczania instancji bazy danych i DAO.
+    *   **Encje:** Klasy `User`, `Match` i `Frame` zostały oznaczone jako encje (`@Entity`).
+    *   **Konwertery Typów (`TypeConverter`):** Stworzono `Converters.kt` do obsługi typów złożonych.
+    *   **DAO (Data Access Objects):** Stworzono interfejsy `UserDao.kt` i `MatchDao.kt`.
+    *   **Klasa Bazy Danych:** Stworzono główną klasę `SnookerStatsDatabase.kt` i podniesiono jej wersję w celu odzwierciedlenia zmian w schemacie.
+    *   **Hilt Module dla Room:** Stworzono `DatabaseModule.kt` do dostarczania instancji bazy danych i DAO.
 
-### Etap 5: Funkcje Społecznościowe (W TRAKCIE)
+### Etap 5: Funkcje Społecznościowe
 *   **Cel:** Implementacja kluczowych funkcji społecznościowych, które pozwolą użytkownikom na interakcję i budowanie sieci kontaktów w aplikacji.
 *   **Status:** Główne funkcjonalności zostały zaimplementowane i są w fazie testów/dopracowywania.
 *   **Zrealizowane zadania:**
-    *   [x] **Wyszukiwarka graczy i profil publiczny:**
-        *   [x] Gruntowna przebudowa UI ekranu profilu (`UserProfileScreen`) z dynamicznymi akcjami i nowym layoutem.
-        *   [x] Implementacja wyszukiwarki graczy (zapytania do Firestore).
-        *   [x] Dopracowanie logiki widoczności profili (publiczny/prywatny) i statystyk.
-    *   [x] **System zaproszeń do znajomych:**
-        *   [x] Pełna implementacja logiki wysyłania, akceptowania, odrzucania, anulowania zaproszeń i usuwania znajomych.
-        *   [x] Funkcjonalność dostępna zarówno z poziomu zakładki "Zaproszenia", jak i bezpośrednio z ekranu profilu użytkownika.
-    *   [x] **Lista znajomych:**
-        *   [x] Implementacja zakładki "Znajomi" do wyświetlania listy połączonych użytkowników.
-    *   [x] **Zarządzanie profilem:**
-        *   [x] Stworzenie dedykowanego ekranu `ManageProfileScreen`.
-        *   [x] Implementacja funkcji zmiany statusu profilu (publiczny/prywatny).
+    *   [x] **Wyszukiwarka graczy i profil publiczny.**
+    *   [x] **System zaproszeń do znajomych.**
+    *   [x] **Lista znajomych.**
+    *   [x] **Zarządzanie profilem.**
 *   **Pozostałe zadania w ramach etapu:**
     *   [ ] **Ekran porównania statystyk Head-to-Head.**
     *   [ ] **Implementacja systemu czatu.**
 
-### Etap 6: Rdzeń Aplikacji - Zapis Meczu Lokalnego (NOWY ETAP)
+### Etap 6: Rdzeń Aplikacji - Zapis Meczu Lokalnego
 *   **Cel:** Umożliwienie użytkownikom zapisywania wyników meczów lokalnie.
 *   **Wymagania:** Zakończony Etap 4 (Modele Danych) i Etap 5 (Fundamenty społecznościowe).
-*   **Kolejność prac w ramach etapu:**
+*   **Zrealizowane zadania:**
     *   [x] UI ekranu wprowadzania wyniku (shot-by-shot).
     *   [x] ViewModel (`ScoringViewModel`) zarządzający stanem meczu.
-    *   [x] Logika zapisu meczu do Room i Firestore, w tym obsługa graczy-gości.
+    *   [x] Logika zapisu meczu do Room i Firestore, w tym pełna obsługa graczy-gości.
 
 ### Etap 7: Wyświetlanie Danych
 - [x] Ekran historii meczy (`MatchHistoryScreen`) z poprawną obsługą graczy-gości.
+- [x] Funkcja ukrywania meczy z poziomu historii.
 - [x] Ekran szczegółów meczu (`MatchDetailsScreen`) z poprawną obsługą graczy-gości.
 - [ ] Dashboard z podstawowymi statystykami.
 
@@ -209,7 +199,7 @@ Aplikacja będzie oparta o jasny, czysty i profesjonalny wygląd, z opcją dodan
 - [ ] Interfejs do wprowadzania wyników i aktualizacji drabinki.
 
 ### Etap 10: Funkcje Zaawansowane i Grywalizacja
-- [ ] Implementacja Modułu Treningowego.
+- [ ] Implementacja Modułu Treningowego (stworzono szkielet UI).
 - [ ] System przyznawania Odznak, Osiągnięć i Pucharów.
 - [ ] Zbudowanie rozbudowanych Rankingów.
 
@@ -304,7 +294,7 @@ Etap 3 został w pełni zrealizowany. Wprowadzono następujące elementy:
 
 4.  **Klasa `Match` (Mecz):**
     *   **Zadanie:** Stworzono `data class Match`.
-    *   **Pola:** `id: String` (unikalny identyfikator), `player1Id: String`, `player2Id: String?` (opcjonalny, np. dla treningu solo, lub w formacie `guest_ImięGościa` dla graczy spoza systemu), `date: Long`, `matchType: String` (np. "RANKING", "SPARRING"), `numberOfReds: Int`, `status: String` (np. "IN_PROGRESS", "COMPLETED"), `frames: List<Frame>`.
+    *   **Pola:** `id: String` (unikalny identyfikator), `player1Id: String`, `player2Id: String?` (opcjonalny, np. dla treningu solo, lub w formacie `guest_ImięGościa` dla graczy spoza systemu), `date: Long`, `matchType: String` (np. "RANKING", "SPARRING"), `numberOfReds: Int`, `status: String` (np. "IN_PROGRESS", "COMPLETED"), `frames: List<Frame>`, `hiddenFor: List<String>`.
     *   **Lokalizacja:** `domain/model/Match.kt`.
 
 **B. Konfiguracja Bazy Danych Room**

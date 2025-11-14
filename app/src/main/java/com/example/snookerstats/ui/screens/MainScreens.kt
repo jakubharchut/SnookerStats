@@ -15,16 +15,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.snookerstats.domain.model.Match
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.navigation.BottomNavItem
+import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -59,19 +63,14 @@ fun PlayScreen(
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTabIndex == index,
-                        onClick = {
-                            if (index == 1) { // "Gość" always navigates
-                                navController.navigate("match_setup/guest")
-                            } else {
-                                selectedTabIndex = index
-                            }
-                        },
+                        onClick = { selectedTabIndex = index },
                         text = { Text(title) }
                     )
                 }
             }
             when (selectedTabIndex) {
                 0 -> PlayerTabContent(navController = navController)
+                1 -> GuestTabContent(navController = navController)
                 2 -> TrainingScreen(navController = navController)
                 3 -> TournamentTabContent()
             }
@@ -232,6 +231,83 @@ fun PlayerListItem(
             }
         }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GuestTabContent(navController: NavController, viewModel: MatchSetupViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(Unit) {
+        viewModel.loadOpponentDetails("guest")
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.navigationEvent.collectLatest { route ->
+                navController.navigate(route)
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Mecz z Gościem", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 32.dp, bottom = 24.dp))
+            OutlinedTextField(
+                value = uiState.guestName,
+                onValueChange = viewModel::onGuestNameChange,
+                label = { Text("Imię gościa") },
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Match Type Section
+            Text("Rodzaj Meczu", style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                    onClick = { viewModel.onMatchTypeChange(MatchType.SPARRING) },
+                    selected = uiState.matchType == MatchType.SPARRING
+                ) { Text("Sparingowy") }
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                    onClick = { viewModel.onMatchTypeChange(MatchType.RANKING) },
+                    selected = uiState.matchType == MatchType.RANKING
+                ) { Text("Rankingowy") }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Match Format Section
+            Text("Format Meczu (liczba czerwonych)", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(8.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                MatchFormat.values().forEachIndexed { index, format ->
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = MatchFormat.values().size),
+                        onClick = { viewModel.onMatchFormatChange(format) },
+                        selected = uiState.matchFormat == format
+                    ) { Text(format.reds.toString()) }
+                }
+            }
+        }
+
+        Button(
+            onClick = viewModel::onStartMatchClicked,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            enabled = !(uiState.opponentType is OpponentType.GUEST && uiState.guestName.isBlank())
+        ) {
+            Text("Rozpocznij Mecz", style = MaterialTheme.typography.titleMedium)
+        }
+    }
 }
 
 @Composable

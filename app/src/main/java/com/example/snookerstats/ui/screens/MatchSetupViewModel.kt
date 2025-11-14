@@ -49,18 +49,17 @@ class MatchSetupViewModel @Inject constructor(
     private val _navigationEvent = Channel<String>()
     val navigationEvent = _navigationEvent.receiveAsFlow()
 
-    private val opponentId: String? = savedStateHandle.get<String>("opponentId")
-
     init {
-        loadOpponentDetails()
+        savedStateHandle.get<String>("opponentId")?.let {
+            loadOpponentDetails(it)
+        }
     }
 
-    private fun loadOpponentDetails() {
+    fun loadOpponentDetails(opponentId: String) {
         viewModelScope.launch {
             when (opponentId) {
                 "solo" -> _uiState.value = _uiState.value.copy(opponentType = OpponentType.SOLO)
                 "guest" -> _uiState.value = _uiState.value.copy(opponentType = OpponentType.GUEST)
-                null -> { /* Handle error or default state */ }
                 else -> {
                     when(val result = userRepository.getUser(opponentId)) {
                         is Resource.Success -> {
@@ -102,7 +101,7 @@ class MatchSetupViewModel @Inject constructor(
                 date = System.currentTimeMillis(),
                 matchType = com.example.snookerstats.domain.model.MatchType.valueOf(currentState.matchType.name),
                 numberOfReds = currentState.matchFormat.reds,
-                status = MatchStatus.IN_PROGRESS, // ZAWSZE IN_PROGRESS
+                status = MatchStatus.IN_PROGRESS,
                 frames = emptyList()
             )
 

@@ -236,12 +236,6 @@ fun NavigationGraph(
         composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen(navController = internalNavController) }
         composable(BottomNavItem.Stats.route) { StatsScreen() }
         composable(
-            route = "match_setup/{opponentId}",
-            arguments = listOf(navArgument("opponentId") { type = NavType.StringType })
-        ) {
-            MatchSetupScreen(navController = internalNavController)
-        }
-        composable(
             route = "scoring/{matchId}/{numberOfReds}",
             arguments = listOf(
                 navArgument("matchId") { type = NavType.StringType },

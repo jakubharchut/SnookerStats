@@ -1,6 +1,6 @@
 # Specyfikacja Modułu: Mechanika Gry
 
-## Wersja: 1.2 (stan na 2025-11-10)
+## Wersja: 1.3 (stan na 2025-11-14)
 
 ---
 
@@ -19,7 +19,7 @@ Aby zapewnić elastyczność i intuicyjność, zdefiniowano dwie główne ście�
 Jest to najszybsza, kontekstowa metoda rozpoczęcia gry z konkretnym przeciwnikiem.
 
 1.  Użytkownik wchodzi na profil innego gracza.
-2.  Klika przycisk **"Zagraj"**.
+2.  Klika przycisk **"Rozpocznij mecz"** w karcie "Interakcje".
 3.  Następuje bezpośrednie przejście do ekranu **`MatchSetupScreen`**, z automatycznie wybranym przeciwnikiem.
 
 ### 2.2. Ścieżka 2: Inicjowanie z Zakładki "Graj"
@@ -33,13 +33,13 @@ Jest to główna, centralna ścieżka, która obsługuje wszystkie możliwe scen
     4.  Po wybraniu gracza z listy, użytkownik przechodzi do `MatchSetupScreen`.
 
 - **Zakładka "Gość":**
-    1.  Pozwala na rozpoczęcie gry z przeciwnikiem, który nie ma konta w aplikacji.
-    2.  Przenosi do `MatchSetupScreen`, gdzie należy wpisać imię gościa.
+    1.  Umożliwia rozpoczęcie gry z przeciwnikiem, który nie ma konta w aplikacji.
+    2.  Po kliknięciu, użytkownik jest **bezpośrednio przenoszony** do ekranu `MatchSetupScreen` w trybie gry z gościem.
 
 - **Zakładka "Trening":**
     1.  Umożliwia rozpoczęcie gry solo.
-    2.  Przenosi do `MatchSetupScreen` w trybie treningu.
-    
+    2.  Po kliknięciu, użytkownik jest **bezpośrednio przenoszony** do `MatchSetupScreen` w trybie treningu.
+
 - **Zakładka "Turniej":**
     1.  Placeholder dla przyszłej funkcjonalności turniejowej.
 
@@ -51,7 +51,8 @@ Jest to centralny punkt konfiguracji gry, niezależnie od ścieżki, którą wyb
 - **Konfiguracja:**
     - **Rodzaj Meczu:** Sparingowy / Rankingowy.
     - **Format Meczu:** Liczba czerwonych bil (15, 10, 6, 3).
-- **Rozpoczęcie Gry:** Przycisk "Rozpocznij Mecz" przenosi do `ScoringScreen` z przekazaniem wybranej liczby czerwonych jako argument nawigacji.
+- **Rozpoczęcie Gry:** Przycisk "Rozpocznij Mecz" przenosi do `ScoringScreen`.
+    - **ID Gościa:** W przypadku gry z gościem, jego unikalny identyfikator (`player2Id`) jest zapisywany w formacie `guest_ImięWpisanePrzezUżytkownika`.
 
 ---
 

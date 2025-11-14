@@ -49,36 +49,47 @@ class MatchDetailsViewModel @Inject constructor(
 
             matchRepository.getMatchStream(matchId).collect { match ->
                 if (match != null) {
-                    val player1Res = userRepository.getUser(match.player1Id)
-                    val player2Res = match.player2Id?.let { userRepository.getUser(it) }
+                    val p1Resource = userRepository.getUser(match.player1Id)
+                    val player1 = if (p1Resource is Resource.Success) p1Resource.data else null
 
-                    val player1 = (player1Res as? Resource.Success)?.data
-                    val player2 = (player2Res as? Resource.Success)?.data
-
-                    val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
-                    val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
-
-                    val frameDetails = mutableMapOf<Int, FrameStats>()
-                    val frameHistories = mutableMapOf<Int, List<FrameShotHistory>>()
-
-                    match.frames.forEach { frame ->
-                        frameDetails[frame.frameNumber] = calculateFrameStats(frame, match.player1Id, match.player2Id)
-                        frameHistories[frame.frameNumber] = generateFrameHistory(frame, match.player1Id, match.player2Id)
+                    val player2: User? = if (match.player2Id?.startsWith("guest_") == true) {
+                        val guestName = match.player2Id.removePrefix("guest_")
+                        User(uid = match.player2Id, username = guestName, firstName = guestName, lastName = "")
+                    } else {
+                        match.player2Id?.let {
+                            val p2Resource = userRepository.getUser(it)
+                            if (p2Resource is Resource.Success) p2Resource.data else null
+                        }
                     }
 
-                    val displayItem = MatchHistoryDisplayItem(
-                        match = match,
-                        player1 = player1,
-                        player2 = player2,
-                        p1FramesWon = p1FramesWon,
-                        p2FramesWon = p2FramesWon
-                    )
-                    _uiState.value = MatchDetailsUiState(
-                        matchItem = displayItem,
-                        isLoading = false,
-                        frameDetails = frameDetails,
-                        frameHistories = frameHistories
-                    )
+                    if (player1 != null) {
+                        val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
+                        val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
+
+                        val frameDetails = mutableMapOf<Int, FrameStats>()
+                        val frameHistories = mutableMapOf<Int, List<FrameShotHistory>>()
+
+                        match.frames.forEach { frame ->
+                            frameDetails[frame.frameNumber] = calculateFrameStats(frame, match.player1Id, match.player2Id)
+                            frameHistories[frame.frameNumber] = generateFrameHistory(frame, match.player1Id, match.player2Id)
+                        }
+
+                        val displayItem = MatchHistoryDisplayItem(
+                            match = match,
+                            player1 = player1,
+                            player2 = player2,
+                            p1FramesWon = p1FramesWon,
+                            p2FramesWon = p2FramesWon
+                        )
+                        _uiState.value = MatchDetailsUiState(
+                            matchItem = displayItem,
+                            isLoading = false,
+                            frameDetails = frameDetails,
+                            frameHistories = frameHistories
+                        )
+                    } else {
+                        _uiState.value = MatchDetailsUiState(isLoading = false, error = "Nie znaleziono gracza 1")
+                    }
                 } else {
                     _uiState.value = MatchDetailsUiState(isLoading = false, error = "Nie znaleziono meczu")
                 }

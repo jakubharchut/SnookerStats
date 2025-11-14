@@ -3,10 +3,14 @@ package com.example.snookerstats.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Match
+import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -28,24 +32,41 @@ class MatchHistoryViewModel @Inject constructor(
     private fun loadMatchHistory() {
         viewModelScope.launch {
             matchRepository.getAllMatchesStream().collect { matches ->
-                val displayItems = matches.mapNotNull { match ->
-                    val player1Res = userRepository.getUser(match.player1Id)
-                    val player2Res = match.player2Id?.let { userRepository.getUser(it) }
+                val displayItems = coroutineScope {
+                    matches.map { match ->
+                        async {
+                            // Correctly call the suspend function to get the Resource for Player 1
+                            val p1Resource = userRepository.getUser(match.player1Id)
+                            val player1 = if (p1Resource is Resource.Success) p1Resource.data else null
 
-                    val player1 = (player1Res as? Resource.Success)?.data
-                    val player2 = (player2Res as? Resource.Success)?.data
+                            // Handle guest or fetch player 2
+                            val player2: User? = if (match.player2Id?.startsWith("guest_") == true) {
+                                val guestName = match.player2Id.removePrefix("guest_")
+                                User(uid = match.player2Id, username = guestName, firstName = guestName, lastName = "")
+                            } else {
+                                match.player2Id?.let {
+                                    // Correctly call the suspend function for Player 2
+                                    val p2Resource = userRepository.getUser(it)
+                                    if (p2Resource is Resource.Success) p2Resource.data else null
+                                }
+                            }
 
-                    // Calculate frame wins
-                    val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
-                    val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
-
-                    MatchHistoryDisplayItem(
-                        match = match,
-                        player1 = player1,
-                        player2 = player2,
-                        p1FramesWon = p1FramesWon,
-                        p2FramesWon = p2FramesWon
-                    )
+                            // Create the display item if player1 was found
+                            if (player1 != null) {
+                                val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
+                                val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
+                                MatchHistoryDisplayItem(
+                                    match = match,
+                                    player1 = player1,
+                                    player2 = player2,
+                                    p1FramesWon = p1FramesWon,
+                                    p2FramesWon = p2FramesWon
+                                )
+                            } else {
+                                null // This item will be filtered out later
+                            }
+                        }
+                    }.awaitAll().filterNotNull() // Await all async calls and remove any nulls
                 }
                 _matches.value = displayItems.sortedByDescending { it.match.date }
             }

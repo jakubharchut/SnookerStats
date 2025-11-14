@@ -59,15 +59,19 @@ fun PlayScreen(
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
+                        onClick = {
+                            when (index) {
+                                1 -> navController.navigate("match_setup/guest")
+                                2 -> navController.navigate("match_setup/solo")
+                                else -> selectedTabIndex = index
+                            }
+                        },
                         text = { Text(title) }
                     )
                 }
             }
             when (selectedTabIndex) {
                 0 -> PlayerTabContent(navController = navController)
-                1 -> GuestTabContent(navController = navController)
-                2 -> TrainingTabContent(navController = navController)
                 3 -> TournamentTabContent()
             }
         }
@@ -227,33 +231,6 @@ fun PlayerListItem(
             }
         }
     )
-}
-
-
-@Composable
-fun GuestTabContent(navController: NavController) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Button(onClick = { navController.navigate("match_setup/guest") }) {
-            Text("Graj z gościem")
-        }
-    }
-}
-
-@Composable
-fun TrainingTabContent(navController: NavController) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Button(onClick = { navController.navigate("match_setup/solo") }) {
-            Text("Graj solo (trening)")
-        }
-    }
 }
 
 @Composable

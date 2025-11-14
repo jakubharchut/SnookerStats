@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.SnookerBall
+import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import kotlinx.coroutines.flow.collectLatest
 
@@ -139,7 +140,7 @@ fun ScoringScreen(
             onFreeBallClick = viewModel::onFreeBallClicked
         )
         Spacer(modifier = Modifier.weight(1f))
-        
+
         FrameAndMatchActions(
             onEndFrameClick = viewModel::onEndFrameClicked,
             onRepeatFrameClick = viewModel::onRepeatFrameClicked,
@@ -217,7 +218,7 @@ private fun FreeBallDialog(onDismiss: () -> Unit, onConfirm: (SnookerBall, Int) 
                 }
             }
         },
-        confirmButton = { 
+        confirmButton = {
             Button(
                 onClick = { onConfirm(selectedBall!!, points) },
                 enabled = selectedBall != null
@@ -369,16 +370,19 @@ private fun Scoreboard(
 @Composable
 private fun PlayerInfo(player: PlayerState?, modifier: Modifier = Modifier) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
+        val isGuest = player?.user?.uid?.startsWith("guest_") == true
         Text(
-            text = "${player?.user?.firstName ?: "Gracz"} ${player?.user?.lastName ?: ""}",
+            text = if (isGuest) player?.user?.username ?: "Gość" else "${player?.user?.firstName ?: "Gracz"} ${player?.user?.lastName ?: ""}",
             style = MaterialTheme.typography.titleMedium,
             maxLines = 1
         )
-        Text(
-            text = "@${player?.user?.username ?: "..."}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (!isGuest) {
+            Text(
+                text = "@${player?.user?.username ?: "..."}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Text(
             text = (player?.score ?: 0).toString(),
             style = MaterialTheme.typography.headlineLarge,

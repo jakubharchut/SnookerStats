@@ -22,6 +22,7 @@ data class MatchDetailsUiState(
 )
 
 data class AggregatedStats(
+    // Base stats
     val player1HighestBreak: Int,
     val player2HighestBreak: Int,
     val player1TotalPoints: Int,
@@ -30,10 +31,30 @@ data class AggregatedStats(
     val player2Fouls: Int,
     val player1Breaks: List<Int>,
     val player2Breaks: List<Int>,
-    val durationMillis: Long
+    val durationMillis: Long,
+
+    // Raw data for calculations
+    val player1Pots: Int,
+    val player2Pots: Int,
+    val player1Misses: Int,
+    val player2Misses: Int,
+    val player1Visits: Int,
+    val player2Visits: Int
 ) {
     val player1AverageBreak: Double get() = if (player1Breaks.isNotEmpty()) player1Breaks.average() else 0.0
     val player2AverageBreak: Double get() = if (player2Breaks.isNotEmpty()) player2Breaks.average() else 0.0
+
+    val player1PotSuccess: Double get() {
+        val totalAttempts = player1Pots + player1Misses
+        return if (totalAttempts > 0) (player1Pots.toDouble() / totalAttempts) * 100 else 0.0
+    }
+    val player2PotSuccess: Double get() {
+        val totalAttempts = player2Pots + player2Misses
+        return if (totalAttempts > 0) (player2Pots.toDouble() / totalAttempts) * 100 else 0.0
+    }
+
+    val player1PointsPerVisit: Double get() = if (player1Visits > 0) player1TotalPoints.toDouble() / player1Visits else 0.0
+    val player2PointsPerVisit: Double get() = if (player2Visits > 0) player2TotalPoints.toDouble() / player2Visits else 0.0
 }
 
 data class FrameShotHistory(
@@ -109,19 +130,30 @@ class MatchDetailsViewModel @Inject constructor(
             }
         }
     }
-    
+
     private fun calculateMatchStats(frameDetails: Map<Int, AggregatedStats>): AggregatedStats {
         val allStats = frameDetails.values
+        val p1TotalPoints = allStats.sumOf { it.player1TotalPoints }
+        val p2TotalPoints = allStats.sumOf { it.player2TotalPoints }
+        val p1Visits = allStats.sumOf { it.player1Visits }
+        val p2Visits = allStats.sumOf { it.player2Visits }
+
         return AggregatedStats(
             player1HighestBreak = allStats.maxOfOrNull { it.player1HighestBreak } ?: 0,
             player2HighestBreak = allStats.maxOfOrNull { it.player2HighestBreak } ?: 0,
-            player1TotalPoints = allStats.sumOf { it.player1TotalPoints },
-            player2TotalPoints = allStats.sumOf { it.player2TotalPoints },
+            player1TotalPoints = p1TotalPoints,
+            player2TotalPoints = p2TotalPoints,
             player1Fouls = allStats.sumOf { it.player1Fouls },
             player2Fouls = allStats.sumOf { it.player2Fouls },
             player1Breaks = allStats.flatMap { it.player1Breaks },
             player2Breaks = allStats.flatMap { it.player2Breaks },
-            durationMillis = allStats.sumOf { it.durationMillis }
+            durationMillis = allStats.sumOf { it.durationMillis },
+            player1Pots = allStats.sumOf { it.player1Pots },
+            player2Pots = allStats.sumOf { it.player2Pots },
+            player1Misses = allStats.sumOf { it.player1Misses },
+            player2Misses = allStats.sumOf { it.player2Misses },
+            player1Visits = p1Visits,
+            player2Visits = p2Visits
         )
     }
 
@@ -163,47 +195,78 @@ class MatchDetailsViewModel @Inject constructor(
         var p2Fouls = 0
         val p1Breaks = mutableListOf<Int>()
         val p2Breaks = mutableListOf<Int>()
+        var p1Pots = 0
+        var p2Pots = 0
+        var p1Misses = 0
+        var p2Misses = 0
+        var p1Visits = 0
+        var p2Visits = 0
 
         var currentBreak = 0
         var activePlayerId = player1Id
+
+        if (frame.shots.isNotEmpty()) {
+            p1Visits = 1 // The first player always starts with one visit
+        }
 
         for (shot in frame.shots) {
             when (shot.type) {
                 ShotType.POTTED, ShotType.FREE_BALL_POTTED -> {
                     currentBreak += shot.points
+                    if (activePlayerId == player1Id) p1Pots++ else p2Pots++
                 }
                 ShotType.FOUL -> {
                     if (activePlayerId == player1Id) {
                         p1Highest = maxOf(p1Highest, currentBreak)
-                        if(currentBreak > 0) p1Breaks.add(currentBreak)
-                        p2Fouls++
+                        if (currentBreak > 0) p1Breaks.add(currentBreak)
+                        p1Fouls++
                     } else {
                         p2Highest = maxOf(p2Highest, currentBreak)
-                        if(currentBreak > 0) p2Breaks.add(currentBreak)
-                        p1Fouls++
+                        if (currentBreak > 0) p2Breaks.add(currentBreak)
+                        p2Fouls++
                     }
                     currentBreak = 0
-                    activePlayerId = if (activePlayerId == player1Id) player2Id ?: "" else player1Id
+                    activePlayerId = if (activePlayerId == player1Id) {
+                        p2Visits++
+                        player2Id ?: ""
+                    } else {
+                        p1Visits++
+                        player1Id
+                    }
                 }
                 ShotType.SAFETY, ShotType.MISS -> {
+                    if (shot.type == ShotType.MISS) {
+                        if (activePlayerId == player1Id) p1Misses++ else p2Misses++
+                    }
+
                     if (activePlayerId == player1Id) {
                         p1Highest = maxOf(p1Highest, currentBreak)
-                        if(currentBreak > 0) p1Breaks.add(currentBreak)
+                        if (currentBreak > 0) p1Breaks.add(currentBreak)
                     } else {
                         p2Highest = maxOf(p2Highest, currentBreak)
-                        if(currentBreak > 0) p2Breaks.add(currentBreak)
+                        if (currentBreak > 0) p2Breaks.add(currentBreak)
                     }
                     currentBreak = 0
-                    activePlayerId = if (activePlayerId == player1Id) player2Id ?: "" else player1Id
+                    activePlayerId = if (activePlayerId == player1Id) {
+                        p2Visits++
+                        player2Id ?: ""
+                    } else {
+                        p1Visits++
+                        player1Id
+                    }
                 }
             }
         }
-        if (activePlayerId == player1Id) {
-            p1Highest = maxOf(p1Highest, currentBreak)
-            if(currentBreak > 0) p1Breaks.add(currentBreak)
-        } else {
-            p2Highest = maxOf(p2Highest, currentBreak)
-            if(currentBreak > 0) p2Breaks.add(currentBreak)
+
+        // Capture the last break of the frame
+        if (currentBreak > 0) {
+            if (activePlayerId == player1Id) {
+                p1Highest = maxOf(p1Highest, currentBreak)
+                p1Breaks.add(currentBreak)
+            } else {
+                p2Highest = maxOf(p2Highest, currentBreak)
+                p2Breaks.add(currentBreak)
+            }
         }
 
         val duration = if (frame.shots.isNotEmpty()) frame.shots.last().timestamp - frame.shots.first().timestamp else 0
@@ -217,7 +280,13 @@ class MatchDetailsViewModel @Inject constructor(
             player2Fouls = p2Fouls,
             player1Breaks = p1Breaks,
             player2Breaks = p2Breaks,
-            durationMillis = duration
+            durationMillis = duration,
+            player1Pots = p1Pots,
+            player2Pots = p2Pots,
+            player1Misses = p1Misses,
+            player2Misses = p2Misses,
+            player1Visits = p1Visits,
+            player2Visits = p2Visits
         )
     }
 }

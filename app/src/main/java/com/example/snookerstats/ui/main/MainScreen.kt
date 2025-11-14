@@ -280,7 +280,7 @@ fun NavigationGraph(
                 defaultValue = null
             })
         ) {
-            UserProfileScreen(navController = mainNavController) // Use main NavController
+            UserProfileScreen(navController = internalNavController)
         }
         composable("manage_profile") {
             ManageProfileScreen(navController = internalNavController)

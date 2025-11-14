@@ -144,7 +144,7 @@ private fun UserProfileContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         ActionButtons(status = status, onActionClick = onActionClick, onRejectClick = onRejectClick, onChatClick = onChatClick, onPlayClick = {
-            navController.navigate("match_setup/${user.uid}")
+            navController.navigate("play?opponentId=${user.uid}")
         })
         Spacer(modifier = Modifier.height(24.dp))
 

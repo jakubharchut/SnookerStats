@@ -44,6 +44,7 @@ data class ScoringState(
     val showRepeatFrameDialog: Boolean = false,
     val showEndMatchDialog: Boolean = false,
     val showFrameOverDialog: Boolean = false,
+    val showAbandonFrameDialog: Boolean = false,
     val frameWinnerName: String? = null,
     val frameEndScore: String? = null,
     val isLoading: Boolean = true,
@@ -534,18 +535,32 @@ class ScoringViewModel @Inject constructor(
         val p2Score = state.player2?.score ?: 0
         val pointsRemaining = state.pointsRemaining
 
+        if (p1Score == 0 && p2Score == 0) {
+            _uiState.update { it.copy(showAbandonFrameDialog = true) }
+            return
+        }
+
         if (p1Score == p2Score) {
-            snackbarManager.showMessage("Nie można zakończyć frejma przy remisie.")
+            _uiState.update { it.copy(showAbandonFrameDialog = true) }
             return
         }
 
         if (abs(p1Score - p2Score) < pointsRemaining) {
-            snackbarManager.showMessage("Zakończenie niemożliwe, za mało punktów przewagi.")
+            _uiState.update { it.copy(showAbandonFrameDialog = true) }
             return
         }
 
         _uiState.update { it.copy(isFrameOver = true) }
         showFrameOverDialog()
+    }
+    
+    fun onDismissAbandonFrameDialog() {
+        _uiState.update { it.copy(showAbandonFrameDialog = false) }
+    }
+    
+    fun onAbandonFrameConfirmed() {
+        onRepeatFrameConfirmed()
+        _uiState.update { it.copy(showAbandonFrameDialog = false) }
     }
 
     fun onRepeatFrameClicked() {
@@ -574,18 +589,8 @@ class ScoringViewModel @Inject constructor(
     }
 
     fun onEndMatchClicked() {
-        val state = uiState.value
-        val p1Score = state.player1?.score ?: 0
-        val p2Score = state.player2?.score ?: 0
-
-        if (p1Score != 0 || p2Score != 0) {
-            snackbarManager.showMessage("Najpierw zakończ bieżącego frejma.")
-            return
-        }
         _uiState.update { it.copy(showEndMatchDialog = true) }
     }
-
-
 
     fun onDismissEndMatchDialog() {
         _uiState.update { it.copy(showEndMatchDialog = false) }

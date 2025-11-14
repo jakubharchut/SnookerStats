@@ -94,6 +94,13 @@ fun ScoringScreen(
         )
     }
 
+    if (state.showAbandonFrameDialog) {
+        AbandonFrameDialog(
+            onDismiss = viewModel::onDismissAbandonFrameDialog,
+            onConfirm = viewModel::onAbandonFrameConfirmed
+        )
+    }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -134,12 +141,22 @@ fun ScoringScreen(
         Spacer(modifier = Modifier.weight(1f))
         
         FrameAndMatchActions(
-            isBreakInProgress = state.currentBreak > 0,
             onEndFrameClick = viewModel::onEndFrameClicked,
             onRepeatFrameClick = viewModel::onRepeatFrameClicked,
             onEndMatchClick = viewModel::onEndMatchClicked
         )
     }
+}
+
+@Composable
+fun AbandonFrameDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Przerwać frejma?") },
+        text = { Text("Zakończenie frejma w tym momencie jest niemożliwe. Czy chcesz przerwać i anulować obecnego frejma? Jego wynik nie zostanie zapisany.") },
+        confirmButton = { Button(onClick = onConfirm) { Text("Przerwij") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } }
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -463,16 +480,15 @@ private fun ActionButtons(onFoulClick: () -> Unit, onSafetyClick: () -> Unit, on
 
 @Composable
 private fun FrameAndMatchActions(
-    isBreakInProgress: Boolean,
     onEndFrameClick: () -> Unit,
     onRepeatFrameClick: () -> Unit,
     onEndMatchClick: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = onEndFrameClick, modifier = Modifier.fillMaxWidth(), enabled = !isBreakInProgress) { Text("Zakończ frejma") }
+        OutlinedButton(onClick = onEndFrameClick, modifier = Modifier.fillMaxWidth()) { Text("Zakończ frejma") }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onRepeatFrameClick, modifier = Modifier.weight(1f), enabled = !isBreakInProgress) { Text("Powtórz frejma") }
-            OutlinedButton(onClick = onEndMatchClick, modifier = Modifier.weight(1f), enabled = !isBreakInProgress) { Text("Zakończ mecz") }
+            OutlinedButton(onClick = onRepeatFrameClick, modifier = Modifier.weight(1f)) { Text("Powtórz frejma") }
+            OutlinedButton(onClick = onEndMatchClick, modifier = Modifier.weight(1f)) { Text("Zakończ mecz") }
         }
     }
 }

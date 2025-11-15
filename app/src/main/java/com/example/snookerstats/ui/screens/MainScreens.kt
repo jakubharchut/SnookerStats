@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +27,7 @@ import com.example.snookerstats.domain.model.Match
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.navigation.BottomNavItem
+import com.example.snookerstats.util.Resource
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.*
@@ -526,11 +528,67 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
     }
 }
 
+@Composable
+fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
+    val statsResource by viewModel.stats.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Ogólne Statystyki",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        when (val resource = statsResource) {
+            is Resource.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+            is Resource.Success -> {
+                val stats = resource.data
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        StatItem(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = stats.matchesPlayed.toString())
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        StatItem(icon = Icons.Default.TrendingUp, label = "Punkty łącznie", value = stats.totalPoints.toString())
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        StatItem(icon = Icons.Default.Star, label = "Najwyższy break", value = stats.highestBreak.toString())
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        StatItem(icon = Icons.Default.Functions, label = "Średni break", value = stats.averageBreak.toString())
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        StatItem(icon = Icons.Default.MilitaryTech, label = "Breaki 50+", value = stats.breaks50plus.toString())
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        StatItem(icon = Icons.Default.WorkspacePremium, label = "Breaki 100+", value = stats.breaks100plus.toString())
+                    }
+                }
+            }
+            is Resource.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "Błąd ładowania statystyk: ${resource.message}")
+                }
+            }
+        }
+    }
+}
 
 @Composable
-fun StatsScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "Stats Screen")
+fun StatItem(icon: ImageVector, label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        Spacer(modifier = Modifier.weight(1f))
+        Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
     }
 }
 

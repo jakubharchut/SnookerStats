@@ -60,6 +60,12 @@ object FirebaseModule {
 
     @Provides
     @Singleton
+    fun provideStatsRepository(
+        firestore: FirebaseFirestore
+    ): StatsRepository = StatsRepositoryImpl(firestore)
+
+    @Provides
+    @Singleton
     fun provideNotificationRepository(
         firestore: FirebaseFirestore,
         auth: FirebaseAuth

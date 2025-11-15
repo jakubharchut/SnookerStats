@@ -125,7 +125,7 @@ class ProfileViewModel @Inject constructor(
                         match.frames.forEach { frame ->
                             var currentBreak = 0
                             frame.shots.forEach { shot ->
-                                if (shot.type == ShotType.POTTED || shot.type == ShotType.FREE_BALL_POTTED) {
+                                if (shot.playerId == targetUserId && (shot.type == ShotType.POTTED || shot.type == ShotType.FREE_BALL_POTTED)) {
                                     currentBreak += shot.points
                                 } else {
                                     if (currentBreak > highestBreak) {
@@ -134,7 +134,7 @@ class ProfileViewModel @Inject constructor(
                                     currentBreak = 0
                                 }
                             }
-                            if (currentBreak > highestBreak) { // Check for break at the end of a frame
+                            if (currentBreak > highestBreak) {
                                 highestBreak = currentBreak
                             }
                         }

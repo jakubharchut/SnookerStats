@@ -396,12 +396,15 @@ fun TournamentTabContent() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatchHistoryScreen(
     navController: NavController,
     viewModel: MatchHistoryViewModel = hiltViewModel()
 ) {
     val matches by viewModel.matches.collectAsState()
+    val isFilterSheetVisible by viewModel.isFilterSheetVisible.collectAsState()
+    val filters by viewModel.filters.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var selectedMatchId by remember { mutableStateOf<String?>(null) }
 
@@ -422,31 +425,47 @@ fun MatchHistoryScreen(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Text(
-            text = "Historia Meczów",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(16.dp)
+    if (isFilterSheetVisible) {
+        MatchHistoryFilterSheet(
+            onDismiss = viewModel::onFilterSheetDismiss,
+            onApplyFilters = viewModel::applyFilters,
+            initialFilters = filters
         )
-        if (matches.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "Brak rozegranych meczów.")
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                items(matches) { item ->
-                    MatchHistoryItem(
-                        item = item,
-                        onClick = { navController.navigate("match_details/${item.match.id}") },
-                        onDeleteClick = {
-                            selectedMatchId = item.match.id
-                            showDialog = true
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Historia Meczów") },
+                actions = {
+                    IconButton(onClick = viewModel::onFilterClick) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filtruj")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (matches.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = "Brak rozegranych meczów.")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    items(matches) { item ->
+                        MatchHistoryItem(
+                            item = item,
+                            onClick = { navController.navigate("match_details/${item.match.id}") },
+                            onDeleteClick = {
+                                selectedMatchId = item.match.id
+                                showDialog = true
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                 }
             }
         }
@@ -530,6 +549,29 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
 
 @Composable
 fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabs = listOf("Mecze", "Trening")
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        TabRow(selectedTabIndex = selectedTabIndex) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTabIndex == index,
+                    onClick = { selectedTabIndex = index },
+                    text = { Text(title) }
+                )
+            }
+        }
+
+        when (selectedTabIndex) {
+            0 -> MatchStatsContent(viewModel)
+            1 -> TrainingStatsContent()
+        }
+    }
+}
+
+@Composable
+fun MatchStatsContent(viewModel: StatsViewModel) {
     val statsResource by viewModel.stats.collectAsState()
 
     Column(
@@ -537,12 +579,6 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            text = "Ogólne Statystyki",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
         when (val resource = statsResource) {
             is Resource.Loading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -561,6 +597,8 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
                         StatItem(icon = Icons.Default.Functions, label = "Średni break", value = stats.averageBreak.toString())
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        StatItem(icon = Icons.Default.BarChart, label = "Brejki 25+", value = stats.breaks25plus.toString())
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
                         StatItem(icon = Icons.Default.MilitaryTech, label = "Breaki 50+", value = stats.breaks50plus.toString())
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
                         StatItem(icon = Icons.Default.WorkspacePremium, label = "Breaki 100+", value = stats.breaks100plus.toString())
@@ -573,6 +611,18 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun TrainingStatsContent() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("Statystyki treningów będą dostępne wkrótce!")
     }
 }
 

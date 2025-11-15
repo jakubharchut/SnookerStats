@@ -195,6 +195,7 @@ class ScoringViewModel @Inject constructor(
     }
 
     fun onBallClicked(ball: SnookerBall) {
+        val activePlayerId = _uiState.value.activePlayerId ?: return
         val newState = _uiState.updateAndGet { currentState ->
             if (currentState.isFrameOver) return@updateAndGet currentState
 
@@ -267,7 +268,7 @@ class ScoringViewModel @Inject constructor(
                 activePlayerId = newActivePlayerId
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = ball.name, points = ball.points, type = ShotType.POTTED)
+        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = ball.name, points = ball.points, type = ShotType.POTTED, playerId = activePlayerId)
         updateFrameWithNewShot(shot)
 
         if (newState.isFrameOver) {
@@ -279,13 +280,15 @@ class ScoringViewModel @Inject constructor(
     fun onDismissFreeBallDialog() { _uiState.update { it.copy(showFreeBallDialog = false) } }
 
     fun onFreeBallConfirmed(ball: SnookerBall, points: Int) {
+        val activePlayerId = _uiState.value.activePlayerId ?: return
         startTimer()
         _uiState.update { it.copy(showFreeBallDialog = false) }
         val shot = Shot(
             timestamp = System.currentTimeMillis(),
             ballName = ball.name,
             points = points,
-            type = ShotType.FREE_BALL_POTTED
+            type = ShotType.FREE_BALL_POTTED,
+            playerId = activePlayerId
         )
         updateFrameWithNewShot(shot)
     }
@@ -305,6 +308,7 @@ class ScoringViewModel @Inject constructor(
     fun onDismissFoulDialog() { _uiState.update { it.copy(showFoulDialog = false) } }
 
     fun onFoulConfirmed(foulPoints: Int, redsPotted: Int) {
+        val activePlayerId = _uiState.value.activePlayerId ?: return
         startTimer()
 
         _uiState.update { currentState ->
@@ -337,11 +341,12 @@ class ScoringViewModel @Inject constructor(
                 nextColorBallOn = nextColorOn
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), points = foulPoints, type = ShotType.FOUL, redsPottedInFoul = redsPotted)
+        val shot = Shot(timestamp = System.currentTimeMillis(), points = foulPoints, type = ShotType.FOUL, redsPottedInFoul = redsPotted, playerId = activePlayerId)
         updateFrameWithNewShot(shot)
     }
 
     private fun endTurn(action: ShotType) {
+        val activePlayerId = _uiState.value.activePlayerId ?: return
         startTimer()
 
         _uiState.update { currentState ->
@@ -356,7 +361,7 @@ class ScoringViewModel @Inject constructor(
                 nextColorBallOn = nextColorOn
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), type = action)
+        val shot = Shot(timestamp = System.currentTimeMillis(), type = action, playerId = activePlayerId)
         updateFrameWithNewShot(shot)
     }
 

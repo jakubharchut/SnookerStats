@@ -16,6 +16,7 @@ data class AllStats(
     val highestBreak: Int = 0,
     val totalPoints: Int = 0,
     val averageBreak: Int = 0,
+    val breaks25plus: Int = 0,
     val breaks50plus: Int = 0,
     val breaks100plus: Int = 0
 )
@@ -40,18 +41,25 @@ class StatsViewModel @Inject constructor(
                 if (it is Resource.Success) {
                     val matches = it.data
                     if (matches.isNotEmpty()) {
-                        val allShots = matches.flatMap { it.frames }.flatMap { it.shots }
-                        val totalPoints = allShots.sumOf { it.points }
+                        val userShots = matches.flatMap { it.frames }.flatMap { it.shots }.filter { shot -> shot.playerId == userId }
+                        val totalPoints = userShots.sumOf { it.points }
                         val breaks = mutableListOf<Int>()
                         var currentBreak = 0
-                        allShots.forEach { shot ->
-                            if (shot.points > 0) {
-                                currentBreak += shot.points
-                            } else {
-                                if (currentBreak > 0) {
-                                    breaks.add(currentBreak)
+                        
+                        matches.flatMap { it.frames }.forEach { frame ->
+                            frame.shots.forEach { shot ->
+                                if (shot.playerId == userId && shot.points > 0) {
+                                    currentBreak += shot.points
+                                } else {
+                                    if (currentBreak > 0) {
+                                        breaks.add(currentBreak)
+                                    }
+                                    currentBreak = 0
                                 }
-                                currentBreak = 0
+                            }
+                            if (currentBreak > 0) { // Add break at the end of a frame
+                                breaks.add(currentBreak)
+                                currentBreak = 0 // Reset for next frame
                             }
                         }
 
@@ -60,6 +68,7 @@ class StatsViewModel @Inject constructor(
                             highestBreak = breaks.maxOrNull() ?: 0,
                             totalPoints = totalPoints,
                             averageBreak = if (breaks.isNotEmpty()) breaks.average().toInt() else 0,
+                            breaks25plus = breaks.count { it >= 25 },
                             breaks50plus = breaks.count { it >= 50 },
                             breaks100plus = breaks.count { it >= 100 }
                         )

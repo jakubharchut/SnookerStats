@@ -14,9 +14,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import javax.inject.Inject
 
 enum class TimeFilter { LAST_7_DAYS, LAST_30_DAYS, ALL_TIME }
@@ -59,65 +58,65 @@ class MatchHistoryViewModel @Inject constructor(
 
     fun applyFilters(newFilters: HistoryFilters) {
         _filters.value = newFilters
-        loadMatchHistory()
+        // The collector will automatically re-trigger
         onFilterSheetDismiss()
     }
 
     private fun loadMatchHistory() {
         viewModelScope.launch {
             currentUserId?.let { userId ->
-                val allMatches = matchRepository.getMatchesForUserStream(userId).first()
+                matchRepository.getMatchesForUserStream(userId).collectLatest { allMatches ->
+                    val filteredMatches = allMatches.filter { match ->
+                        val timeFilterApplies = when (filters.value.timeFilter) {
+                            TimeFilter.LAST_7_DAYS -> match.date >= System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000
+                            TimeFilter.LAST_30_DAYS -> match.date >= System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
+                            TimeFilter.ALL_TIME -> true
+                        }
+                        val opponentFilterApplies = filters.value.opponent?.let {
+                            match.participants.contains(it.uid)
+                        } ?: true
 
-                val filteredMatches = allMatches.filter { match ->
-                    val timeFilterApplies = when (filters.value.timeFilter) {
-                        TimeFilter.LAST_7_DAYS -> match.date >= System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000
-                        TimeFilter.LAST_30_DAYS -> match.date >= System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000
-                        TimeFilter.ALL_TIME -> true
+                        val matchTypeFilterApplies = filters.value.matchType?.let {
+                            match.matchType == it
+                        } ?: true
+
+                        timeFilterApplies && opponentFilterApplies && matchTypeFilterApplies && !match.hiddenFor.contains(currentUserId)
                     }
-                    val opponentFilterApplies = filters.value.opponent?.let {
-                        match.participants.contains(it.uid)
-                    } ?: true
 
-                    val matchTypeFilterApplies = filters.value.matchType?.let {
-                        match.matchType == it
-                    } ?: true
+                    val displayItems = coroutineScope {
+                        filteredMatches.map { match ->
+                            async {
+                                val p1Resource = userRepository.getUser(match.player1Id)
+                                val player1 = if (p1Resource is Resource.Success) p1Resource.data else null
 
-                    timeFilterApplies && opponentFilterApplies && matchTypeFilterApplies && !match.hiddenFor.contains(currentUserId)
-                }
+                                val player2: User? = if (match.player2Id?.startsWith("guest_") == true) {
+                                    val guestName = match.player2Id.removePrefix("guest_")
+                                    User(uid = match.player2Id, username = guestName, firstName = guestName, lastName = "")
+                                } else {
+                                    match.player2Id?.let {
+                                        val p2Resource = userRepository.getUser(it)
+                                        if (p2Resource is Resource.Success) p2Resource.data else null
+                                    }
+                                }
 
-                val displayItems = coroutineScope {
-                    filteredMatches.map { match ->
-                        async {
-                            val p1Resource = userRepository.getUser(match.player1Id)
-                            val player1 = if (p1Resource is Resource.Success) p1Resource.data else null
-
-                            val player2: User? = if (match.player2Id?.startsWith("guest_") == true) {
-                                val guestName = match.player2Id.removePrefix("guest_")
-                                User(uid = match.player2Id, username = guestName, firstName = guestName, lastName = "")
-                            } else {
-                                match.player2Id?.let {
-                                    val p2Resource = userRepository.getUser(it)
-                                    if (p2Resource is Resource.Success) p2Resource.data else null
+                                if (player1 != null) {
+                                    val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
+                                    val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
+                                    MatchHistoryDisplayItem(
+                                        match = match,
+                                        player1 = player1,
+                                        player2 = player2,
+                                        p1FramesWon = p1FramesWon,
+                                        p2FramesWon = p2FramesWon
+                                    )
+                                } else {
+                                    null
                                 }
                             }
-
-                            if (player1 != null) {
-                                val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
-                                val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
-                                MatchHistoryDisplayItem(
-                                    match = match,
-                                    player1 = player1,
-                                    player2 = player2,
-                                    p1FramesWon = p1FramesWon,
-                                    p2FramesWon = p2FramesWon
-                                )
-                            } else {
-                                null
-                            }
-                        }
-                    }.awaitAll().filterNotNull()
+                        }.awaitAll().filterNotNull()
+                    }
+                    _matches.value = displayItems.sortedByDescending { it.match.date }
                 }
-                _matches.value = displayItems.sortedByDescending { it.match.date }
             }
         }
     }

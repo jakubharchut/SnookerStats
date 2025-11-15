@@ -16,4 +16,5 @@ interface AuthRepository {
     fun getSavedCredentials(): Pair<String, String>?
     fun clearCredentials()
     suspend fun signOut()
+    fun cancelAllJobs()
 }

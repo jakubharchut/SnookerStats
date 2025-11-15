@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Match
 import com.example.snookerstats.domain.model.User
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
@@ -21,7 +21,7 @@ import javax.inject.Inject
 class MatchHistoryViewModel @Inject constructor(
     private val matchRepository: MatchRepository,
     private val userRepository: UserRepository,
-    private val authRepository: IAuthRepository
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _matches = MutableStateFlow<List<MatchHistoryDisplayItem>>(emptyList())

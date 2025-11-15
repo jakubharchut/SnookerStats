@@ -35,7 +35,7 @@ object FirebaseModule {
         firebaseAuth: FirebaseAuth,
         firestore: FirebaseFirestore,
         prefsManager: EncryptedPrefsManager
-    ): IAuthRepository = AuthRepositoryImpl(firebaseAuth, firestore, prefsManager)
+    ): AuthRepository = AuthRepositoryImpl(firebaseAuth, firestore, prefsManager)
 
     @Provides
     @Singleton
@@ -55,9 +55,8 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideProfileRepository(
-        firestore: FirebaseFirestore,
-        auth: FirebaseAuth
-    ): ProfileRepository = ProfileRepositoryImpl(firestore, auth)
+        firestore: FirebaseFirestore
+    ): ProfileRepository = ProfileRepositoryImpl(firestore)
 
     @Provides
     @Singleton
@@ -70,13 +69,13 @@ object FirebaseModule {
     @Singleton
     fun provideUserRepository(
         firestore: FirebaseFirestore,
-        authRepository: IAuthRepository
+        authRepository: AuthRepository
     ): UserRepository = UserRepositoryImpl(firestore, authRepository)
 
     @Provides
     @Singleton
     fun provideChatRepository(
         firestore: FirebaseFirestore,
-        authRepository: IAuthRepository
+        authRepository: AuthRepository
     ): ChatRepository = ChatRepositoryImpl(firestore, authRepository)
 }

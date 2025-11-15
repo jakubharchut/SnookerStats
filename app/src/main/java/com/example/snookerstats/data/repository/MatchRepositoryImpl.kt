@@ -8,6 +8,7 @@ import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -23,7 +24,13 @@ class MatchRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore
 ) : MatchRepository {
 
+    private val listeners = mutableListOf<ListenerRegistration>()
     private val matchesCollection = firestore.collection("matches")
+
+    override fun cancelAllJobs() {
+        listeners.forEach { it.remove() }
+        listeners.clear()
+    }
 
     override fun getMatchStream(matchId: String): Flow<Match?> = callbackFlow {
         val listener = matchesCollection.document(matchId)
@@ -40,6 +47,7 @@ class MatchRepositoryImpl @Inject constructor(
                     trySend(null).isSuccess
                 }
             }
+        listeners.add(listener)
         awaitClose { listener.remove() }
     }
 
@@ -58,6 +66,7 @@ class MatchRepositoryImpl @Inject constructor(
                     trySend(emptyList()).isSuccess
                 }
             }
+        listeners.add(listener)
         awaitClose { listener.remove() }
     }
 
@@ -76,6 +85,7 @@ class MatchRepositoryImpl @Inject constructor(
                     trySend(emptyList()).isSuccess
                 }
             }
+        listeners.add(listener)
         awaitClose { listener.remove() }
     }
 

@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.ui.auth.LoginScreen
 import com.example.snookerstats.ui.auth.RegisterScreen
 import com.example.snookerstats.ui.auth.RegistrationSuccessScreen
@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
     lateinit var snackbarManager: SnackbarManager
 
     @Inject
-    lateinit var authRepository: IAuthRepository
+    lateinit var authRepository: AuthRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

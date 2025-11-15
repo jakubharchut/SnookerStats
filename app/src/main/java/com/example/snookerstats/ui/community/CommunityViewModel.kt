@@ -3,7 +3,7 @@ package com.example.snookerstats.ui.community
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.User
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.CommunityRepository
 import com.example.snookerstats.ui.screens.RelationshipStatus
@@ -24,7 +24,7 @@ sealed class CommunityNavigationEvent {
 class CommunityViewModel @Inject constructor(
     private val repository: CommunityRepository,
     private val chatRepository: ChatRepository,
-    private val authRepository: IAuthRepository,
+    private val authRepository: AuthRepository,
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 

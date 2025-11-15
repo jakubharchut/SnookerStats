@@ -27,7 +27,7 @@ import androidx.navigation.NavController
 import com.example.snookerstats.R
 import com.example.snookerstats.domain.model.Message
 import com.example.snookerstats.domain.model.MessageType
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.util.Resource
 import java.text.SimpleDateFormat
 import java.util.*
@@ -54,7 +54,7 @@ fun <T, K> List<T>.groupByConsecutive(keySelector: (T) -> K): List<List<T>> {
 fun ConversationScreen(
     navController: NavController,
     viewModel: ConversationViewModel = hiltViewModel(),
-    authRepository: IAuthRepository
+    authRepository: AuthRepository
 ) {
     val messagesState by viewModel.messagesState.collectAsState()
     val messageText by viewModel.messageText.collectAsState()

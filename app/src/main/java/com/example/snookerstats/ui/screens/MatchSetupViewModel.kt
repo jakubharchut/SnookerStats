@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Match
 import com.example.snookerstats.domain.model.MatchStatus
 import com.example.snookerstats.domain.model.User
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
@@ -39,7 +39,7 @@ sealed class OpponentType {
 class MatchSetupViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val matchRepository: MatchRepository,
-    private val authRepository: IAuthRepository,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 

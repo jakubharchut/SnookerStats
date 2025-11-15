@@ -18,6 +18,7 @@ import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.profile.ProfileNavigationEvent
 import com.example.snookerstats.ui.profile.ProfileState
+import com.example.snookerstats.ui.profile.ProfileStats
 import com.example.snookerstats.ui.profile.ProfileViewModel
 import kotlinx.coroutines.flow.collectLatest
 
@@ -97,6 +98,7 @@ fun UserProfileScreen(
                     UserProfileContent(
                         navController = navController,
                         user = profileState.targetUser,
+                        stats = profileState.stats,
                         status = profileState.relationshipStatus,
                         onActionClick = {
                             when (profileState.relationshipStatus) {
@@ -126,6 +128,7 @@ fun UserProfileScreen(
 private fun UserProfileContent(
     navController: NavController,
     user: User,
+    stats: ProfileStats,
     status: RelationshipStatus,
     onActionClick: () -> Unit,
     onRejectClick: () -> Unit,
@@ -153,9 +156,9 @@ private fun UserProfileContent(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Podstawowe Informacje", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
-                    StatRow(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = "0")
-                    StatRow(icon = Icons.Default.Star, label = "Najwyższy break", value = "0")
-                    StatRow(icon = Icons.Default.Leaderboard, label = "Wygrane mecze", value = "0%")
+                    StatRow(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = stats.matchesPlayed.toString())
+                    StatRow(icon = Icons.Default.Star, label = "Najwyższy break", value = stats.highestBreak.toString())
+                    StatRow(icon = Icons.Default.Leaderboard, label = "Wygrane mecze", value = "${stats.winPercentage}%")
                     StatRow(icon = Icons.Default.Groups, label = "Klub", value = user.club ?: "Brak klubu")
                 }
             }

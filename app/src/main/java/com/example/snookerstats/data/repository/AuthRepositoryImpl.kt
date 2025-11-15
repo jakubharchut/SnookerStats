@@ -2,11 +2,12 @@ package com.example.snookerstats.data.repository
 
 import com.example.snookerstats.data.local.preferences.EncryptedPrefsManager
 import com.example.snookerstats.domain.model.User
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.util.Resource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -17,7 +18,9 @@ class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
     private val prefsManager: EncryptedPrefsManager
-) : IAuthRepository {
+) : AuthRepository {
+
+    private val listeners = mutableListOf<ListenerRegistration>()
 
     override val currentUser: FirebaseUser?
         get() = firebaseAuth.currentUser
@@ -70,30 +73,8 @@ class AuthRepositoryImpl @Inject constructor(
                     trySend(Resource.Error("User profile not found."))
                 }
             }
+        listeners.add(listener)
         awaitClose { listener.remove() }
-    }
-
-    override fun getCurrentUser(): Flow<User?> = callbackFlow {
-        val authStateListener = FirebaseAuth.AuthStateListener { auth ->
-            val firebaseUser = auth.currentUser
-            if (firebaseUser == null) {
-                trySend(null)
-            } else {
-                firestore.collection("users").document(firebaseUser.uid)
-                    .get()
-                    .addOnSuccessListener { snapshot ->
-                        val user = snapshot.toObject(User::class.java)
-                        trySend(user)
-                    }
-                    .addOnFailureListener {
-                        trySend(null) // W przypadku błędu
-                    }
-            }
-        }
-        firebaseAuth.addAuthStateListener(authStateListener)
-        awaitClose {
-            firebaseAuth.removeAuthStateListener(authStateListener)
-        }
     }
 
     override suspend fun updateFcmToken(token: String): Resource<Boolean> {
@@ -132,5 +113,10 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signOut() {
         firebaseAuth.signOut()
+    }
+
+    override fun cancelAllJobs() {
+        listeners.forEach { it.remove() }
+        listeners.clear()
     }
 }

@@ -24,6 +24,8 @@ interface MatchRepository {
 
     suspend fun getPlayersForMatch(player1Id: String, player2Id: String): Pair<User?, User?>
 
+    fun cancelAllJobs()
+
     // W przyszłości możemy dodać bardziej szczegółowe funkcje
     // suspend fun addShot(matchId: String, shot: Shot)
     // suspend fun endFrame(matchId: String, frame: Frame)

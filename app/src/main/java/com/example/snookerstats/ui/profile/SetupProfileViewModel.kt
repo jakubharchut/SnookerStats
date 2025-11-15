@@ -2,9 +2,9 @@ package com.example.snookerstats.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.snookerstats.domain.model.Response
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.ProfileRepository
+import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -53,10 +53,10 @@ class SetupProfileViewModel @Inject constructor(
         usernameCheckJob = viewModelScope.launch {
             delay(500L) // Debouncing
             when(val response = repository.isUsernameTaken(username)) {
-                is Response.Success -> {
+                is Resource.Success -> {
                     _usernameValidationState.value = UsernameValidationState(isAvailable = !response.data)
                 }
-                is Response.Error -> {
+                is Resource.Error -> {
                     // W przypadku błędu na razie uznajemy, że nie jest dostępna
                     _usernameValidationState.value = UsernameValidationState(isAvailable = false)
                 }
@@ -71,10 +71,10 @@ class SetupProfileViewModel @Inject constructor(
 
             _setupState.value = SetupProfileState.Loading
             when (val response = repository.saveUserProfile(user)) {
-                is Response.Success -> {
+                is Resource.Success -> {
                     _navigationEvent.send(ProfileNavigationEvent.NavigateToMain)
                 }
-                is Response.Error -> {
+                is Resource.Error -> {
                     _setupState.value = SetupProfileState.Error(response.message)
                 }
                 else -> {

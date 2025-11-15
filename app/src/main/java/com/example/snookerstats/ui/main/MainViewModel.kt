@@ -3,7 +3,7 @@ package com.example.snookerstats.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Match
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
@@ -19,7 +19,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val authRepository: IAuthRepository,
+    private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val matchRepository: MatchRepository,
     private val chatRepository: ChatRepository,

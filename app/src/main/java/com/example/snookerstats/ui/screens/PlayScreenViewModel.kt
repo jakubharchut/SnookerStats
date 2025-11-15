@@ -3,7 +3,7 @@ package com.example.snookerstats.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.User
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +25,7 @@ data class PlayerLists(
 @HiltViewModel
 class PlayScreenViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val authRepository: IAuthRepository
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _playerLists = MutableStateFlow(PlayerLists())

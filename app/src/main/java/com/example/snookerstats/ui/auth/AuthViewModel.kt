@@ -3,7 +3,7 @@ package com.example.snookerstats.ui.auth
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.*
 import com.example.snookerstats.domain.use_case.ValidateRegisterInputUseCase
 import com.example.snookerstats.util.Resource
 import com.google.firebase.auth.FirebaseAuth
@@ -32,7 +32,10 @@ data class CredentialsState(val email: String = "", val password: String = "")
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val repo: IAuthRepository,
+    private val repo: AuthRepository,
+    private val chatRepository: ChatRepository,
+    private val communityRepository: CommunityRepository,
+    private val matchRepository: MatchRepository,
     private val validateRegisterInput: ValidateRegisterInputUseCase,
     private val firebaseAuth: FirebaseAuth,
     private val firebaseMessaging: FirebaseMessaging
@@ -132,6 +135,10 @@ class AuthViewModel @Inject constructor(
 
     fun signOut() {
         viewModelScope.launch {
+            repo.cancelAllJobs()
+            chatRepository.cancelAllJobs()
+            communityRepository.cancelAllJobs()
+            matchRepository.cancelAllJobs()
             repo.signOut()
             _navigationEvent.emit(NavigationEvent.NavigateToLogin)
         }

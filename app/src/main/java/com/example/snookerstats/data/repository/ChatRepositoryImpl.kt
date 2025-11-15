@@ -3,12 +3,13 @@ package com.example.snookerstats.data.repository
 import com.example.snookerstats.domain.model.Chat
 import com.example.snookerstats.domain.model.Message
 import com.example.snookerstats.domain.model.MessageType
-import com.example.snookerstats.domain.repository.IAuthRepository
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.util.Resource
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -18,9 +19,10 @@ import javax.inject.Inject
 
 class ChatRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val authRepository: IAuthRepository
+    private val authRepository: AuthRepository
 ) : ChatRepository {
 
+    private val listeners = mutableListOf<ListenerRegistration>()
     private val currentUserId: String
         get() = authRepository.currentUser?.uid!!
 
@@ -39,6 +41,7 @@ class ChatRepositoryImpl @Inject constructor(
                     trySend(Resource.Success(chats))
                 }
             }
+        listeners.add(listener)
         awaitClose { listener.remove() }
     }
 
@@ -56,6 +59,7 @@ class ChatRepositoryImpl @Inject constructor(
                     trySend(Resource.Success(messages))
                 }
             }
+        listeners.add(listener)
         awaitClose { listener.remove() }
     }
 
@@ -179,5 +183,10 @@ class ChatRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Błąd aktualizacji obecności")
         }
+    }
+
+    override fun cancelAllJobs() {
+        listeners.forEach { it.remove() }
+        listeners.clear()
     }
 }

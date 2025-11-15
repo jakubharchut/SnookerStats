@@ -7,6 +7,7 @@ import com.example.snookerstats.util.Resource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -26,8 +27,14 @@ class CommunityRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth
 ) : CommunityRepository {
 
+    private val listeners = mutableListOf<ListenerRegistration>()
     private val currentUserId: String
         get() = auth.currentUser!!.uid
+
+    override fun cancelAllJobs() {
+        listeners.forEach { it.remove() }
+        listeners.clear()
+    }
 
     override suspend fun addToFavorites(userId: String): Resource<Unit> {
         return try {
@@ -198,6 +205,7 @@ class CommunityRepositoryImpl @Inject constructor(
                     trySend(Resource.Success(emptyList()))
                 }
             }
+        listeners.add(registration)
         awaitClose { registration.remove() }
     }.catch { e ->
         emit(Resource.Error(e.message ?: "Unknown error"))
@@ -231,6 +239,7 @@ class CommunityRepositoryImpl @Inject constructor(
                     trySend(Resource.Success(emptyList()))
                 }
             }
+        listeners.add(registration)
         awaitClose { registration.remove() }
     }.catch { e ->
         emit(Resource.Error(e.message ?: "Unknown error"))
@@ -268,6 +277,7 @@ class CommunityRepositoryImpl @Inject constructor(
                     trySend(Resource.Success(emptyList()))
                 }
             }
+        listeners.add(registration)
         awaitClose { registration.remove() }
     }.catch { e ->
         emit(Resource.Error(e.message ?: "Unknown error"))

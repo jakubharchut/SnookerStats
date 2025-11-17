@@ -39,7 +39,7 @@ import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.ui.notifications.NotificationViewModel
 import com.example.snookerstats.ui.profile.ManageProfileScreen
 import com.example.snookerstats.ui.screens.*
-import com.example.snookerstats.ui.screens.training.LineUpTrainingScreen
+import com.example.snookerstats.ui.screens.training.LineUpContainerScreen
 import com.example.snookerstats.util.SnackbarManager
 import kotlinx.coroutines.flow.collectLatest
 
@@ -310,7 +310,7 @@ fun NavigationGraph(
             )
         }
         composable("training/line-up") {
-            LineUpTrainingScreen(navController = internalNavController)
+            LineUpContainerScreen(navController = internalNavController)
         }
     }
 }

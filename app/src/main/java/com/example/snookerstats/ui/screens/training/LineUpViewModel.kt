@@ -3,6 +3,9 @@ package com.example.snookerstats.ui.screens.training
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.SnookerBall
+import com.example.snookerstats.domain.model.TrainingAttempt
+import com.example.snookerstats.domain.repository.AuthRepository
+import com.example.snookerstats.domain.repository.TrainingRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -55,7 +58,10 @@ data class LineUpTrainingState(
 }
 
 @HiltViewModel
-class LineUpViewModel @Inject constructor() : ViewModel() {
+class LineUpViewModel @Inject constructor(
+    private val trainingRepository: TrainingRepository,
+    private val authRepository: AuthRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LineUpTrainingState())
     val uiState: StateFlow<LineUpTrainingState> = _uiState.asStateFlow()
@@ -113,7 +119,10 @@ class LineUpViewModel @Inject constructor() : ViewModel() {
                 val colors = listOf(SnookerBall.Yellow, SnookerBall.Green, SnookerBall.Brown, SnookerBall.Blue, SnookerBall.Pink, SnookerBall.Black)
                 val nextIndex = colors.indexOf(currentState.finalSequenceBall) + 1
                 val isFinished = nextIndex >= colors.size
-                if(isFinished) stopTimer()
+                if (isFinished) {
+                    stopTimer()
+                    saveAttempt(newScore, newPottedBalls, currentState.elapsedTimeInSeconds)
+                }
                 currentState.copy(
                     score = newScore,
                     pottedBalls = newPottedBalls,
@@ -141,12 +150,28 @@ class LineUpViewModel @Inject constructor() : ViewModel() {
     }
 
     fun onMiss() {
+        val currentState = _uiState.value
+        if (currentState.pottedBalls.isNotEmpty()) {
+            saveAttempt(currentState.score, currentState.pottedBalls, currentState.elapsedTimeInSeconds)
+        }
         resetTraining()
     }
 
     fun resetTraining() {
         stopTimer()
         _uiState.value = LineUpTrainingState()
+    }
+
+    private fun saveAttempt(score: Int, pottedBalls: List<SnookerBall>, duration: Long) {
+        viewModelScope.launch {
+            val attempt = TrainingAttempt(
+                userId = authRepository.currentUser!!.uid,
+                score = score,
+                durationInSeconds = duration,
+                pottedBalls = pottedBalls.map { it.name }
+            )
+            trainingRepository.saveTrainingAttempt(attempt)
+        }
     }
 
     override fun onCleared() {

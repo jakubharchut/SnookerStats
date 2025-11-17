@@ -36,7 +36,9 @@ fun LineUpTrainingScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             TrainingStats(
                 score = uiState.score,
@@ -44,17 +46,7 @@ fun LineUpTrainingScreen(
                 time = uiState.elapsedTimeInSeconds
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (uiState.pottedBalls.isNotEmpty()) {
-                PottedBallsHistory(pottedBalls = uiState.pottedBalls)
-            }
-            
-            Spacer(modifier = Modifier.weight(1f))
-
-            RemainingBallsVisualizer(balls = uiState.ballsOnTable)
-            
-            Spacer(modifier = Modifier.weight(1f))
+            BallsInfo(pottedBalls = uiState.pottedBalls, remainingBalls = uiState.ballsOnTable)
 
             if (uiState.isFinished) {
                 Button(
@@ -66,19 +58,21 @@ fun LineUpTrainingScreen(
                     Text(text = "Zacznij od nowa")
                 }
             } else {
-                PottingButtons(
-                    pottingColor = uiState.pottingColor,
-                    finalSequence = uiState.finalSequenceBall != null,
-                    nextBall = uiState.nextBallToPot,
-                    onBallClick = viewModel::onTableBallClick
-                )
-                OutlinedButton(
-                    onClick = { viewModel.onMiss() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(text = "Pudło / Zakończ")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    PottingButtons(
+                        pottingColor = uiState.pottingColor,
+                        finalSequence = uiState.finalSequenceBall != null,
+                        nextBall = uiState.nextBallToPot,
+                        onBallClick = viewModel::onTableBallClick
+                    )
+                    OutlinedButton(
+                        onClick = { viewModel.onMiss() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(text = "Pudło / Zakończ")
+                    }
                 }
             }
         }

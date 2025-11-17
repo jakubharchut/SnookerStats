@@ -19,7 +19,8 @@ data class Training(val name: String, val route: String)
 @Composable
 fun TrainingScreen(navController: NavController) {
     val trainingOptions = listOf(
-        Training("Line-up", "training/line-up")
+        Training("Line-up", "training/line-up"),
+        Training("Czerwona-Czarna", "training/red-black")
     )
 
     Column(modifier = Modifier.fillMaxSize()) {

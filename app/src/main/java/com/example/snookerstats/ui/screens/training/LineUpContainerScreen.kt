@@ -28,11 +28,11 @@ fun LineUpContainerScreen(navController: NavController) {
             text = { 
                 Column {
                     Text("Ćwiczenie 'Czyszczenie Linii' polega na zbudowaniu maksymalnego breaka, wbijając wszystkie 15 czerwonych bil, po każdej z nich wbijając bilę kolorową.", style = MaterialTheme.typography.bodyLarge)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text("Po wbiciu ostatniej czerwonej i ostatniego koloru, Twoim zadaniem jest wbicie wszystkich kolorowych bil w prawidłowej sekwencji: Żółta -> Zielona -> Brązowa -> Niebieska -> Różowa -> Czarna.", style = MaterialTheme.typography.bodyLarge)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text("Celem jest osiągnięcie jak najwyższego wyniku. Pomylenie się lub wciśnięcie przycisku \"Pudło\" skutkuje zakończeniem podejścia i zapisaniem wyniku.", style = MaterialTheme.typography.bodyLarge)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text("Powodzenia!", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                 }
             },

@@ -16,30 +16,28 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import javax.inject.Inject
 
-data class LineUpGlobalStats(
-    val bestScore: Int = 0,
-    val averageScore: Double = 0.0,
+data class RedBlackGlobalStats(
+    val bestStreak: Int = 0,
+    val averageStreak: Double = 0.0,
     val attemptCount: Int = 0,
-    val bestTimeInSeconds: Long = 0L,
-    val averageAttemptTimeInSeconds: Double = 0.0,
-    val averageShotTime: Double = 0.0
+    val bestTimeInSeconds: Long = 0L
 )
 
-data class LineUpStatsState(
+data class RedBlackStatsState(
     val attemptsByDate: Map<String, List<TrainingAttempt>> = emptyMap(),
-    val globalStats: LineUpGlobalStats = LineUpGlobalStats(),
+    val globalStats: RedBlackGlobalStats = RedBlackGlobalStats(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
 
 @HiltViewModel
-class LineUpStatsViewModel @Inject constructor(
+class RedBlackStatsViewModel @Inject constructor(
     private val trainingRepository: TrainingRepository,
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(LineUpStatsState())
-    val uiState: StateFlow<LineUpStatsState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(RedBlackStatsState())
+    val uiState: StateFlow<RedBlackStatsState> = _uiState.asStateFlow()
 
     private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale("pl"))
 
@@ -49,34 +47,29 @@ class LineUpStatsViewModel @Inject constructor(
 
     private fun loadStats() {
         viewModelScope.launch {
-            trainingRepository.getTrainingAttempts(authRepository.currentUser!!.uid, "LINE_UP").collectLatest {
+            trainingRepository.getTrainingAttempts(authRepository.currentUser!!.uid, "RED_BLACK").collectLatest {
                 when (it) {
-                    is Resource.Loading -> _uiState.value = LineUpStatsState(isLoading = true)
+                    is Resource.Loading -> _uiState.value = RedBlackStatsState(isLoading = true)
                     is Resource.Success -> {
                         val attempts = it.data
                         val globalStats = calculateGlobalStats(attempts)
                         val groupedAttempts = attempts.groupBy { attempt -> dateFormatter.format(attempt.date!!) }
-                        _uiState.value = LineUpStatsState(attemptsByDate = groupedAttempts, globalStats = globalStats)
+                        _uiState.value = RedBlackStatsState(attemptsByDate = groupedAttempts, globalStats = globalStats)
                     }
-                    is Resource.Error -> _uiState.value = LineUpStatsState(error = it.message)
+                    is Resource.Error -> _uiState.value = RedBlackStatsState(error = it.message)
                 }
             }
         }
     }
 
-    private fun calculateGlobalStats(attempts: List<TrainingAttempt>): LineUpGlobalStats {
-        if (attempts.isEmpty()) return LineUpGlobalStats()
+    private fun calculateGlobalStats(attempts: List<TrainingAttempt>): RedBlackGlobalStats {
+        if (attempts.isEmpty()) return RedBlackGlobalStats()
 
-        val totalPottedBalls = attempts.sumOf { it.pottedBalls.size }
-        val totalDuration = attempts.sumOf { it.durationInSeconds }
-
-        return LineUpGlobalStats(
-            bestScore = attempts.maxOfOrNull { it.score } ?: 0,
-            averageScore = attempts.map { it.score }.average(),
+        return RedBlackGlobalStats(
+            bestStreak = attempts.maxOfOrNull { it.score } ?: 0,
+            averageStreak = attempts.map { it.score }.average(),
             attemptCount = attempts.size,
-            bestTimeInSeconds = attempts.minOfOrNull { it.durationInSeconds } ?: 0L,
-            averageAttemptTimeInSeconds = attempts.map { it.durationInSeconds }.average(),
-            averageShotTime = if (totalPottedBalls > 0) totalDuration.toDouble() / totalPottedBalls else 0.0
+            bestTimeInSeconds = attempts.filter { it.score > 0 }.minOfOrNull { it.durationInSeconds / it.score } ?: 0L
         )
     }
 }

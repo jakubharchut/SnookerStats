@@ -1,9 +1,12 @@
 package com.example.snookerstats.domain.model
 
+import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
 
 data class TrainingAttempt(
+    @DocumentId
+    val id: String = "",
     val userId: String = "",
     val trainingType: String = "LINE_UP",
     @ServerTimestamp

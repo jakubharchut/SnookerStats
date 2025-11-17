@@ -17,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun TrainingStats(score: Int, pottedBallsCount: Int, time: Long) {
+fun TrainingStats(score: Int, pottedBallsCount: Int, time: Long, isGlobal: Boolean = false) {
     Card(modifier = Modifier
         .fillMaxWidth()
         .padding(16.dp)) {
@@ -26,9 +26,9 @@ fun TrainingStats(score: Int, pottedBallsCount: Int, time: Long) {
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatItem(label = "Wynik", value = score.toString())
-            StatItem(label = "Wbito", value = pottedBallsCount.toString())
-            StatItem(label = "Czas", value = formatTime(time))
+            StatItem(label = if (isGlobal) "Najwyższy Wynik" else "Wynik", value = score.toString())
+            StatItem(label = if (isGlobal) "Liczba Prób" else "Wbito", value = pottedBallsCount.toString())
+            StatItem(label = if (isGlobal) "Najlepszy Czas" else "Czas", value = formatTime(time))
         }
     }
 }

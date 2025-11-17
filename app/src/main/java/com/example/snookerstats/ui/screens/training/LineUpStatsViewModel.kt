@@ -12,10 +12,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 import javax.inject.Inject
 
+data class LineUpGlobalStats(
+    val bestScore: Int = 0,
+    val averageScore: Double = 0.0,
+    val attemptCount: Int = 0,
+    val bestTimeInSeconds: Long = 0L
+)
+
 data class LineUpStatsState(
-    val attempts: List<TrainingAttempt> = emptyList(),
+    val attemptsByDate: Map<String, List<TrainingAttempt>> = emptyMap(),
+    val globalStats: LineUpGlobalStats = LineUpGlobalStats(),
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -29,6 +39,8 @@ class LineUpStatsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LineUpStatsState())
     val uiState: StateFlow<LineUpStatsState> = _uiState.asStateFlow()
 
+    private val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+
     init {
         loadStats()
     }
@@ -38,10 +50,25 @@ class LineUpStatsViewModel @Inject constructor(
             trainingRepository.getTrainingAttempts(authRepository.currentUser!!.uid, "LINE_UP").collectLatest {
                 when (it) {
                     is Resource.Loading -> _uiState.value = LineUpStatsState(isLoading = true)
-                    is Resource.Success -> _uiState.value = LineUpStatsState(attempts = it.data)
+                    is Resource.Success -> {
+                        val attempts = it.data
+                        val globalStats = calculateGlobalStats(attempts)
+                        val groupedAttempts = attempts.groupBy { attempt -> dateFormatter.format(attempt.date!!) }
+                        _uiState.value = LineUpStatsState(attemptsByDate = groupedAttempts, globalStats = globalStats)
+                    }
                     is Resource.Error -> _uiState.value = LineUpStatsState(error = it.message)
                 }
             }
         }
+    }
+
+    private fun calculateGlobalStats(attempts: List<TrainingAttempt>): LineUpGlobalStats {
+        if (attempts.isEmpty()) return LineUpGlobalStats()
+        return LineUpGlobalStats(
+            bestScore = attempts.maxOfOrNull { it.score } ?: 0,
+            averageScore = attempts.map { it.score }.average(),
+            attemptCount = attempts.size,
+            bestTimeInSeconds = attempts.minOfOrNull { it.durationInSeconds } ?: 0L
+        )
     }
 }

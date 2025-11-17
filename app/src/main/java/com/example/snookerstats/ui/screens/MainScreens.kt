@@ -597,7 +597,7 @@ fun MatchStatsContent(viewModel: StatsViewModel) {
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
                         StatItem(icon = Icons.Default.Functions, label = "Średni break", value = stats.averageBreak.toString())
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        StatItem(icon = Icons.Default.BarChart, label = "Brejki 25+", value = stats.breaks25plus.toString())
+                        StatItem(icon = Icons.Default.BarChart, label = "Brejki 20+", value = stats.breaks20plus.toString())
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
                         StatItem(icon = Icons.Default.MilitaryTech, label = "Breaki 50+", value = stats.breaks50plus.toString())
                         Divider(modifier = Modifier.padding(vertical = 8.dp))

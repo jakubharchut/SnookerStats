@@ -39,6 +39,7 @@ import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.ui.notifications.NotificationViewModel
 import com.example.snookerstats.ui.profile.ManageProfileScreen
 import com.example.snookerstats.ui.screens.*
+import com.example.snookerstats.ui.screens.training.LineUpTrainingScreen
 import com.example.snookerstats.util.SnackbarManager
 import kotlinx.coroutines.flow.collectLatest
 
@@ -62,7 +63,7 @@ fun MainScreen(
     val navBackStackEntry by internalNavController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    val screensWithoutBars = listOf("match_details/{matchId}", "user_profile/{userId}", "manage_profile", "conversation/{chatId}")
+    val screensWithoutBars = listOf("match_details/{matchId}", "user_profile/{userId}", "manage_profile", "conversation/{chatId}", "training/line-up")
     val showBars = currentDestination?.route !in screensWithoutBars
 
     LaunchedEffect(Unit) {
@@ -307,6 +308,9 @@ fun NavigationGraph(
                 navController = internalNavController,
                 authRepository = activity.authRepository
             )
+        }
+        composable("training/line-up") {
+            LineUpTrainingScreen(navController = internalNavController)
         }
     }
 }

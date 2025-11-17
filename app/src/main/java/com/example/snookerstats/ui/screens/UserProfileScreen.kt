@@ -156,10 +156,54 @@ private fun UserProfileContent(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Podstawowe Informacje", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(16.dp))
-                    StatRow(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = stats.matchesPlayed.toString())
-                    StatRow(icon = Icons.Default.Star, label = "Najwyższy break", value = stats.highestBreak.toString())
-                    StatRow(icon = Icons.Default.Leaderboard, label = "Wygrane mecze", value = "${stats.winPercentage}%")
-                    StatRow(icon = Icons.Default.Groups, label = "Klub", value = user.club ?: "Brak klubu")
+
+                    // StatRow inlined
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.EmojiEvents, contentDescription = "Rozegrane mecze", tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(text = "Rozegrane mecze", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(text = stats.matchesPlayed.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    }
+
+                    // StatRow inlined
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.Star, contentDescription = "Najwyższy break", tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(text = "Najwyższy break", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(text = stats.highestBreak.toString(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    }
+
+                    // StatRow inlined
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.Leaderboard, contentDescription = "Wygrane mecze", tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(text = "Wygrane mecze", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(text = "${stats.matchesWon} (${stats.winPercentage}%)", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    }
+
+                    // StatRow inlined
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.Groups, contentDescription = "Klub", tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(text = "Klub", style = MaterialTheme.typography.bodyLarge)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(text = user.club ?: "Brak klubu", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -282,35 +326,10 @@ private fun PrivateProfileContent(
                     Text("Anuluj zaproszenie")
                 }
                 RelationshipStatus.REQUEST_RECEIVED -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onActionClick) {
-                        Icon(Icons.Default.Check, null)
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Akceptuj")
-                    }
-                    OutlinedButton(onClick = onRejectClick) {
-                        Icon(Icons.Default.Close, null)
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Odrzuć")
-                    }
+                   
                 }
                 else -> {}
             }
-            OutlinedButton(onClick = onChatClick) {
-                Icon(Icons.Default.Chat, null)
-                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text("Wiadomość")
-            }
         }
-    }
-}
-
-@Composable
-private fun StatRow(icon: ImageVector, label: String, value: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        Spacer(modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
     }
 }

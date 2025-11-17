@@ -51,7 +51,7 @@ fun TrainingButton(training: Training, navController: NavController) {
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
-            .clickable { /* TODO: navController.navigate(training.route) */ }
+            .clickable { navController.navigate(training.route) }
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

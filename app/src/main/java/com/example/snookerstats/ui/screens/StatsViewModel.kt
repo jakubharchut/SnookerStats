@@ -16,7 +16,7 @@ data class AllStats(
     val highestBreak: Int = 0,
     val totalPoints: Int = 0,
     val averageBreak: Int = 0,
-    val breaks25plus: Int = 0,
+    val breaks20plus: Int = 0,
     val breaks50plus: Int = 0,
     val breaks100plus: Int = 0
 )
@@ -45,7 +45,7 @@ class StatsViewModel @Inject constructor(
                         val totalPoints = userShots.sumOf { it.points }
                         val breaks = mutableListOf<Int>()
                         var currentBreak = 0
-                        
+
                         matches.flatMap { it.frames }.forEach { frame ->
                             frame.shots.forEach { shot ->
                                 if (shot.playerId == userId && shot.points > 0) {
@@ -68,7 +68,7 @@ class StatsViewModel @Inject constructor(
                             highestBreak = breaks.maxOrNull() ?: 0,
                             totalPoints = totalPoints,
                             averageBreak = if (breaks.isNotEmpty()) breaks.average().toInt() else 0,
-                            breaks25plus = breaks.count { it >= 25 },
+                            breaks20plus = breaks.count { it >= 20 },
                             breaks50plus = breaks.count { it >= 50 },
                             breaks100plus = breaks.count { it >= 100 }
                         )

@@ -20,6 +20,7 @@ import javax.inject.Inject
 data class ProfileStats(
     val matchesPlayed: Int = 0,
     val highestBreak: Int = 0,
+    val matchesWon: Int = 0,
     val winPercentage: Int = 0
 )
 
@@ -151,6 +152,7 @@ class ProfileViewModel @Inject constructor(
                     val stats = ProfileStats(
                         matchesPlayed = matchesPlayed,
                         highestBreak = highestBreak,
+                        matchesWon = matchesWon,
                         winPercentage = winPercentage
                     )
 

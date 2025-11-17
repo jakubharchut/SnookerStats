@@ -33,9 +33,10 @@ fun PottingButtons(
         Button(
             onClick = { onBallClick(SnookerBall.Red) },
             enabled = !pottingColor && !finalSequence,
+            colors = ButtonDefaults.buttonColors(containerColor = SnookerBall.Red.color),
             modifier = Modifier.widthIn(min = 240.dp).height(48.dp)
         ) {
-            Text("Czerwona")
+            Text("Czerwona", color = SnookerBall.Red.contentColor)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),

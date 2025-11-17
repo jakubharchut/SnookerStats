@@ -19,9 +19,7 @@ data class Training(val name: String, val route: String)
 @Composable
 fun TrainingScreen(navController: NavController) {
     val trainingOptions = listOf(
-        Training("Line-up", "training/line-up"),
-        Training("Wbijanie długich bil", "training/long-potting"),
-        Training("Trening odstawnych", "training/safety-practice")
+        Training("Line-up", "training/line-up")
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -35,7 +33,7 @@ fun TrainingScreen(navController: NavController) {
             }
         }
         Text(
-            text = "(Zakładka w budowie)",
+            text = "(Więcej ćwiczeń wkrótce)",
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             modifier = Modifier

@@ -49,7 +49,7 @@ fun LineUpContainerScreen(navController: NavController) {
             TopAppBar(
                 title = { Text("Trening - Czyszczenie Linii") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navController.navigate("play?initialTabIndex=2") { popUpTo("play?opponentId={opponentId}&initialTabIndex={initialTabIndex}") { inclusive = true } } }) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Wróć")
                     }
                 },

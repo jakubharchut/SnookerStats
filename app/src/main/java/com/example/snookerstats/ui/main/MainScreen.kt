@@ -245,13 +245,17 @@ fun NavigationGraph(
     NavHost(internalNavController, startDestination = BottomNavItem.Home.route) {
         composable(BottomNavItem.Home.route) { HomeScreen() }
         composable(
-            route = "play?opponentId={opponentId}",
-            arguments = listOf(navArgument("opponentId") { type = NavType.StringType; nullable = true })
+            route = "play?opponentId={opponentId}&initialTabIndex={initialTabIndex}",
+            arguments = listOf(
+                navArgument("opponentId") { type = NavType.StringType; nullable = true },
+                navArgument("initialTabIndex") { type = NavType.IntType; defaultValue = 0 }
+            )
         ) { backStackEntry ->
             PlayScreen(
                 navController = internalNavController,
                 ongoingMatch = ongoingMatch,
-                selectedOpponentId = backStackEntry.arguments?.getString("opponentId")
+                selectedOpponentId = backStackEntry.arguments?.getString("opponentId"),
+                initialTabIndex = backStackEntry.arguments?.getInt("initialTabIndex") ?: 0
             )
         }
         composable(BottomNavItem.MatchHistory.route) { MatchHistoryScreen(navController = internalNavController) }

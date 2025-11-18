@@ -43,9 +43,10 @@ fun HomeScreen() {
 fun PlayScreen(
     navController: NavController,
     ongoingMatch: Match?,
-    selectedOpponentId: String? = null
+    selectedOpponentId: String? = null,
+    initialTabIndex: Int = 0
 ) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    var selectedTabIndex by remember { mutableStateOf(initialTabIndex) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(ongoingMatch) {

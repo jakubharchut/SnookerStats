@@ -16,10 +16,16 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class RedBlackState(
+    // Break stats
     val streak: Int = 0,
-    val record: Int = 0, // In a real app, you'd load this from a repository
     val elapsedTimeInSeconds: Long = 0L,
-    val isPottingBlack: Boolean = false
+    val isPottingBlack: Boolean = false,
+    // Session stats
+    val record: Int = 0,
+    val totalPotsOnRed: Int = 0,
+    val totalPotsOnBlack: Int = 0,
+    val totalMissesOnRed: Int = 0,
+    val totalMissesOnBlack: Int = 0
 )
 
 @HiltViewModel
@@ -59,10 +65,13 @@ class RedBlackViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     streak = it.streak + 1,
-                    isPottingBlack = !it.isPottingBlack
+                    isPottingBlack = !it.isPottingBlack,
+                    totalPotsOnRed = if (!isBlack) it.totalPotsOnRed + 1 else it.totalPotsOnRed,
+                    totalPotsOnBlack = if (isBlack) it.totalPotsOnBlack + 1 else it.totalPotsOnBlack
                 )
             }
         } else {
+            // Potted the wrong ball, counts as a miss
             onMiss()
         }
     }
@@ -73,16 +82,19 @@ class RedBlackViewModel @Inject constructor(
             saveAttempt(currentState.streak, currentState.elapsedTimeInSeconds)
         }
         stopTimer()
+
         _uiState.update {
             it.copy(
                 record = maxOf(it.record, it.streak),
                 streak = 0,
                 elapsedTimeInSeconds = 0L,
-                isPottingBlack = false
+                isPottingBlack = false,
+                totalMissesOnRed = if (!it.isPottingBlack && it.streak > 0) it.totalMissesOnRed + 1 else it.totalMissesOnRed,
+                totalMissesOnBlack = if (it.isPottingBlack && it.streak > 0) it.totalMissesOnBlack + 1 else it.totalMissesOnBlack
             )
         }
     }
-    
+
     private fun saveAttempt(streak: Int, duration: Long) {
         viewModelScope.launch {
             val attempt = TrainingAttempt(
@@ -98,6 +110,11 @@ class RedBlackViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        // Make sure to save the last attempt if the user leaves the screen during a break
+        val currentState = _uiState.value
+        if (currentState.streak > 0) {
+            saveAttempt(currentState.streak, currentState.elapsedTimeInSeconds)
+        }
         stopTimer()
     }
 }

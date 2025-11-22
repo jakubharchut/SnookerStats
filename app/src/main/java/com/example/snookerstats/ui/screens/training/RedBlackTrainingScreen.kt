@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.snookerstats.domain.model.SnookerBall
@@ -35,15 +36,25 @@ fun RedBlackTrainingScreen(viewModel: RedBlackViewModel = hiltViewModel()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it),
+                .padding(it)
+                .padding(vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceAround
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            RedBlackStatsPanel(
-                streak = uiState.streak,
-                record = uiState.record,
-                time = uiState.elapsedTimeInSeconds
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                RedBlackStatsPanel(
+                    streak = uiState.streak,
+                    record = uiState.record,
+                    time = uiState.elapsedTimeInSeconds
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                SessionStatsPanel(
+                    totalPotsOnRed = uiState.totalPotsOnRed,
+                    totalMissesOnRed = uiState.totalMissesOnRed,
+                    totalPotsOnBlack = uiState.totalPotsOnBlack,
+                    totalMissesOnBlack = uiState.totalMissesOnBlack
+                )
+            }
 
             RedBlackPottingButtons(
                 isPottingBlack = uiState.isPottingBlack,
@@ -54,7 +65,7 @@ fun RedBlackTrainingScreen(viewModel: RedBlackViewModel = hiltViewModel()) {
                 onClick = { viewModel.onMiss() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp)
             ) {
                 Text("Pudło / Zakończ")
             }
@@ -64,17 +75,63 @@ fun RedBlackTrainingScreen(viewModel: RedBlackViewModel = hiltViewModel()) {
 
 @Composable
 private fun RedBlackStatsPanel(streak: Int, record: Int, time: Long) {
-    Card(modifier = Modifier
-        .fillMaxWidth()
-        .padding(16.dp)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatItem(label = "Passa", value = streak.toString())
+            StatItem(label = "Podejście", value = streak.toString())
             StatItem(label = "Rekord", value = record.toString())
             StatItem(label = "Czas", value = formatTime(time))
+        }
+    }
+}
+
+@Composable
+private fun SessionStatsPanel(
+    totalPotsOnRed: Int,
+    totalMissesOnRed: Int,
+    totalPotsOnBlack: Int,
+    totalMissesOnBlack: Int
+) {
+    val redTotal = totalPotsOnRed + totalMissesOnRed
+    val redAccuracy = if (redTotal > 0) {
+        (totalPotsOnRed.toFloat() / redTotal) * 100
+    } else {
+        0f
+    }
+    val blackTotal = totalPotsOnBlack + totalMissesOnBlack
+    val blackAccuracy = if (blackTotal > 0) {
+        (totalPotsOnBlack.toFloat() / blackTotal) * 100
+    } else {
+        0f
+    }
+
+    val redValue = "%.0f%%\n(%d/%d)".format(redAccuracy, totalPotsOnRed, redTotal)
+    val blackValue = "%.0f%%\n(%d/%d)".format(blackAccuracy, totalPotsOnBlack, blackTotal)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Statystyki Sesji", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                StatItem(label = "Skuteczność (Czerwone)", value = redValue)
+                StatItem(label = "Skuteczność (Czarna)", value = blackValue)
+            }
         }
     }
 }
@@ -107,7 +164,7 @@ private fun RedBlackPottingButtons(isPottingBlack: Boolean, onBallClick: (Boolea
                     disabledContentColor = SnookerBall.Red.contentColor.copy(alpha = 0.7f)
                 )
             ) {
-                Text("Lewy")
+                Text("Czerwona")
             }
             Button(
                 onClick = { onBallClick(false) },
@@ -120,7 +177,7 @@ private fun RedBlackPottingButtons(isPottingBlack: Boolean, onBallClick: (Boolea
                     disabledContentColor = SnookerBall.Red.contentColor.copy(alpha = 0.7f)
                 )
             ) {
-                Text("Prawy")
+                Text("Czerwona")
             }
         }
     }
@@ -129,9 +186,14 @@ private fun RedBlackPottingButtons(isPottingBlack: Boolean, onBallClick: (Boolea
 @Composable
 private fun StatItem(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, style = MaterialTheme.typography.labelLarge)
+        Text(text = label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(4.dp))
-        Text(text = value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+            text = value, 
+            style = MaterialTheme.typography.headlineSmall, 
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
     }
 }
 

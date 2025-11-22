@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class LineUpTrainingState(
+    // Break stats
     val redsRemaining: Int = 15,
     val pottingColor: Boolean = false,
     val finalSequenceBall: SnookerBall? = null,
@@ -101,7 +102,7 @@ class LineUpViewModel @Inject constructor(
             }
             handleSuccessfulPot(ball)
         } else {
-            onMiss()
+            onMiss(ball)
         }
     }
 
@@ -121,7 +122,7 @@ class LineUpViewModel @Inject constructor(
                 val isFinished = nextIndex >= colors.size
                 if (isFinished) {
                     stopTimer()
-                    saveAttempt(newScore, newPottedBalls, currentState.elapsedTimeInSeconds)
+                    saveAttempt(newScore, newPottedBalls, emptyList(), currentState.elapsedTimeInSeconds)
                 }
                 currentState.copy(
                     score = newScore,
@@ -149,10 +150,10 @@ class LineUpViewModel @Inject constructor(
         }
     }
 
-    fun onMiss() {
+    fun onMiss(missedBall: SnookerBall) {
         val currentState = _uiState.value
-        if (currentState.pottedBalls.isNotEmpty()) {
-            saveAttempt(currentState.score, currentState.pottedBalls, currentState.elapsedTimeInSeconds)
+        if (currentState.pottedBalls.isNotEmpty() || missedBall != null) {
+            saveAttempt(currentState.score, currentState.pottedBalls, listOf(missedBall), currentState.elapsedTimeInSeconds)
         }
         resetTraining()
     }
@@ -162,13 +163,15 @@ class LineUpViewModel @Inject constructor(
         _uiState.value = LineUpTrainingState()
     }
 
-    private fun saveAttempt(score: Int, pottedBalls: List<SnookerBall>, duration: Long) {
+    private fun saveAttempt(score: Int, pottedBalls: List<SnookerBall>, missedBalls: List<SnookerBall>, duration: Long) {
         viewModelScope.launch {
             val attempt = TrainingAttempt(
                 userId = authRepository.currentUser!!.uid,
+                trainingType = "LINE_UP",
                 score = score,
                 durationInSeconds = duration,
-                pottedBalls = pottedBalls.map { it.name }
+                pottedBalls = pottedBalls.map { it.name },
+                missedBalls = missedBalls.map { it.name }
             )
             trainingRepository.saveTrainingAttempt(attempt)
         }

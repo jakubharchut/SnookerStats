@@ -1,14 +1,25 @@
 package com.example.snookerstats.ui.screens.training
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -18,29 +29,22 @@ import androidx.navigation.NavController
 @Composable
 fun RedBlackContainerScreen(navController: NavController) {
     var selectedTabIndex by remember { mutableStateOf(0) }
+    var showInfoDialog by remember { mutableStateOf(false) }
     val tabs = listOf("Trening", "Statystyki")
-    var showDescriptionDialog by remember { mutableStateOf(false) }
 
-    if (showDescriptionDialog) {
-        AlertDialog(
-            onDismissRequest = { showDescriptionDialog = false },
-            title = { Text("Opis Ćwiczenia: Czerwona-Czarna", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
-            text = { 
-                Column {
-                    Text("Ćwiczenie polega na budowaniu breaka poprzez naprzemienne wbijanie czerwonej i czarnej bili.", style = MaterialTheme.typography.bodyLarge)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Technika ćwiczenia:", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                    Text("1. Wbij czerwoną bilę.\n2. Wbij czarną bilę.\n3. Wyjmij obie bile i ustaw je ponownie.\n4. Powtarzaj sekwencję.", style = MaterialTheme.typography.bodyLarge)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Celem jest utrzymanie passy jak najdłużej. Pomyłka lub wciśnięcie przycisku 'Pudło' kończy próbę i zapisuje wynik.", style = MaterialTheme.typography.bodyLarge)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDescriptionDialog = false }) {
-                    Text("Zrozumiałem")
-                }
-            }
-        )
+    if (showInfoDialog) {
+        TrainingInfoDialog(
+            title = "Zasady: Czerwona-Czarna",
+            onDismiss = { showInfoDialog = false }
+        ) {
+            Text(
+                "1. Celem ćwiczenia jest naprzemienne wbijanie bil czerwonych i czarnej.\n\n" +
+                "2. Po każdej wbitej czerwonej bili, musisz wbić bilę czarną.\n\n" +
+                "3. Passa (streak) jest kontynuowana, dopóki nie popełnisz błędu (pudło lub faul).\n\n" +
+                "4. Po błędzie passa jest zerowana i zapisywana w statystykach.\n\n" +
+                "Ćwiczenie doskonali umiejętność budowania brejka i pozycjonowania do bili czarnej."
+            )
+        }
     }
 
     Scaffold(
@@ -48,25 +52,25 @@ fun RedBlackContainerScreen(navController: NavController) {
             TopAppBar(
                 title = { Text("Trening - Czerwona-Czarna") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigate("play?initialTabIndex=2") { popUpTo("play?opponentId={opponentId}&initialTabIndex={initialTabIndex}") { inclusive = true } } }) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Wróć")
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showDescriptionDialog = true }) {
-                        Icon(Icons.Default.Info, contentDescription = "Opis ćwiczenia")
+                    IconButton(onClick = { showInfoDialog = true }) {
+                        Icon(Icons.Default.Info, contentDescription = "Zasady ćwiczenia")
                     }
                 }
             )
         }
-    ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
+    ) { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues)) {
             TabRow(selectedTabIndex = selectedTabIndex) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTabIndex == index,
                         onClick = { selectedTabIndex = index },
-                        text = { Text(title) }
+                        text = { Text(text = title) }
                     )
                 }
             }
@@ -76,4 +80,18 @@ fun RedBlackContainerScreen(navController: NavController) {
             }
         }
     }
+}
+
+@Composable
+fun TrainingInfoDialog(title: String, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = title, fontWeight = FontWeight.Bold) },
+        text = content,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zrozumiałem")
+            }
+        }
+    )
 }

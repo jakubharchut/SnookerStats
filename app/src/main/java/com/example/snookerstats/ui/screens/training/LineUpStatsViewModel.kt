@@ -12,10 +12,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+
+enum class FilterPeriod(val displayName: String) {
+    ALL("Wszystko"),
+    LAST_MONTH("1 mc"),
+    LAST_3_MONTHS("3 mc"),
+    LAST_6_MONTHS("6 mc"),
+    LAST_12_MONTHS("12 mc")
+}
 
 data class BallStats(val pots: Int = 0, val misses: Int = 0)
 
@@ -27,14 +38,15 @@ data class LineUpGlobalStats(
     val averageAttemptTimeInSeconds: Double = 0.0,
     val averageShotTime: Double = 0.0,
     val ballStats: Map<SnookerBall, BallStats> = emptyMap(),
-    val scoreHistory: List<Int> = emptyList()
+    val dailyAverageHistory: List<Pair<Date, Double>> = emptyList()
 )
 
 data class LineUpStatsState(
     val attemptsByDate: Map<String, List<TrainingAttempt>> = emptyMap(),
     val globalStats: LineUpGlobalStats = LineUpGlobalStats(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val selectedFilter: FilterPeriod = FilterPeriod.ALL
 )
 
 @HiltViewModel
@@ -47,26 +59,60 @@ class LineUpStatsViewModel @Inject constructor(
     val uiState: StateFlow<LineUpStatsState> = _uiState.asStateFlow()
 
     private val dateFormatter = SimpleDateFormat("dd MMMM yyyy", Locale("pl"))
+    private var allAttempts: List<TrainingAttempt> = emptyList()
 
     init {
         loadStats()
     }
 
+    fun onFilterSelected(period: FilterPeriod) {
+        _uiState.update { it.copy(selectedFilter = period) }
+        processAttempts(allAttempts)
+    }
+
     private fun loadStats() {
         viewModelScope.launch {
-            trainingRepository.getTrainingAttempts(authRepository.currentUser!!.uid, "LINE_UP").collectLatest {
-                when (it) {
-                    is Resource.Loading -> _uiState.value = LineUpStatsState(isLoading = true)
+            _uiState.update { it.copy(isLoading = true) }
+            trainingRepository.getTrainingAttempts(authRepository.currentUser!!.uid, "LINE_UP").collectLatest { resource ->
+                when (resource) {
+                    is Resource.Loading -> _uiState.update { it.copy(isLoading = true) }
                     is Resource.Success -> {
-                        val attempts = it.data ?: emptyList()
-                        val globalStats = calculateGlobalStats(attempts)
-                        val groupedAttempts = attempts.groupBy { attempt -> dateFormatter.format(attempt.date!!) }
-                        _uiState.value = LineUpStatsState(attemptsByDate = groupedAttempts, globalStats = globalStats)
+                        allAttempts = resource.data ?: emptyList()
+                        processAttempts(allAttempts)
                     }
-                    is Resource.Error -> _uiState.value = LineUpStatsState(error = it.message)
+                    is Resource.Error -> _uiState.update { it.copy(error = resource.message, isLoading = false) }
                 }
             }
         }
+    }
+
+    private fun processAttempts(attempts: List<TrainingAttempt>) {
+        val filteredAttempts = filterAttemptsByPeriod(attempts, _uiState.value.selectedFilter)
+        val globalStats = calculateGlobalStats(filteredAttempts)
+        val groupedAttempts = filteredAttempts.groupBy { attempt -> dateFormatter.format(attempt.date!!) }
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                attemptsByDate = groupedAttempts,
+                globalStats = globalStats
+            )
+        }
+    }
+
+    private fun filterAttemptsByPeriod(attempts: List<TrainingAttempt>, period: FilterPeriod): List<TrainingAttempt> {
+        if (period == FilterPeriod.ALL) return attempts
+
+        val calendar = Calendar.getInstance()
+        when (period) {
+            FilterPeriod.LAST_MONTH -> calendar.add(Calendar.MONTH, -1)
+            FilterPeriod.LAST_3_MONTHS -> calendar.add(Calendar.MONTH, -3)
+            FilterPeriod.LAST_6_MONTHS -> calendar.add(Calendar.MONTH, -6)
+            FilterPeriod.LAST_12_MONTHS -> calendar.add(Calendar.YEAR, -1)
+            else -> { /* No-op */ }
+        }
+        val startDate = calendar.time
+
+        return attempts.filter { it.date?.after(startDate) ?: false }
     }
 
     private fun calculateGlobalStats(attempts: List<TrainingAttempt>): LineUpGlobalStats {
@@ -86,6 +132,23 @@ class LineUpStatsViewModel @Inject constructor(
             }
         }
 
+        val dailyAverages = attempts
+            .filter { it.date != null }
+            .groupBy {
+                val cal = Calendar.getInstance()
+                cal.time = it.date!!
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                cal.time
+            }
+            .mapValues { entry ->
+                entry.value.map { it.score }.average()
+            }
+            .toList()
+            .sortedBy { it.first }
+
         return LineUpGlobalStats(
             bestScore = attempts.maxOfOrNull { it.score } ?: 0,
             averageScore = attempts.map { it.score }.average(),
@@ -94,7 +157,7 @@ class LineUpStatsViewModel @Inject constructor(
             averageAttemptTimeInSeconds = attempts.map { it.durationInSeconds }.average(),
             averageShotTime = if (totalPottedBalls > 0) totalDuration.toDouble() / totalPottedBalls else 0.0,
             ballStats = ballStats,
-            scoreHistory = attempts.map { it.score } // Add score history for the chart
+            dailyAverageHistory = dailyAverages
         )
     }
 }

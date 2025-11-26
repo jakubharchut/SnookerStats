@@ -2,6 +2,7 @@ package com.example.snookerstats.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -26,6 +27,7 @@ import com.example.snookerstats.domain.model.SnookerBall
 import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import kotlinx.coroutines.flow.collectLatest
+import kotlin.math.abs
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -103,13 +105,16 @@ fun ScoringScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(8.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Scoreboard(
             player1 = state.player1,
             player2 = state.player2,
-            activePlayerId = state.activePlayerId
+            activePlayerId = state.activePlayerId,
+            pointsRemaining = state.pointsRemaining
         )
         Spacer(modifier = Modifier.height(16.dp))
         CurrentStatsAndTimer(
@@ -336,8 +341,15 @@ private fun FoulDialog(onDismiss: () -> Unit, onConfirm: (Int, Int) -> Unit) {
 private fun Scoreboard(
     player1: PlayerState?,
     player2: PlayerState?,
-    activePlayerId: String?
+    activePlayerId: String?,
+    pointsRemaining: Int
 ) {
+    val p1Score = player1?.score ?: 0
+    val p2Score = player2?.score ?: 0
+    val scoreDifference = abs(p1Score - p2Score)
+    val activeColor = MaterialTheme.colorScheme.primary
+    val snookersRequired = scoreDifference > pointsRemaining && p1Score != p2Score
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -347,7 +359,13 @@ private fun Scoreboard(
             val player1Modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (activePlayerId == player1?.user?.uid) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                .then(
+                    if (activePlayerId == player1?.user?.uid) {
+                        Modifier
+                            .background(activeColor.copy(alpha = 0.2f))
+                            .border(2.dp, activeColor, RoundedCornerShape(8.dp))
+                    } else Modifier
+                )
                 .padding(vertical = 8.dp, horizontal = 4.dp)
 
             PlayerInfo(player = player1, modifier = player1Modifier)
@@ -355,12 +373,42 @@ private fun Scoreboard(
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
                 Text(text = "FRAMES", style = MaterialTheme.typography.labelSmall)
                 Text(text = "${player1?.framesWon ?: 0} - ${player2?.framesWon ?: 0}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                if (snookersRequired) {
+                    val shortfall = scoreDifference - pointsRemaining
+                    val numberOfSnookers = (shortfall + 3) / 4
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Snookery",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "wymagane: $numberOfSnookers",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "Różnica: $scoreDifference",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             val player2Modifier = Modifier
                 .weight(1f)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (activePlayerId == player2?.user?.uid) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                .then(
+                    if (activePlayerId == player2?.user?.uid) {
+                        Modifier
+                            .background(activeColor.copy(alpha = 0.2f))
+                            .border(2.dp, activeColor, RoundedCornerShape(8.dp))
+                    } else Modifier
+                )
                 .padding(vertical = 8.dp, horizontal = 4.dp)
 
             PlayerInfo(player = player2, modifier = player2Modifier)

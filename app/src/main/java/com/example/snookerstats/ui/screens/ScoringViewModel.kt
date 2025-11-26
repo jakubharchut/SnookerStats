@@ -447,7 +447,7 @@ class ScoringViewModel @Inject constructor(
                         tempBreakHistory.add(pottedBall)
                     }
                 }
-                ShotType.FOUL -> {
+                ShotType.FOUL, ShotType.MISS_PENALTY -> {
                     val opponentId = if (tempActivePlayerId == player1.uid) player2?.uid else player1.uid
                     if (opponentId == player1.uid) tempPlayer1Score += shot.points else tempPlayer2Score += shot.points
                     val redsBeforeFoul = tempRedsRemaining

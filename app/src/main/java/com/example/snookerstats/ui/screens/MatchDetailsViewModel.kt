@@ -232,7 +232,7 @@ class MatchDetailsViewModel @Inject constructor(
                     if (activePlayerId == player1Id) p1Score += shot.points else p2Score += shot.points
                     currentBreak += shot.points
                 }
-                ShotType.FOUL -> {
+                ShotType.FOUL, ShotType.MISS_PENALTY -> {
                     if (activePlayerId == player1Id) p2Score += shot.points else p1Score += shot.points
                     currentBreak = 0
                 }
@@ -243,7 +243,7 @@ class MatchDetailsViewModel @Inject constructor(
 
             history.add(FrameShotHistory(shot, p1Score, p2Score, currentBreak, activePlayerId))
 
-            if (shot.type == ShotType.FOUL || shot.type == ShotType.SAFETY || shot.type == ShotType.MISS) {
+            if (shot.type == ShotType.FOUL || shot.type == ShotType.SAFETY || shot.type == ShotType.MISS || shot.type == ShotType.MISS_PENALTY) {
                 activePlayerId = if (activePlayerId == player1Id) player2Id ?: "" else player1Id
             }
         }
@@ -305,11 +305,11 @@ class MatchDetailsViewModel @Inject constructor(
                     SnookerBall.fromName(shot.ballName)?.let { currentBreakBalls.add(it) }
                     if (activePlayerId == player1Id) p1Pots++ else p2Pots++
                 }
-                ShotType.FOUL, ShotType.SAFETY, ShotType.MISS -> {
-                    if (shot.type == ShotType.MISS) {
+                ShotType.FOUL, ShotType.SAFETY, ShotType.MISS, ShotType.MISS_PENALTY -> {
+                    if (shot.type == ShotType.MISS || shot.type == ShotType.MISS_PENALTY) {
                         if (activePlayerId == player1Id) p1Misses++ else p2Misses++
                     }
-                    if (shot.type == ShotType.FOUL) {
+                    if (shot.type == ShotType.FOUL || shot.type == ShotType.MISS_PENALTY) {
                         if (activePlayerId == player1Id) {
                             p1Fouls++
                             p2FoulPointsGiven += shot.points

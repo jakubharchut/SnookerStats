@@ -60,7 +60,7 @@ fun ScoringScreen(
     if (state.showFoulDialog) {
         FoulDialog(
             onDismiss = viewModel::onDismissFoulDialog,
-            onConfirm = { foulPoints, redsPotted -> viewModel.onFoulConfirmed(foulPoints, redsPotted) }
+            onConfirm = { foulPoints, redsPotted, isMiss -> viewModel.onFoulConfirmed(foulPoints, redsPotted, isMiss) }
         )
     }
 
@@ -303,9 +303,10 @@ private fun RepeatFrameDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
 }
 
 @Composable
-private fun FoulDialog(onDismiss: () -> Unit, onConfirm: (Int, Int) -> Unit) {
+private fun FoulDialog(onDismiss: () -> Unit, onConfirm: (Int, Int, Boolean) -> Unit) {
     var selectedPoints by remember { mutableStateOf(4) }
     var redsPotted by remember { mutableStateOf(0) }
+    var isMiss by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -330,9 +331,21 @@ private fun FoulDialog(onDismiss: () -> Unit, onConfirm: (Int, Int) -> Unit) {
                     Text(text = redsPotted.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp))
                     IconButton(onClick = { redsPotted = (redsPotted + 1).coerceAtMost(15) }) { Icon(Icons.Default.Add, "Dodaj") }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(value = isMiss, onValueChange = { isMiss = it }, role = Role.Checkbox)
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = isMiss, onCheckedChange = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Miss (pozostaw gracza przy stole)")
+                }
             }
         },
-        confirmButton = { Button(onClick = { onConfirm(selectedPoints, redsPotted) }) { Text("Zatwierdź") } },
+        confirmButton = { Button(onClick = { onConfirm(selectedPoints, redsPotted, isMiss) }) { Text("Zatwierdź") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } }
     )
 }

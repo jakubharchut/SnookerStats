@@ -314,9 +314,11 @@ class ScoringViewModel @Inject constructor(
     fun onFoulClicked() { _uiState.update { it.copy(showFoulDialog = true) } }
     fun onDismissFoulDialog() { _uiState.update { it.copy(showFoulDialog = false) } }
 
-    fun onFoulConfirmed(foulPoints: Int, redsPotted: Int) {
+    fun onFoulConfirmed(foulPoints: Int, redsPotted: Int, isMiss: Boolean) {
         val activePlayerId = _uiState.value.activePlayerId ?: return
         startTimer()
+
+        val shotType = if (isMiss) ShotType.MISS_PENALTY else ShotType.FOUL
 
         _uiState.update { currentState ->
             val opponentState = if (currentState.activePlayerId == currentState.player1?.user?.uid) currentState.player2 else currentState.player1
@@ -325,7 +327,12 @@ class ScoringViewModel @Inject constructor(
             val newOpponentScore = opponentState.score + foulPoints
             val newOpponentState = opponentState.copy(score = newOpponentScore)
             val newRedsRemaining = (currentState.redsRemaining - redsPotted).coerceAtLeast(0)
-            val nextPlayerId = opponentState.user.uid
+
+            val nextPlayerId = if (isMiss) {
+                currentState.activePlayerId // Keep the same player
+            } else {
+                opponentState.user.uid // Switch to opponent
+            }
 
             var nextColorOn: SnookerBall? = currentState.nextColorBallOn
             if (newRedsRemaining == 0 && currentState.redsRemaining > 0) {
@@ -348,7 +355,7 @@ class ScoringViewModel @Inject constructor(
                 nextColorBallOn = nextColorOn
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), points = foulPoints, type = ShotType.FOUL, redsPottedInFoul = redsPotted, playerId = activePlayerId)
+        val shot = Shot(timestamp = System.currentTimeMillis(), points = foulPoints, type = shotType, redsPottedInFoul = redsPotted, playerId = activePlayerId)
         updateFrameWithNewShot(shot)
     }
 
@@ -452,7 +459,11 @@ class ScoringViewModel @Inject constructor(
                     if (opponentId == player1.uid) tempPlayer1Score += shot.points else tempPlayer2Score += shot.points
                     val redsBeforeFoul = tempRedsRemaining
                     tempRedsRemaining = (tempRedsRemaining - shot.redsPottedInFoul).coerceAtLeast(0)
-                    tempActivePlayerId = opponentId
+
+                    if (shot.type == ShotType.FOUL) { // Only switch player on regular foul
+                        tempActivePlayerId = opponentId
+                    }
+
                     tempCurrentBreak = 0
                     tempBreakHistory.clear()
                     tempCanPotColor = tempRedsRemaining == 0

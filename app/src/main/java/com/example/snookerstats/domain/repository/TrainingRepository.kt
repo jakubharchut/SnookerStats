@@ -7,4 +7,5 @@ import kotlinx.coroutines.flow.Flow
 interface TrainingRepository {
     suspend fun saveTrainingAttempt(attempt: TrainingAttempt): Resource<Unit>
     fun getTrainingAttempts(userId: String, trainingType: String): Flow<Resource<List<TrainingAttempt>>>
+    fun getLastTrainingAttempt(userId: String): Flow<Resource<TrainingAttempt?>>
 }

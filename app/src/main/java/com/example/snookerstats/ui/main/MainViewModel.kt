@@ -3,26 +3,32 @@ package com.example.snookerstats.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Match
+import com.example.snookerstats.domain.model.TrainingAttempt
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.MatchRepository
+import com.example.snookerstats.domain.repository.TrainingRepository
 import com.example.snookerstats.domain.repository.UserRepository
 import com.example.snookerstats.util.Resource
 import com.example.snookerstats.util.SnackbarManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val matchRepository: MatchRepository,
     private val chatRepository: ChatRepository,
+    private val trainingRepository: TrainingRepository, // Injected repository
     private val snackbarManager: SnackbarManager
 ) : ViewModel() {
 
@@ -44,6 +50,22 @@ class MainViewModel @Inject constructor(
 
     val ongoingMatch: StateFlow<Match?> = matchRepository.getOngoingMatch()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // Flow to get the last training attempt
+    val lastTrainingAttempt: StateFlow<Resource<TrainingAttempt?>> = flow {
+        val userId = authRepository.currentUser?.uid
+        if (userId != null) {
+            emit(userId)
+        } else {
+            emit(null)
+        }
+    }.flatMapLatest { userId ->
+        if (userId != null) {
+            trainingRepository.getLastTrainingAttempt(userId)
+        } else {
+            flow { emit(Resource.Success(null)) }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Resource.Loading)
 
     fun showSnackbar(message: String) {
         viewModelScope.launch {

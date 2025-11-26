@@ -197,7 +197,8 @@ fun MainScreen(
             NavigationGraph(
                 mainNavController = navController,
                 internalNavController = internalNavController,
-                ongoingMatch = ongoingMatch
+                ongoingMatch = ongoingMatch,
+                mainViewModel = mainViewModel
             )
         }
     }
@@ -239,11 +240,12 @@ fun BottomNavigationBar(navController: NavController) {
 fun NavigationGraph(
     mainNavController: NavController,
     internalNavController: NavHostController,
-    ongoingMatch: Match?
+    ongoingMatch: Match?,
+    mainViewModel: MainViewModel
 ) {
     val activity = (LocalContext.current as MainActivity)
     NavHost(internalNavController, startDestination = BottomNavItem.Home.route) {
-        composable(BottomNavItem.Home.route) { HomeScreen() }
+        composable(BottomNavItem.Home.route) { HomeScreen(navController = internalNavController, mainViewModel = mainViewModel) }
         composable(
             route = "play?opponentId={opponentId}&initialTabIndex={initialTabIndex}",
             arguments = listOf(

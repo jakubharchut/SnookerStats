@@ -37,4 +37,18 @@ class TrainingRepositoryImpl @Inject constructor(
     }.catch { e ->
         emit(Resource.Error(e.message ?: "Unknown error"))
     }
+
+    override fun getLastTrainingAttempt(userId: String): Flow<Resource<TrainingAttempt?>> = flow {
+        emit(Resource.Loading)
+        val snapshot = firestore.collection("training_attempts")
+            .whereEqualTo("userId", userId)
+            .orderBy("date", Query.Direction.DESCENDING)
+            .limit(1)
+            .get()
+            .await()
+        val attempt = snapshot.toObjects(TrainingAttempt::class.java).firstOrNull()
+        emit(Resource.Success(attempt))
+    }.catch { e ->
+        emit(Resource.Error(e.message ?: "Unknown error"))
+    }
 }

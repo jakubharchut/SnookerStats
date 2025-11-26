@@ -24,8 +24,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.snookerstats.domain.model.Match
+import com.example.snookerstats.domain.model.TrainingAttempt
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.common.UserAvatar
+import com.example.snookerstats.ui.main.MainViewModel
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import com.example.snookerstats.util.Resource
 import kotlinx.coroutines.flow.collectLatest
@@ -33,9 +35,85 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun HomeScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "Ekran Główny")
+fun HomeScreen(navController: NavController, mainViewModel: MainViewModel) {
+    val username by mainViewModel.username.collectAsState()
+    val lastAttemptResource by mainViewModel.lastTrainingAttempt.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Witaj, $username!",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(vertical = 24.dp)
+        )
+
+        val lastAttempt = (lastAttemptResource as? Resource.Success)?.data
+
+        if (lastAttemptResource is Resource.Loading) {
+            CircularProgressIndicator(modifier = Modifier.padding(vertical = 16.dp))
+        } else if (lastAttempt != null) {
+            LastSessionSummary(attempt = lastAttempt)
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        if (lastAttempt != null) {
+            OutlinedButton(
+                onClick = { navController.navigate(getRouteForTrainingType(lastAttempt.trainingType)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Text(text = "Szybki Start: ${formatTrainingType(lastAttempt.trainingType)}")
+            }
+        }
+
+        Button(onClick = {
+            navController.navigate("play?initialTabIndex=2") {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }, modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Wybierz Inny Trening")
+        }
+    }
+}
+
+@Composable
+fun LastSessionSummary(attempt: TrainingAttempt) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Ostatnia sesja", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(8.dp))
+            val formattedDate = attempt.date?.let { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(it) } ?: "Brak daty"
+            Text("Data: $formattedDate", style = MaterialTheme.typography.bodyMedium)
+            Text("Typ: ${formatTrainingType(attempt.trainingType)}", style = MaterialTheme.typography.bodyMedium)
+            Text("Wynik: ${attempt.score}", style = MaterialTheme.typography.bodyMedium)
+            Text("Czas trwania: ${attempt.durationInSeconds}s", style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+private fun formatTrainingType(type: String): String {
+    return when (type) {
+        "LINE_UP" -> "Czyszczenie Linii"
+        "RED_BLACK" -> "Czerwona-Czarna"
+        else -> type
+    }
+}
+
+private fun getRouteForTrainingType(type: String): String {
+    return when (type) {
+        "LINE_UP" -> "training/line-up"
+        "RED_BLACK" -> "training/red-black"
+        else -> "play?initialTabIndex=2" // Fallback to general training tab
     }
 }
 

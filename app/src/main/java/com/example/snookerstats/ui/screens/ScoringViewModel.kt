@@ -201,7 +201,14 @@ class ScoringViewModel @Inject constructor(
 
             val isValid = when {
                 currentState.redsRemaining == 0 -> if (currentState.nextColorBallOn == null) ball !is SnookerBall.Red else ball == currentState.nextColorBallOn
-                else -> if (currentState.canPotColor) ball !is SnookerBall.Red else ball is SnookerBall.Red
+                else -> {
+                    val lastPottedBall = currentState.breakHistory.lastOrNull()
+                    if (ball is SnookerBall.Red) {
+                        !currentState.canPotColor || lastPottedBall is SnookerBall.Red
+                    } else {
+                        currentState.canPotColor
+                    }
+                }
             }
             if (!isValid) return@updateAndGet currentState
 

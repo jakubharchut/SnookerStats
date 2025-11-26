@@ -124,6 +124,7 @@ fun ScoringScreen(
         Divider()
         Spacer(modifier = Modifier.height(16.dp))
         BallButtons(
+            breakHistory = state.breakHistory,
             isFrameOver = state.isFrameOver,
             canPotColor = state.canPotColor,
             isFreeBall = state.isFreeBall,
@@ -428,12 +429,14 @@ private fun BallIcon(ball: SnookerBall, count: Int) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BallButtons(isFrameOver: Boolean, canPotColor: Boolean, isFreeBall: Boolean, redsRemaining: Int, nextColorBallOn: SnookerBall?, onBallClick: (SnookerBall) -> Unit) {
+private fun BallButtons(isFrameOver: Boolean, canPotColor: Boolean, isFreeBall: Boolean, redsRemaining: Int, nextColorBallOn: SnookerBall?, onBallClick: (SnookerBall) -> Unit, breakHistory: List<SnookerBall>) {
     val colors = listOf(SnookerBall.Yellow, SnookerBall.Green, SnookerBall.Brown, SnookerBall.Blue, SnookerBall.Pink, SnookerBall.Black)
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val lastPottedBall = breakHistory.lastOrNull()
+        val isRedEnabled = !canPotColor || (lastPottedBall is SnookerBall.Red)
         Button(
             onClick = { onBallClick(SnookerBall.Red) },
-            enabled = !isFrameOver && redsRemaining > 0 && !canPotColor && !isFreeBall,
+            enabled = !isFrameOver && redsRemaining > 0 && isRedEnabled && !isFreeBall,
             modifier = Modifier.width(256.dp).height(56.dp),
             shape = MaterialTheme.shapes.medium,
             colors = ButtonDefaults.buttonColors(containerColor = SnookerBall.Red.color, contentColor = SnookerBall.Red.contentColor)

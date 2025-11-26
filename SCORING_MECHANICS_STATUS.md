@@ -1,4 +1,4 @@
-# Status Implementacji Mechaniki Gry (`ScoringViewModel`) - stan na 2025-11-13
+# Status Implementacji Mechaniki Gry (`ScoringViewModel`) - stan na 2025-11-26
 
 Ten dokument podsumowuje zaimplementowane funkcjonalności i logikę walidacji dla ekranu wprowadzania wyników.
 
@@ -46,6 +46,10 @@ Ten dokument podsumowuje zaimplementowane funkcjonalności i logikę walidacji d
   - Funkcjonalność zaimplementowana i działa w oparciu o modyfikację listy `shots` w Firestore.
 
 - **[GOTOWE] Nawigacja i "Powrót do meczu":** Mechanizmy te są w pełni zaimplementowane.
+
+- **[GOTOWE] Zaawansowane Akcje Gracza:**
+  - **Obsługa faulu z 'missem':** W oknie dialogowym faulu dodano opcję "Miss", która pozwala na przyznanie punktów karnych przeciwnikowi, ale pozostawia aktywnego gracza przy stole. Logika została zaimplementowana w `ScoringViewModel` i odpowiednio zapisywana w historii uderzeń jako `MISS_PENALTY`.
+  - **Śledzenie pozycji snookerowej:** Na głównym ekranie wprowadzania wyników, między przyciskami "Odstawna" i "Pudło", dodano przycisk "Snooker". Pozwala on na oznaczenie, że następne uderzenie jest wykonywane z pozycji snookerowej. Informacja ta jest zapisywana w obiekcie `Shot` i może być wykorzystana do przyszłych analiz statystycznych. Przycisk jest dynamiczny i zmienia kolor po aktywacji.
 
 ## 2. Rzeczy do zrobienia (Następne kroki)
 

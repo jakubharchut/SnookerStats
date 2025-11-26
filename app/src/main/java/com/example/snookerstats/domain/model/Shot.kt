@@ -6,7 +6,8 @@ data class Shot(
     val points: Int = 0,
     val type: ShotType = ShotType.POTTED,
     val redsPottedInFoul: Int = 0,
-    val playerId: String = "" // ID gracza, który wykonał uderzenie
+    val playerId: String = "", // ID gracza, który wykonał uderzenie
+    val wasSnookered: Boolean = false
 )
 
 enum class ShotType {

@@ -124,6 +124,20 @@ fun ScoringScreen(
             redsRemaining = state.redsRemaining
         )
         Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Snooker", style = MaterialTheme.typography.titleMedium)
+            Switch(
+                checked = state.isSnookered,
+                onCheckedChange = viewModel::onSnookeredChanged
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
         BreakVisualizer(breakBalls = state.breakHistory)
         Spacer(modifier = Modifier.height(16.dp))
         Divider()

@@ -52,7 +52,8 @@ data class ScoringState(
     val isLoading: Boolean = true,
     val isFrameOver: Boolean = false,
     val currentFrame: Frame? = null,
-    val initialReds: Int = 15
+    val initialReds: Int = 15,
+    val isSnookered: Boolean = false
 )
 
 @HiltViewModel
@@ -197,6 +198,7 @@ class ScoringViewModel @Inject constructor(
 
     fun onBallClicked(ball: SnookerBall) {
         val activePlayerId = _uiState.value.activePlayerId ?: return
+        val wasSnookered = _uiState.value.isSnookered
         val newState = _uiState.updateAndGet { currentState ->
             if (currentState.isFrameOver) return@updateAndGet currentState
 
@@ -273,10 +275,11 @@ class ScoringViewModel @Inject constructor(
                 canPotColor = canPotColorNext,
                 nextColorBallOn = nextColorOn,
                 isFrameOver = frameShouldEnd,
-                activePlayerId = newActivePlayerId
+                activePlayerId = newActivePlayerId,
+                isSnookered = false // Reset after shot
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = ball.name, points = ball.points, type = ShotType.POTTED, playerId = activePlayerId)
+        val shot = Shot(timestamp = System.currentTimeMillis(), ballName = ball.name, points = ball.points, type = ShotType.POTTED, playerId = activePlayerId, wasSnookered = wasSnookered)
         updateFrameWithNewShot(shot)
 
         if (newState.isFrameOver) {
@@ -289,14 +292,16 @@ class ScoringViewModel @Inject constructor(
 
     fun onFreeBallConfirmed(ball: SnookerBall, points: Int) {
         val activePlayerId = _uiState.value.activePlayerId ?: return
+        val wasSnookered = _uiState.value.isSnookered
         startTimer()
-        _uiState.update { it.copy(showFreeBallDialog = false) }
+        _uiState.update { it.copy(showFreeBallDialog = false, isSnookered = false) }
         val shot = Shot(
             timestamp = System.currentTimeMillis(),
             ballName = ball.name,
             points = points,
             type = ShotType.FREE_BALL_POTTED,
-            playerId = activePlayerId
+            playerId = activePlayerId,
+            wasSnookered = wasSnookered
         )
         updateFrameWithNewShot(shot)
     }
@@ -317,6 +322,7 @@ class ScoringViewModel @Inject constructor(
 
     fun onFoulConfirmed(foulPoints: Int, redsPotted: Int, isMiss: Boolean) {
         val activePlayerId = _uiState.value.activePlayerId ?: return
+        val wasSnookered = _uiState.value.isSnookered
         startTimer()
 
         val shotType = if (isMiss) ShotType.MISS_PENALTY else ShotType.FOUL
@@ -355,15 +361,17 @@ class ScoringViewModel @Inject constructor(
                 isFreeBall = false,
                 redsRemaining = newRedsRemaining,
                 pointsRemaining = calculatePointsRemaining(newRedsRemaining, nextColorOn),
-                nextColorBallOn = nextColorOn
+                nextColorBallOn = nextColorOn,
+                isSnookered = false // Reset after shot
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), points = foulPoints, type = shotType, redsPottedInFoul = redsPotted, playerId = activePlayerId)
+        val shot = Shot(timestamp = System.currentTimeMillis(), points = foulPoints, type = shotType, redsPottedInFoul = redsPotted, playerId = activePlayerId, wasSnookered = wasSnookered)
         updateFrameWithNewShot(shot)
     }
 
     private fun endTurn(action: ShotType) {
         val activePlayerId = _uiState.value.activePlayerId ?: return
+        val wasSnookered = _uiState.value.isSnookered
         startTimer()
 
         _uiState.update { currentState ->
@@ -376,15 +384,19 @@ class ScoringViewModel @Inject constructor(
                 canPotColor = false,
                 isFreeBall = false,
                 nextColorBallOn = nextColorOn,
-                pointsRemaining = calculatePointsRemaining(currentState.redsRemaining, nextColorOn)
+                pointsRemaining = calculatePointsRemaining(currentState.redsRemaining, nextColorOn),
+                isSnookered = false // Reset after shot
             )
         }
-        val shot = Shot(timestamp = System.currentTimeMillis(), type = action, playerId = activePlayerId)
+        val shot = Shot(timestamp = System.currentTimeMillis(), type = action, playerId = activePlayerId, wasSnookered = wasSnookered)
         updateFrameWithNewShot(shot)
     }
 
     fun onSafetyClicked() = endTurn(ShotType.SAFETY)
     fun onMissClicked() = endTurn(ShotType.MISS)
+    fun onSnookeredChanged(isSnookered: Boolean) {
+        _uiState.update { it.copy(isSnookered = isSnookered) }
+    }
 
     private fun reconstructScoringState(
         shots: List<Shot>,

@@ -172,6 +172,7 @@ class ScoringViewModel @Inject constructor(
             SnookerBall.Blue -> 18
             SnookerBall.Pink -> 13
             SnookerBall.Black -> 7
+            null -> 27 // No reds left, before color sequence starts
             else -> 0
         }
     }
@@ -341,6 +342,8 @@ class ScoringViewModel @Inject constructor(
                 nextColorOn = SnookerBall.Yellow
             }
 
+            val canPotColor = newRedsRemaining == 0
+
             currentState.copy(
                 player1 = if (opponentState.user.uid == currentState.player1?.user?.uid) newOpponentState else currentState.player1,
                 player2 = if (opponentState.user.uid == currentState.player2?.user?.uid) newOpponentState else currentState.player2,
@@ -348,7 +351,7 @@ class ScoringViewModel @Inject constructor(
                 activePlayerId = nextPlayerId,
                 currentBreak = 0,
                 breakHistory = emptyList(),
-                canPotColor = newRedsRemaining == 0,
+                canPotColor = canPotColor,
                 isFreeBall = false,
                 redsRemaining = newRedsRemaining,
                 pointsRemaining = calculatePointsRemaining(newRedsRemaining, nextColorOn),
@@ -372,7 +375,8 @@ class ScoringViewModel @Inject constructor(
                 breakHistory = emptyList(),
                 canPotColor = false,
                 isFreeBall = false,
-                nextColorBallOn = nextColorOn
+                nextColorBallOn = nextColorOn,
+                pointsRemaining = calculatePointsRemaining(currentState.redsRemaining, nextColorOn)
             )
         }
         val shot = Shot(timestamp = System.currentTimeMillis(), type = action, playerId = activePlayerId)
@@ -475,7 +479,7 @@ class ScoringViewModel @Inject constructor(
                     tempActivePlayerId = if (tempActivePlayerId == player1.uid) player2?.uid else player1.uid
                     tempCurrentBreak = 0
                     tempBreakHistory.clear()
-                    tempCanPotColor = tempRedsRemaining == 0
+                    tempCanPotColor = false
                     tempIsFreeBall = false
                     tempNextColorBallOn = if (tempRedsRemaining == 0) tempNextColorBallOn ?: SnookerBall.Yellow else null
                 }

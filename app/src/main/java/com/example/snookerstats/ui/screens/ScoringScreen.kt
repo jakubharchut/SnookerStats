@@ -124,20 +124,6 @@ fun ScoringScreen(
             redsRemaining = state.redsRemaining
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Snooker", style = MaterialTheme.typography.titleMedium)
-            Switch(
-                checked = state.isSnookered,
-                onCheckedChange = viewModel::onSnookeredChanged
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
         BreakVisualizer(breakBalls = state.breakHistory)
         Spacer(modifier = Modifier.height(16.dp))
         Divider()
@@ -157,7 +143,9 @@ fun ScoringScreen(
             onSafetyClick = viewModel::onSafetyClicked,
             onMissClick = viewModel::onMissClicked,
             onUndoClick = viewModel::onUndoClicked,
-            onFreeBallClick = viewModel::onFreeBallClicked
+            onFreeBallClick = viewModel::onFreeBallClicked,
+            isSnookered = state.isSnookered,
+            onSnookeredChanged = viewModel::onSnookeredChanged
         )
         Spacer(modifier = Modifier.weight(1f))
 
@@ -546,10 +534,28 @@ private fun BallButton(ball: SnookerBall, onClick: () -> Unit, enabled: Boolean)
 }
 
 @Composable
-private fun ActionButtons(onFoulClick: () -> Unit, onSafetyClick: () -> Unit, onMissClick: () -> Unit, onUndoClick: () -> Unit, onFreeBallClick: () -> Unit) {
+private fun ActionButtons(
+    onFoulClick: () -> Unit,
+    onSafetyClick: () -> Unit,
+    onMissClick: () -> Unit,
+    onUndoClick: () -> Unit,
+    onFreeBallClick: () -> Unit,
+    isSnookered: Boolean,
+    onSnookeredChanged: (Boolean) -> Unit
+) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(onClick = onSafetyClick, modifier = Modifier.weight(1f)) { Text("Odstawna") }
+            FilledTonalButton(
+                onClick = { onSnookeredChanged(!isSnookered) },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = if (isSnookered) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (isSnookered) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text("Snooker")
+            }
             Button(onClick = onMissClick, modifier = Modifier.weight(1f)) { Text("Pudło") }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {

@@ -806,7 +806,7 @@ fun ExpandableStatItem(
                 modifier = Modifier
                     .padding(top = 4.dp, bottom = 8.dp)
                     .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
                         shape = MaterialTheme.shapes.medium
                     )
                     .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
@@ -851,5 +851,3 @@ fun formatTimeAgo(timestamp: Long): String {
 
     return "przed chwilą"
 }
-
-

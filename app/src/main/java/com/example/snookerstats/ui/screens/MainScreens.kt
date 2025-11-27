@@ -653,40 +653,52 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
 fun MatchStatsContent(viewModel: StatsViewModel) {
     val statsResource by viewModel.stats.collectAsState()
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        when (val resource = statsResource) {
-            is Resource.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-            is Resource.Success -> {
-                val stats = resource.data
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        StatItem(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = stats.matchesPlayed.toString())
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        StatItem(icon = Icons.Default.TrendingUp, label = "Punkty łącznie", value = stats.totalPoints.toString())
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        StatItem(icon = Icons.Default.Star, label = "Najwyższy break", value = stats.highestBreak.toString())
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        StatItem(icon = Icons.Default.Functions, label = "Średni break", value = stats.averageBreak.toString())
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        StatItem(icon = Icons.Default.BarChart, label = "Brejki 20+", value = stats.breaks20plus.toString())
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        StatItem(icon = Icons.Default.MilitaryTech, label = "Breaki 50+", value = stats.breaks50plus.toString())
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        StatItem(icon = Icons.Default.WorkspacePremium, label = "Breaki 100+", value = stats.breaks100plus.toString())
+        item {
+            when (val resource = statsResource) {
+                is Resource.Loading -> {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
-            }
-            is Resource.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = "Błąd ładowania statystyk: ${resource.message}")
+                is Resource.Success -> {
+                    val stats = resource.data
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            StatItem(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = stats.matchesPlayed.toString())
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.ThumbUp, label = "Wygrane mecze", value = stats.matchesWon.toString())
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.PieChart, label = "Procent wygranych", value = "${stats.winPercentage}%")
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.TrendingUp, label = "Punkty łącznie", value = stats.totalPoints.toString())
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.Star, label = "Najwyższy break", value = stats.highestBreak.toString())
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.Functions, label = "Średni break", value = stats.averageBreak.toString())
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.Shield, label = "Skuteczność odstawnych", value = "${stats.safetySuccessPercentage}%")
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.GppGood, label = "Skuteczność wyjść ze snookera", value = "${stats.snookerEscapeSuccessPercentage}%")
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.ErrorOutline, label = "Liczba fauli", value = stats.fouls.toString())
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.BarChart, label = "Brejki 20+", value = stats.breaks20plus.toString())
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.MilitaryTech, label = "Breaki 50+", value = stats.breaks50plus.toString())
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            StatItem(icon = Icons.Default.WorkspacePremium, label = "Breaki 100+", value = stats.breaks100plus.toString())
+                        }
+                    }
+                }
+                is Resource.Error -> {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text(text = "Błąd ładowania statystyk: ${resource.message}")
+                    }
                 }
             }
         }

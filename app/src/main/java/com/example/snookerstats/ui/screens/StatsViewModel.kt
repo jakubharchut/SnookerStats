@@ -2,6 +2,7 @@ package com.example.snookerstats.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.snookerstats.domain.model.ShotType
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.StatsRepository
 import com.example.snookerstats.util.Resource
@@ -13,9 +14,14 @@ import javax.inject.Inject
 
 data class AllStats(
     val matchesPlayed: Int = 0,
+    val matchesWon: Int = 0,
+    val winPercentage: Int = 0,
     val highestBreak: Int = 0,
     val totalPoints: Int = 0,
     val averageBreak: Int = 0,
+    val safetySuccessPercentage: Int = 0,
+    val snookerEscapeSuccessPercentage: Int = 0,
+    val fouls: Int = 0,
     val breaks20plus: Int = 0,
     val breaks50plus: Int = 0,
     val breaks100plus: Int = 0
@@ -48,7 +54,7 @@ class StatsViewModel @Inject constructor(
 
                         matches.flatMap { it.frames }.forEach { frame ->
                             frame.shots.forEach { shot ->
-                                if (shot.playerId == userId && shot.points > 0) {
+                                if (shot.playerId == userId9 && shot.points > 0) {
                                     currentBreak += shot.points
                                 } else {
                                     if (currentBreak > 0) {
@@ -63,11 +69,36 @@ class StatsViewModel @Inject constructor(
                             }
                         }
 
+                        val matchesWon = matches.count { match ->
+                            val userFramesWon = match.frames.count { frame ->
+                                val framePlayer1Points = frame.shots.filter { it.playerId == match.player1Id }.sumOf { it.points }
+                                val framePlayer2Points = frame.shots.filter { it.playerId == match.player2Id }.sumOf { it.points }
+                                (match.player1Id == userId && framePlayer1Points > framePlayer2Points) || (match.player2Id == userId && framePlayer2Points > framePlayer1Points)
+                            }
+                            val opponentFramesWon = match.frames.size - userFramesWon
+                            userFramesWon > opponentFramesWon
+                        }
+
+                        val winPercentage = if (matches.isNotEmpty()) (matchesWon.toDouble() / matches.size * 100).toInt() else 0
+
+                        val safetyAttempts = userShots.count { it.type == ShotType.SAFETY || it.type == ShotType.MISS }
+                        val successfulSafeties = userShots.count { it.type == ShotType.SAFETY }
+                        val safetySuccessPercentage = if (safetyAttempts > 0) (successfulSafeties.toDouble() / safetyAttempts * 100).toInt() else 0
+
+                        val snookerEscapeAttempts = userShots.count { it.wasSnookered }
+                        val successfulSnookerEscapes = userShots.count { it.wasSnookered && it.type != ShotType.FOUL }
+                        val snookerEscapeSuccessPercentage = if (snookerEscapeAttempts > 0) (successfulSnookerEscapes.toDouble() / snookerEscapeAttempts * 100).toInt() else 0
+
                         val allStats = AllStats(
                             matchesPlayed = matches.size,
+                            matchesWon = matchesWon,
+                            winPercentage = winPercentage,
                             highestBreak = breaks.maxOrNull() ?: 0,
                             totalPoints = totalPoints,
                             averageBreak = if (breaks.isNotEmpty()) breaks.average().toInt() else 0,
+                            safetySuccessPercentage = safetySuccessPercentage,
+                            snookerEscapeSuccessPercentage = snookerEscapeSuccessPercentage,
+                            fouls = userShots.count { it.type == ShotType.FOUL },
                             breaks20plus = breaks.count { it >= 20 },
                             breaks50plus = breaks.count { it >= 50 },
                             breaks100plus = breaks.count { it >= 100 }

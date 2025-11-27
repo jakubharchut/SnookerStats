@@ -33,6 +33,7 @@ import com.example.snookerstats.util.Resource
 import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 @Composable
 fun HomeScreen(navController: NavController, mainViewModel: MainViewModel) {
@@ -669,29 +670,57 @@ fun MatchStatsContent(viewModel: StatsViewModel) {
                     val stats = resource.data
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            StatItem(icon = Icons.Default.EmojiEvents, label = "Rozegrane mecze", value = stats.matchesPlayed.toString())
+                            ExpandableStatItem(icon = Icons.Default.EmojiEvents, label = "Mecze", value = stats.matchesPlayed.toString()) {
+                                val winPercentage = if (stats.matchesPlayed > 0) (stats.matchesWon.toDouble() / stats.matchesPlayed * 100).toInt() else 0
+                                val value = "$winPercentage% (${stats.matchesWon}/${stats.matchesPlayed})"
+                                SubStatItem(label = "Wygrane", value = value)
+                            }
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.ThumbUp, label = "Wygrane mecze", value = stats.matchesWon.toString())
+
+                            ExpandableStatItem(icon = Icons.Default.TrendingUp, label = "Punkty łącznie", value = stats.totalPoints.toString()) {
+                                val avgPointsPerFrame = if (stats.totalFrames > 0) (stats.totalPoints / stats.totalFrames) else 0
+                                val avgPointsPerMatch = if (stats.matchesPlayed > 0) (stats.totalPoints / stats.matchesPlayed) else 0
+                                SubStatItem(label = "Średnia na frejm", value = avgPointsPerFrame.toString())
+                                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                SubStatItem(label = "Średnia na mecz", value = avgPointsPerMatch.toString())
+                            }
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.PieChart, label = "Procent wygranych", value = "${stats.winPercentage}%")
+
+                            ExpandableStatItem(icon = Icons.Default.Star, label = "Najwyższy break", value = stats.highestBreak?.value?.toString() ?: "0") {
+                                stats.highestBreak?.let { breakInfo ->
+                                    SubStatItem(label = "Data", value = formatTimestamp(breakInfo.date))
+                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                    SubStatItem(label = "Minęło", value = formatTimeAgo(breakInfo.date))
+                                }
+                            }
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.TrendingUp, label = "Punkty łącznie", value = stats.totalPoints.toString())
+
+                            ExpandableStatItem(icon = Icons.Default.Functions, label = "Średni break", value = stats.averageBreak.toString()) {
+                                SubStatItem(label = "Liczba wszystkich brejków", value = stats.totalBreaks.toString())
+                            }
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.Star, label = "Najwyższy break", value = stats.highestBreak.toString())
+
+                            ExpandablePercentageStatItem(icon = Icons.Default.Shield, label = "Skuteczność odstawnych", successes = stats.successfulSafeties, attempts = stats.totalSafetyAttempts)
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.Functions, label = "Średni break", value = stats.averageBreak.toString())
+
+                            ExpandablePercentageStatItem(icon = Icons.Default.GppGood, label = "Skuteczność wyjść ze snookera", successes = stats.successfulSnookerEscapes, attempts = stats.totalSnookerEscapeAttempts)
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.Shield, label = "Skuteczność odstawnych", value = "${stats.safetySuccessPercentage}%")
+
+                            ExpandableStatItem(icon = Icons.Default.ErrorOutline, label = "Faule", value = stats.fouls.toString()) {
+                                val avgFoulsPerMatch = if (stats.matchesPlayed > 0) "%.1f".format(stats.fouls.toFloat() / stats.matchesPlayed) else "0.0"
+                                SubStatItem(label = "Punkty oddane z fauli", value = stats.pointsConcededFromFouls.toString())
+                                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                SubStatItem(label = "Średnia fauli na mecz", value = avgFoulsPerMatch)
+                            }
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.GppGood, label = "Skuteczność wyjść ze snookera", value = "${stats.snookerEscapeSuccessPercentage}%")
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.ErrorOutline, label = "Liczba fauli", value = stats.fouls.toString())
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.BarChart, label = "Brejki 20+", value = stats.breaks20plus.toString())
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.MilitaryTech, label = "Breaki 50+", value = stats.breaks50plus.toString())
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            StatItem(icon = Icons.Default.WorkspacePremium, label = "Breaki 100+", value = stats.breaks100plus.toString())
+
+                            ExpandableStatItem(icon = Icons.Default.BarChart, label = "Brejki") {
+                                SubStatItem(label = "20+", value = stats.breaks20plus.toString())
+                                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                SubStatItem(label = "50+", value = stats.breaks50plus.toString())
+                                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                SubStatItem(label = "100+", value = stats.breaks100plus.toString())
+                            }
                         }
                     }
                 }
@@ -718,18 +747,73 @@ fun TrainingStatsContent() {
 }
 
 @Composable
-fun StatItem(icon: ImageVector, label: String, value: String) {
+fun SubStatItem(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.weight(1f))
-        Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+fun ExpandablePercentageStatItem(
+    icon: ImageVector,
+    label: String,
+    successes: Int,
+    attempts: Int
+) {
+    val percentage = if (attempts > 0) (successes.toDouble() / attempts * 100).toInt() else 0
+    val value = "$percentage%"
+    val details = "$successes/$attempts"
+
+    ExpandableStatItem(icon = icon, label = label, value = value) {
+        SubStatItem(label = "Stosunek", value = details)
+    }
+}
+
+
+@Composable
+fun ExpandableStatItem(
+    icon: ImageVector,
+    label: String,
+    value: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.weight(1f))
+            if (value != null) {
+                Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            }
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier
+                    .padding(top = 4.dp, bottom = 8.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = MaterialTheme.shapes.medium
+                    )
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+            ) {
+                content()
+            }
+        }
     }
 }
 
@@ -748,6 +832,24 @@ fun ProfileScreen() {
 }
 
 fun formatTimestamp(timestamp: Long): String {
-    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    val sdf = SimpleDateFormat("dd.MM.yyyy, HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
+
+fun formatTimeAgo(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+
+    val days = TimeUnit.MILLISECONDS.toDays(diff)
+    if (days > 0) return "$days dni temu"
+
+    val hours = TimeUnit.MILLISECONDS.toHours(diff)
+    if (hours > 0) return "$hours godzin temu"
+
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
+    if (minutes > 0) return "$minutes minut temu"
+
+    return "przed chwilą"
+}
+
+

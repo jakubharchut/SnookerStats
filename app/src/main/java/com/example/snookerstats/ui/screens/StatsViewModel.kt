@@ -12,16 +12,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class BreakInfo(val value: Int, val date: Long)
+
 data class AllStats(
     val matchesPlayed: Int = 0,
     val matchesWon: Int = 0,
-    val winPercentage: Int = 0,
-    val highestBreak: Int = 0,
+    val highestBreak: BreakInfo? = null,
     val totalPoints: Int = 0,
+    val totalFrames: Int = 0,
     val averageBreak: Int = 0,
-    val safetySuccessPercentage: Int = 0,
-    val snookerEscapeSuccessPercentage: Int = 0,
+    val totalBreaks: Int = 0,
+    val successfulSafeties: Int = 0,
+    val totalSafetyAttempts: Int = 0,
+    val successfulSnookerEscapes: Int = 0,
+    val totalSnookerEscapeAttempts: Int = 0,
     val fouls: Int = 0,
+    val pointsConcededFromFouls: Int = 0,
     val breaks20plus: Int = 0,
     val breaks50plus: Int = 0,
     val breaks100plus: Int = 0
@@ -49,22 +55,24 @@ class StatsViewModel @Inject constructor(
                     if (matches.isNotEmpty()) {
                         val userShots = matches.flatMap { it.frames }.flatMap { it.shots }.filter { shot -> shot.playerId == userId }
                         val totalPoints = userShots.sumOf { it.points }
-                        val breaks = mutableListOf<Int>()
+                        val breaks = mutableListOf<BreakInfo>()
                         var currentBreak = 0
+                        var lastShotTimestamp = 0L
 
                         matches.flatMap { it.frames }.forEach { frame ->
                             frame.shots.forEach { shot ->
-                                if (shot.playerId == userId9 && shot.points > 0) {
+                                if (shot.playerId == userId && shot.points > 0) {
                                     currentBreak += shot.points
+                                    lastShotTimestamp = shot.timestamp
                                 } else {
                                     if (currentBreak > 0) {
-                                        breaks.add(currentBreak)
+                                        breaks.add(BreakInfo(currentBreak, lastShotTimestamp))
                                     }
                                     currentBreak = 0
                                 }
                             }
                             if (currentBreak > 0) { // Add break at the end of a frame
-                                breaks.add(currentBreak)
+                                breaks.add(BreakInfo(currentBreak, lastShotTimestamp))
                                 currentBreak = 0 // Reset for next frame
                             }
                         }
@@ -79,29 +87,28 @@ class StatsViewModel @Inject constructor(
                             userFramesWon > opponentFramesWon
                         }
 
-                        val winPercentage = if (matches.isNotEmpty()) (matchesWon.toDouble() / matches.size * 100).toInt() else 0
+                        val fouls = userShots.count { it.type == ShotType.FOUL }
+                        val pointsConcededFromFouls = userShots.filter { it.type == ShotType.FOUL }.sumOf { it.points }
 
-                        val safetyAttempts = userShots.count { it.type == ShotType.SAFETY || it.type == ShotType.MISS }
-                        val successfulSafeties = userShots.count { it.type == ShotType.SAFETY }
-                        val safetySuccessPercentage = if (safetyAttempts > 0) (successfulSafeties.toDouble() / safetyAttempts * 100).toInt() else 0
-
-                        val snookerEscapeAttempts = userShots.count { it.wasSnookered }
-                        val successfulSnookerEscapes = userShots.count { it.wasSnookered && it.type != ShotType.FOUL }
-                        val snookerEscapeSuccessPercentage = if (snookerEscapeAttempts > 0) (successfulSnookerEscapes.toDouble() / snookerEscapeAttempts * 100).toInt() else 0
+                        val breakValues = breaks.map { it.value }
 
                         val allStats = AllStats(
                             matchesPlayed = matches.size,
                             matchesWon = matchesWon,
-                            winPercentage = winPercentage,
-                            highestBreak = breaks.maxOrNull() ?: 0,
+                            highestBreak = breaks.maxByOrNull { it.value },
                             totalPoints = totalPoints,
-                            averageBreak = if (breaks.isNotEmpty()) breaks.average().toInt() else 0,
-                            safetySuccessPercentage = safetySuccessPercentage,
-                            snookerEscapeSuccessPercentage = snookerEscapeSuccessPercentage,
-                            fouls = userShots.count { it.type == ShotType.FOUL },
-                            breaks20plus = breaks.count { it >= 20 },
-                            breaks50plus = breaks.count { it >= 50 },
-                            breaks100plus = breaks.count { it >= 100 }
+                            totalFrames = matches.sumOf { it.frames.size },
+                            averageBreak = if (breakValues.isNotEmpty()) breakValues.average().toInt() else 0,
+                            totalBreaks = breaks.size,
+                            successfulSafeties = userShots.count { it.type == ShotType.SAFETY },
+                            totalSafetyAttempts = userShots.count { it.type == ShotType.SAFETY || it.type == ShotType.MISS },
+                            successfulSnookerEscapes = userShots.count { it.wasSnookered && it.type != ShotType.FOUL },
+                            totalSnookerEscapeAttempts = userShots.count { it.wasSnookered },
+                            fouls = fouls,
+                            pointsConcededFromFouls = pointsConcededFromFouls,
+                            breaks20plus = breakValues.count { it >= 20 },
+                            breaks50plus = breakValues.count { it >= 50 },
+                            breaks100plus = breakValues.count { it >= 100 }
                         )
                         _stats.value = Resource.Success(allStats)
                     } else {

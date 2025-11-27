@@ -4,11 +4,14 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,13 +26,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.snookerstats.domain.model.Shot
+import com.example.snookerstats.domain.model.ShotType
 import com.example.snookerstats.domain.model.SnookerBall
 import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.abs
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ScoringScreen(
     navController: NavController,
@@ -37,9 +42,11 @@ fun ScoringScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    val sheetState = rememberModalBottomSheetState()
+
     LaunchedEffect(Unit) {
         viewModel.navEvent.collectLatest { event ->
-            when(event) {
+            when (event) {
                 is ScoringNavEvent.NavigateToMatchHistory -> {
                     navController.navigate(BottomNavItem.MatchHistory.route) {
                         popUpTo(navController.graph.startDestinationId)
@@ -55,6 +62,10 @@ fun ScoringScreen(
             CircularProgressIndicator()
         }
         return
+    }
+
+    if (state.showLastShots) {
+        LastShotsBottomSheet(sheetState = sheetState, onDismiss = viewModel::onHideLastShots, shots = state.currentFrame?.shots ?: emptyList(), player1 = state.player1, player2 = state.player2)
     }
 
     if (state.showFoulDialog) {
@@ -135,7 +146,8 @@ fun ScoringScreen(
             isFreeBall = state.isFreeBall,
             redsRemaining = state.redsRemaining,
             nextColorBallOn = state.nextColorBallOn,
-            onBallClick = viewModel::onBallClicked
+            onBallClick = viewModel::onBallClicked,
+            onShowLastShots = viewModel::onShowLastShots
         )
         Spacer(modifier = Modifier.height(16.dp))
         ActionButtons(
@@ -156,6 +168,69 @@ fun ScoringScreen(
         )
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LastShotsBottomSheet(sheetState: SheetState, onDismiss: () -> Unit, shots: List<Shot>, player1: PlayerState?, player2: PlayerState?) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Ostatnie 5 ruchów", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp))
+            if (shots.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                    Text("Brak ruchów w tym frejmie.")
+                }
+            } else {
+                LazyColumn {
+                    items(shots.takeLast(5).reversed()) { shot ->
+                        val player = if (shot.playerId == player1?.user?.uid) player1?.user else player2?.user
+                        ShotHistoryItem(shot = shot, player = player)
+                        Divider()
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShotHistoryItem(shot: Shot, player: com.example.snookerstats.domain.model.User?) {
+    val shotDescription = when (shot.type) {
+        ShotType.POTTED -> "Wbicie za ${shot.points} pkt"
+        ShotType.FOUL -> "Faul za ${shot.points} pkt"
+        ShotType.SAFETY -> if (shot.wasSnookered) "Odstawna po snookerze" else "Odstawna"
+        ShotType.MISS -> "Pudło"
+        ShotType.FREE_BALL_POTTED -> "Wolna bila za ${shot.points} pkt"
+        ShotType.MISS_PENALTY -> "Miss (faul) za ${shot.points} pkt"
+    }
+
+    val pointsText = when (shot.type) {
+        ShotType.POTTED, ShotType.FREE_BALL_POTTED -> "+${shot.points}"
+        ShotType.FOUL, ShotType.MISS_PENALTY -> "+${shot.points}"
+        else -> null
+    }
+
+    ListItem(
+        headlineContent = { Text(shotDescription) },
+        supportingContent = { Text(player?.firstName ?: "") },
+        leadingContent = {
+            UserAvatar(avatarUrl = player?.profileImageUrl, size = 40.dp)
+        },
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (shot.type == ShotType.POTTED || shot.type == ShotType.FREE_BALL_POTTED) {
+                    SnookerBall.fromName(shot.ballName)?.let {
+                        BallIcon(ball = it, count = -1, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                }
+                if (pointsText != null) {
+                    Text(pointsText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    )
+}
+
 
 @Composable
 fun AbandonFrameDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
@@ -483,8 +558,8 @@ private fun BreakVisualizer(breakBalls: List<SnookerBall>) {
 }
 
 @Composable
-private fun BallIcon(ball: SnookerBall, count: Int) {
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+private fun BallIcon(ball: SnookerBall, count: Int, modifier: Modifier = Modifier) {
+    Box(contentAlignment = Alignment.Center, modifier = modifier.size(24.dp)) {
         Canvas(modifier = Modifier.fillMaxSize()) { drawCircle(color = ball.color) }
         if (count > 0) Text(text = count.toString(), color = ball.contentColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
     }
@@ -492,20 +567,43 @@ private fun BallIcon(ball: SnookerBall, count: Int) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BallButtons(isFrameOver: Boolean, canPotColor: Boolean, isFreeBall: Boolean, redsRemaining: Int, nextColorBallOn: SnookerBall?, onBallClick: (SnookerBall) -> Unit, breakHistory: List<SnookerBall>) {
+private fun BallButtons(
+    isFrameOver: Boolean,
+    canPotColor: Boolean,
+    isFreeBall: Boolean,
+    redsRemaining: Int,
+    nextColorBallOn: SnookerBall?,
+    onBallClick: (SnookerBall) -> Unit,
+    breakHistory: List<SnookerBall>,
+    onShowLastShots: () -> Unit
+) {
     val colors = listOf(SnookerBall.Yellow, SnookerBall.Green, SnookerBall.Brown, SnookerBall.Blue, SnookerBall.Pink, SnookerBall.Black)
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val lastPottedBall = breakHistory.lastOrNull()
         val isRedEnabled = !canPotColor || (lastPottedBall is SnookerBall.Red)
-        Button(
-            onClick = { onBallClick(SnookerBall.Red) },
-            enabled = !isFrameOver && redsRemaining > 0 && isRedEnabled && !isFreeBall,
-            modifier = Modifier.width(256.dp).height(56.dp),
-            shape = MaterialTheme.shapes.medium,
-            colors = ButtonDefaults.buttonColors(containerColor = SnookerBall.Red.color, contentColor = SnookerBall.Red.contentColor)
+
+        Row(
+            modifier = Modifier.widthIn(max = 256.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            Text("Czerwona", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Button(
+                onClick = { onBallClick(SnookerBall.Red) },
+                enabled = !isFrameOver && redsRemaining > 0 && isRedEnabled && !isFreeBall,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(containerColor = SnookerBall.Red.color, contentColor = SnookerBall.Red.contentColor)
+            ) {
+                Text("Czerwona", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(onClick = onShowLastShots) {
+                Icon(Icons.Default.History, contentDescription = "Pokaż ostatnie ruchy")
+            }
         }
+
         FlowRow(modifier = Modifier.width(256.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 3) {
             colors.forEach { ball ->
                 val isEnabled = !isFrameOver && when {

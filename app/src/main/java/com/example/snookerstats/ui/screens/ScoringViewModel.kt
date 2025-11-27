@@ -53,7 +53,8 @@ data class ScoringState(
     val isFrameOver: Boolean = false,
     val currentFrame: Frame? = null,
     val initialReds: Int = 15,
-    val isSnookered: Boolean = false
+    val isSnookered: Boolean = false,
+    val showLastShots: Boolean = false
 )
 
 @HiltViewModel
@@ -396,6 +397,14 @@ class ScoringViewModel @Inject constructor(
     fun onMissClicked() = endTurn(ShotType.MISS)
     fun onSnookeredChanged(isSnookered: Boolean) {
         _uiState.update { it.copy(isSnookered = isSnookered) }
+    }
+
+    fun onShowLastShots() {
+        _uiState.update { it.copy(showLastShots = true) }
+    }
+
+    fun onHideLastShots() {
+        _uiState.update { it.copy(showLastShots = false) }
     }
 
     private fun reconstructScoringState(

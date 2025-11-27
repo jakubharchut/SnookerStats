@@ -29,6 +29,7 @@ import androidx.navigation.NavController
 import com.example.snookerstats.domain.model.Shot
 import com.example.snookerstats.domain.model.ShotType
 import com.example.snookerstats.domain.model.SnookerBall
+import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.navigation.BottomNavItem
 import kotlinx.coroutines.flow.collectLatest
@@ -174,14 +175,14 @@ fun ScoringScreen(
 fun LastShotsBottomSheet(sheetState: SheetState, onDismiss: () -> Unit, shots: List<Shot>, player1: PlayerState?, player2: PlayerState?) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Ostatnie 5 ruchów", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp))
+            Text("Ostatnie 10 ruchów", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp))
             if (shots.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
                     Text("Brak ruchów w tym frejmie.")
                 }
             } else {
                 LazyColumn {
-                    items(shots.takeLast(5).reversed()) { shot ->
+                    items(shots.takeLast(10).reversed()) { shot ->
                         val player = if (shot.playerId == player1?.user?.uid) player1?.user else player2?.user
                         ShotHistoryItem(shot = shot, player = player)
                         Divider()
@@ -193,14 +194,14 @@ fun LastShotsBottomSheet(sheetState: SheetState, onDismiss: () -> Unit, shots: L
 }
 
 @Composable
-private fun ShotHistoryItem(shot: Shot, player: com.example.snookerstats.domain.model.User?) {
+private fun ShotHistoryItem(shot: Shot, player: User?) {
     val shotDescription = when (shot.type) {
         ShotType.POTTED -> "Wbicie za ${shot.points} pkt"
-        ShotType.FOUL -> "Faul za ${shot.points} pkt"
+        ShotType.FOUL -> if (shot.wasSnookered) "Faul po snookerze za ${shot.points} pkt" else "Faul za ${shot.points} pkt"
         ShotType.SAFETY -> if (shot.wasSnookered) "Odstawna po snookerze" else "Odstawna"
         ShotType.MISS -> "Pudło"
         ShotType.FREE_BALL_POTTED -> "Wolna bila za ${shot.points} pkt"
-        ShotType.MISS_PENALTY -> "Miss (faul) za ${shot.points} pkt"
+        ShotType.MISS_PENALTY -> if (shot.wasSnookered) "Miss (faul) po snookerze za ${shot.points} pkt" else "Miss (faul) za ${shot.points} pkt"
     }
 
     val pointsText = when (shot.type) {
@@ -213,7 +214,7 @@ private fun ShotHistoryItem(shot: Shot, player: com.example.snookerstats.domain.
         headlineContent = { Text(shotDescription) },
         supportingContent = { Text(player?.firstName ?: "") },
         leadingContent = {
-            UserAvatar(avatarUrl = player?.profileImageUrl, size = 40.dp)
+            UserAvatar(user = player, modifier = Modifier.size(40.dp))
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -583,9 +584,8 @@ private fun BallButtons(
         val isRedEnabled = !canPotColor || (lastPottedBall is SnookerBall.Red)
 
         Row(
-            modifier = Modifier.widthIn(max = 256.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+            modifier = Modifier.width(256.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
                 onClick = { onBallClick(SnookerBall.Red) },
@@ -598,7 +598,6 @@ private fun BallButtons(
             ) {
                 Text("Czerwona", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
-            Spacer(modifier = Modifier.width(8.dp))
             IconButton(onClick = onShowLastShots) {
                 Icon(Icons.Default.History, contentDescription = "Pokaż ostatnie ruchy")
             }

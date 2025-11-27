@@ -20,6 +20,17 @@ import javax.inject.Inject
 
 enum class TimeFilter { LAST_7_DAYS, LAST_30_DAYS, ALL_TIME }
 
+enum class MatchResult { WIN, LOSS, DRAW }
+
+data class MatchHistoryDisplayItem(
+    val match: Match,
+    val player1: User?,
+    val player2: User?,
+    val p1FramesWon: Int,
+    val p2FramesWon: Int,
+    val result: MatchResult
+)
+
 data class HistoryFilters(
     val timeFilter: TimeFilter = TimeFilter.ALL_TIME,
     val opponent: User? = null,
@@ -102,12 +113,20 @@ class MatchHistoryViewModel @Inject constructor(
                                 if (player1 != null) {
                                     val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
                                     val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
+
+                                    val result = when {
+                                        (match.player1Id == userId && p1FramesWon > p2FramesWon) || (match.player2Id == userId && p2FramesWon > p1FramesWon) -> MatchResult.WIN
+                                        p1FramesWon == p2FramesWon -> MatchResult.DRAW
+                                        else -> MatchResult.LOSS
+                                    }
+
                                     MatchHistoryDisplayItem(
                                         match = match,
                                         player1 = player1,
                                         player2 = player2,
                                         p1FramesWon = p1FramesWon,
-                                        p2FramesWon = p2FramesWon
+                                        p2FramesWon = p2FramesWon,
+                                        result = result
                                     )
                                 } else {
                                     null

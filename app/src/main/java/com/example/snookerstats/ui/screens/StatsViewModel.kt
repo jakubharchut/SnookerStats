@@ -79,6 +79,16 @@ class StatsViewModel @Inject constructor(
         onFilterSheetDismiss()
     }
 
+    fun onFilterChipClosed(filterType: StatsFilterType) {
+        val currentFilters = _filters.value
+        _filters.value = when (filterType) {
+            StatsFilterType.MATCH_TYPE -> currentFilters.copy(matchType = null)
+            StatsFilterType.NUMBER_OF_REDS -> currentFilters.copy(numberOfReds = null)
+            StatsFilterType.START_DATE -> currentFilters.copy(startDate = null)
+            StatsFilterType.END_DATE -> currentFilters.copy(endDate = null)
+        }
+        loadStats()
+    }
 
     private fun loadStats() {
         viewModelScope.launch {

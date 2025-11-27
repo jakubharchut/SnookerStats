@@ -3,9 +3,12 @@ package com.example.snookerstats.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -14,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +36,24 @@ import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+
+private enum class DateRangePreset {
+    ALL,
+    LAST_7_DAYS,
+    LAST_30_DAYS,
+    LAST_3_MONTHS,
+    THIS_YEAR;
+
+    fun toDisplayString(): String {
+        return when (this) {
+            ALL -> "Wszystko"
+            LAST_7_DAYS -> "Ost. 7 dni"
+            LAST_30_DAYS -> "Ost. 30 dni"
+            LAST_3_MONTHS -> "Ost. 3 miesiące"
+            THIS_YEAR -> "Ten rok"
+        }
+    }
+}
 
 @Composable
 fun HomeScreen(navController: NavController, mainViewModel: MainViewModel) {
@@ -552,9 +574,15 @@ fun MatchHistoryScreen(
 
 @Composable
 fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDeleteClick: () -> Unit) {
+    val cardColors = when (item.result) {
+        MatchResult.WIN -> CardDefaults.cardColors(containerColor = Color(0xFFC8E6C9))
+        MatchResult.LOSS -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        MatchResult.DRAW -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    }
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = cardColors
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(
@@ -686,54 +714,153 @@ fun StatsFilterSheet(
     var numberOfReds by remember { mutableStateOf(initialFilters.numberOfReds) }
     var startDate by remember { mutableStateOf(initialFilters.startDate) }
     var endDate by remember { mutableStateOf(initialFilters.endDate) }
+    val redsOptions = listOf(15, 10, 6, 3)
+    val context = LocalContext.current
+
+    var selectedPreset by remember { mutableStateOf<DateRangePreset?>(null) }
+
+    val onPresetClick = { preset: DateRangePreset ->
+        selectedPreset = preset
+        if (preset == DateRangePreset.ALL) {
+            startDate = null
+            endDate = null
+        } else {
+            val endCal = Calendar.getInstance()
+            endCal.set(Calendar.HOUR_OF_DAY, 23)
+            endCal.set(Calendar.MINUTE, 59)
+            endCal.set(Calendar.SECOND, 59)
+            endDate = endCal.timeInMillis
+
+            val startCal = Calendar.getInstance()
+            when (preset) {
+                DateRangePreset.LAST_7_DAYS -> startCal.add(Calendar.DAY_OF_YEAR, -7)
+                DateRangePreset.LAST_30_DAYS -> startCal.add(Calendar.DAY_OF_YEAR, -30)
+                DateRangePreset.LAST_3_MONTHS -> startCal.add(Calendar.MONTH, -3)
+                DateRangePreset.THIS_YEAR -> startCal.set(Calendar.DAY_OF_YEAR, 1)
+                DateRangePreset.ALL -> { /* handled above */ }
+            }
+            startCal.set(Calendar.HOUR_OF_DAY, 0)
+            startCal.set(Calendar.MINUTE, 0)
+            startCal.set(Calendar.SECOND, 0)
+            startDate = startCal.timeInMillis
+        }
+    }
+
+    val onDateClick = { isStartDate: Boolean ->
+        selectedPreset = null
+        val calendar = Calendar.getInstance()
+        initialFilters.let {
+            if (isStartDate) it.startDate?.let { d -> calendar.timeInMillis = d } else it.endDate?.let { d -> calendar.timeInMillis = d }
+        }
+
+        android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val newCalendar = Calendar.getInstance().apply {
+                    set(year, month, dayOfMonth)
+                }
+                if (isStartDate) {
+                    startDate = newCalendar.timeInMillis
+                } else {
+                    endDate = newCalendar.timeInMillis
+                }
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text("Filtry", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 16.dp))
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+                    .weight(1f, fill = false)
+            ) {
+                Text("Filtry", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 16.dp))
 
-            // Match Type Filter
-            Text("Rodzaj meczu", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                    onClick = { matchType = null },
-                    selected = matchType == null
-                ) { Text("Wszystkie") }
-                SegmentedButton(
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                    onClick = { matchType = MatchType.SPARRING },
-                    selected = matchType == MatchType.SPARRING
-                ) { Text("Sparingowe") }
-                SegmentedButton(
-                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                    onClick = { matchType = MatchType.RANKING },
-                    selected = matchType == MatchType.RANKING
-                ) { Text("Rankingowe") }
+                // Match Type Filter
+                Text("Rodzaj meczu", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                        onClick = { matchType = null },
+                        selected = matchType == null
+                    ) { Text("Wszystkie") }
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                        onClick = { matchType = MatchType.SPARRING },
+                        selected = matchType == MatchType.SPARRING
+                    ) { Text("Sparingowe") }
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                        onClick = { matchType = MatchType.RANKING },
+                        selected = matchType == MatchType.RANKING
+                    ) { Text("Rankingowe") }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Number of Reds Filter
+                Text("Liczba czerwonych", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 5),
+                        onClick = { numberOfReds = null },
+                        selected = numberOfReds == null
+                    ) { Text("All", softWrap = false) }
+                    redsOptions.forEachIndexed { index, reds ->
+                        SegmentedButton(
+                            shape = SegmentedButtonDefaults.itemShape(index = index + 1, count = 5),
+                            onClick = { numberOfReds = reds },
+                            selected = numberOfReds == reds
+                        ) { Text(reds.toString()) }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Date Filter
+                Text("Zakres dat", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    DateRangePreset.values().forEach { preset ->
+                        FilterChip(
+                            selected = selectedPreset == preset,
+                            onClick = { onPresetClick(preset) },
+                            label = { Text(preset.toDisplayString()) }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    Button(onClick = { onDateClick(true) }, modifier = Modifier.weight(1f)) {
+                        Text(startDate?.let { formatShortTimestamp(it) } ?: "Data początkowa")
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = { onDateClick(false) }, modifier = Modifier.weight(1f)) {
+                        Text(endDate?.let { formatShortTimestamp(it) } ?: "Data końcowa")
+                    }
+                }
             }
 
-            Spacer(Modifier.height(16.dp))
-
-            // Number of Reds Filter
-            Text("Liczba czerwonych", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            // TODO: Implement number of reds filter
-
-            Spacer(Modifier.height(16.dp))
-
-            // Date Filter
-            Text("Zakres dat", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            // TODO: Implement date range picker
-
-            Spacer(Modifier.height(24.dp))
-
             // Action Buttons
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
                 TextButton(onClick = onDismiss) {
                     Text("Anuluj")
                 }
@@ -751,7 +878,7 @@ fun StatsFilterSheet(
 @Composable
 fun FormResultChip(result: String) {
     val (backgroundColor, contentColor) = when (result) {
-        "W" -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        "W" -> Color(0xFFC8E6C9) to Color(0xFF388E3C)
         "P" -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
         "R" -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
         else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
@@ -790,87 +917,168 @@ fun FormStatItem(label: String, results: List<String>) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ActiveFiltersRow(filters: StatsFilters, onFilterChipClosed: (filter: StatsFilterType) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        filters.matchType?.let {
+            FilterChip(
+                selected = true,
+                onClick = { },
+                label = { Text("Typ: ${it.name}") },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove filter",
+                        modifier = Modifier
+                            .size(FilterChipDefaults.IconSize)
+                            .clickable { onFilterChipClosed(StatsFilterType.MATCH_TYPE) }
+                    )
+                }
+            )
+        }
+        filters.numberOfReds?.let {
+            FilterChip(
+                selected = true,
+                onClick = { },
+                label = { Text("Czerwone: $it") },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove filter",
+                        modifier = Modifier
+                            .size(FilterChipDefaults.IconSize)
+                            .clickable { onFilterChipClosed(StatsFilterType.NUMBER_OF_REDS) }
+                    )
+                }
+            )
+        }
+        filters.startDate?.let {
+            FilterChip(
+                selected = true,
+                onClick = { },
+                label = { Text("Od: ${formatShortTimestamp(it)}") },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove filter",
+                        modifier = Modifier
+                            .size(FilterChipDefaults.IconSize)
+                            .clickable { onFilterChipClosed(StatsFilterType.START_DATE) }
+                    )
+                }
+            )
+        }
+        filters.endDate?.let {
+            FilterChip(
+                selected = true,
+                onClick = { },
+                label = { Text("Do: ${formatShortTimestamp(it)}") },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove filter",
+                        modifier = Modifier
+                            .size(FilterChipDefaults.IconSize)
+                            .clickable { onFilterChipClosed(StatsFilterType.END_DATE) }
+                    )
+                }
+            )
+        }
+    }
+}
+
 @Composable
 fun MatchStatsContent(viewModel: StatsViewModel) {
     val statsResource by viewModel.stats.collectAsState()
+    val filters by viewModel.filters.collectAsState()
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        item {
-            when (val resource = statsResource) {
-                is Resource.Loading -> {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+    Column {
+        ActiveFiltersRow(filters = filters, onFilterChipClosed = viewModel::onFilterChipClosed)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            item {
+                when (val resource = statsResource) {
+                    is Resource.Loading -> {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
                     }
-                }
-                is Resource.Success -> {
-                    val stats = resource.data
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            ExpandableStatItem(icon = Icons.Default.EmojiEvents, label = "Mecze", value = stats.matchesPlayed.toString()) {
-                                val winPercentage = if (stats.matchesPlayed > 0) (stats.matchesWon.toDouble() / stats.matchesPlayed * 100).toInt() else 0
-                                val value = "$winPercentage% (${stats.matchesWon}/${stats.matchesPlayed})"
-                                SubStatItem(label = "Wygrane", value = value)
-                                if (stats.last5Matches.isNotEmpty()) {
-                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                    FormStatItem(label = "Forma (ost. 5)", results = stats.last5Matches)
+                    is Resource.Success -> {
+                        val stats = resource.data
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                ExpandableStatItem(icon = Icons.Default.EmojiEvents, label = "Mecze", value = stats.matchesPlayed.toString()) {
+                                    val winPercentage = if (stats.matchesPlayed > 0) (stats.matchesWon.toDouble() / stats.matchesPlayed * 100).toInt() else 0
+                                    val value = "$winPercentage% (${stats.matchesWon}/${stats.matchesPlayed})"
+                                    SubStatItem(label = "Wygrane", value = value)
+                                    if (stats.last5Matches.isNotEmpty()) {
+                                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                        FormStatItem(label = "Forma (ost. 5)", results = stats.last5Matches)
+                                    }
                                 }
-                            }
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                            ExpandableStatItem(icon = Icons.Default.TrendingUp, label = "Punkty łącznie", value = stats.totalPoints.toString()) {
-                                val avgPointsPerFrame = if (stats.totalFrames > 0) (stats.totalPoints / stats.totalFrames) else 0
-                                val avgPointsPerMatch = if (stats.matchesPlayed > 0) (stats.totalPoints / stats.matchesPlayed) else 0
-                                SubStatItem(label = "Średnia na frejm", value = avgPointsPerFrame.toString())
-                                Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                SubStatItem(label = "Średnia na mecz", value = avgPointsPerMatch.toString())
-                            }
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                            ExpandableStatItem(icon = Icons.Default.Star, label = "Najwyższy break", value = stats.highestBreak?.value?.toString() ?: "0") {
-                                stats.highestBreak?.let { breakInfo ->
-                                    SubStatItem(label = "Data", value = formatTimestamp(breakInfo.date))
+                                ExpandableStatItem(icon = Icons.Default.TrendingUp, label = "Punkty łącznie", value = stats.totalPoints.toString()) {
+                                    val avgPointsPerFrame = if (stats.totalFrames > 0) (stats.totalPoints / stats.totalFrames) else 0
+                                    val avgPointsPerMatch = if (stats.matchesPlayed > 0) (stats.totalPoints / stats.matchesPlayed) else 0
+                                    SubStatItem(label = "Średnia na frejm", value = avgPointsPerFrame.toString())
                                     Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                    SubStatItem(label = "Minęło", value = formatTimeAgo(breakInfo.date))
+                                    SubStatItem(label = "Średnia na mecz", value = avgPointsPerMatch.toString())
                                 }
-                            }
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                            ExpandableStatItem(icon = Icons.Default.Functions, label = "Średni break", value = stats.averageBreak.toString()) {
-                                SubStatItem(label = "Liczba wszystkich brejków", value = stats.totalBreaks.toString())
-                            }
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                ExpandableStatItem(icon = Icons.Default.Star, label = "Najwyższy break", value = stats.highestBreak?.value?.toString() ?: "0") {
+                                    stats.highestBreak?.let { breakInfo ->
+                                        SubStatItem(label = "Data", value = formatTimestamp(breakInfo.date))
+                                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                        SubStatItem(label = "Minęło", value = formatTimeAgo(breakInfo.date))
+                                    }
+                                }
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                            ExpandablePercentageStatItem(icon = Icons.Default.Shield, label = "Skuteczność odstawnych", successes = stats.successfulSafeties, attempts = stats.totalSafetyAttempts)
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                ExpandableStatItem(icon = Icons.Default.Functions, label = "Średni break", value = stats.averageBreak.toString()) {
+                                    SubStatItem(label = "Liczba wszystkich brejków", value = stats.totalBreaks.toString())
+                                }
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                            ExpandablePercentageStatItem(icon = Icons.Default.GppGood, label = "Skuteczność wyjść ze snookera", successes = stats.successfulSnookerEscapes, attempts = stats.totalSnookerEscapeAttempts)
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                ExpandablePercentageStatItem(icon = Icons.Default.Shield, label = "Skuteczność odstawnych", successes = stats.successfulSafeties, attempts = stats.totalSafetyAttempts)
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                            ExpandableStatItem(icon = Icons.Default.ErrorOutline, label = "Faule", value = stats.fouls.toString()) {
-                                val avgFoulsPerMatch = if (stats.matchesPlayed > 0) "%.1f".format(stats.fouls.toFloat() / stats.matchesPlayed) else "0.0"
-                                SubStatItem(label = "Punkty oddane z fauli", value = stats.pointsConcededFromFouls.toString())
-                                Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                SubStatItem(label = "Średnia fauli na mecz", value = avgFoulsPerMatch)
-                            }
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
+                                ExpandablePercentageStatItem(icon = Icons.Default.GppGood, label = "Skuteczność wyjść ze snookera", successes = stats.successfulSnookerEscapes, attempts = stats.totalSnookerEscapeAttempts)
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
-                            ExpandableStatItem(icon = Icons.Default.BarChart, label = "Brejki") {
-                                SubStatItem(label = "20+", value = stats.breaks20plus.toString())
-                                Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                SubStatItem(label = "50+", value = stats.breaks50plus.toString())
-                                Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                SubStatItem(label = "100+", value = stats.breaks100plus.toString())
+                                ExpandableStatItem(icon = Icons.Default.ErrorOutline, label = "Faule", value = stats.fouls.toString()) {
+                                    val avgFoulsPerMatch = if (stats.matchesPlayed > 0) "%.1f".format(stats.fouls.toFloat() / stats.matchesPlayed) else "0.0"
+                                    SubStatItem(label = "Punkty oddane z fauli", value = stats.pointsConcededFromFouls.toString())
+                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                    SubStatItem(label = "Średnia fauli na mecz", value = avgFoulsPerMatch)
+                                }
+                                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                                ExpandableStatItem(icon = Icons.Default.BarChart, label = "Brejki") {
+                                    SubStatItem(label = "20+", value = stats.breaks20plus.toString())
+                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                    SubStatItem(label = "50+", value = stats.breaks50plus.toString())
+                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                    SubStatItem(label = "100+", value = stats.breaks100plus.toString())
+                                }
                             }
                         }
                     }
-                }
-                is Resource.Error -> {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(text = "Błąd ładowania statystyk: ${resource.message}")
+                    is Resource.Error -> {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            Text(text = "Błąd ładowania statystyk: ${resource.message}")
+                        }
                     }
                 }
             }
@@ -980,6 +1188,11 @@ fun formatTimestamp(timestamp: Long): String {
     return sdf.format(Date(timestamp))
 }
 
+fun formatShortTimestamp(timestamp: Long): String {
+    val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+    return sdf.format(Date(timestamp))
+}
+
 fun formatTimeAgo(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
@@ -996,4 +1209,9 @@ fun formatTimeAgo(timestamp: Long): String {
     return "przed chwilą"
 }
 
-
+enum class StatsFilterType {
+    MATCH_TYPE,
+    NUMBER_OF_REDS,
+    START_DATE,
+    END_DATE
+}

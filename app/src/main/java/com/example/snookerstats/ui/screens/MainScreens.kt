@@ -651,6 +651,48 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
 }
 
 @Composable
+fun FormResultChip(result: String) {
+    val (backgroundColor, contentColor) = when (result) {
+        "W" -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        "P" -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+        "R" -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier = Modifier
+            .padding(end = 4.dp)
+            .size(24.dp)
+            .background(backgroundColor, shape = MaterialTheme.shapes.small),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = result,
+            color = contentColor,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelSmall
+        )
+    }
+}
+
+@Composable
+fun FormStatItem(label: String, results: List<String>) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(modifier = Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.End) {
+            results.forEach {
+                FormResultChip(it)
+            }
+        }
+    }
+}
+
+@Composable
 fun MatchStatsContent(viewModel: StatsViewModel) {
     val statsResource by viewModel.stats.collectAsState()
 
@@ -674,6 +716,10 @@ fun MatchStatsContent(viewModel: StatsViewModel) {
                                 val winPercentage = if (stats.matchesPlayed > 0) (stats.matchesWon.toDouble() / stats.matchesPlayed * 100).toInt() else 0
                                 val value = "$winPercentage% (${stats.matchesWon}/${stats.matchesPlayed})"
                                 SubStatItem(label = "Wygrane", value = value)
+                                if (stats.last5Matches.isNotEmpty()) {
+                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                    FormStatItem(label = "Forma (ost. 5)", results = stats.last5Matches)
+                                }
                             }
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -851,3 +897,5 @@ fun formatTimeAgo(timestamp: Long): String {
 
     return "przed chwilą"
 }
+
+

@@ -2,6 +2,7 @@ package com.example.snookerstats.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.snookerstats.domain.model.Match
 import com.example.snookerstats.domain.model.ShotType
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.StatsRepository
@@ -17,6 +18,9 @@ data class BreakInfo(val value: Int, val date: Long)
 data class AllStats(
     val matchesPlayed: Int = 0,
     val matchesWon: Int = 0,
+    val matchesLost: Int = 0,
+    val matchesDrawn: Int = 0,
+    val last5Matches: List<String> = emptyList(),
     val highestBreak: BreakInfo? = null,
     val totalPoints: Int = 0,
     val totalFrames: Int = 0,
@@ -51,7 +55,7 @@ class StatsViewModel @Inject constructor(
             val userId = authRepository.currentUser?.uid ?: return@launch
             statsRepository.getAllMatches(userId).collect {
                 if (it is Resource.Success) {
-                    val matches = it.data
+                    val matches = it.data.sortedByDescending { it.date } // Sort matches by date
                     if (matches.isNotEmpty()) {
                         val userShots = matches.flatMap { it.frames }.flatMap { it.shots }.filter { shot -> shot.playerId == userId }
                         val totalPoints = userShots.sumOf { it.points }
@@ -77,14 +81,31 @@ class StatsViewModel @Inject constructor(
                             }
                         }
 
-                        val matchesWon = matches.count { match ->
-                            val userFramesWon = match.frames.count { frame ->
-                                val framePlayer1Points = frame.shots.filter { it.playerId == match.player1Id }.sumOf { it.points }
-                                val framePlayer2Points = frame.shots.filter { it.playerId == match.player2Id }.sumOf { it.points }
-                                (match.player1Id == userId && framePlayer1Points > framePlayer2Points) || (match.player2Id == userId && framePlayer2Points > framePlayer1Points)
-                            }
+                        var matchesWon = 0
+                        var matchesLost = 0
+                        var matchesDrawn = 0
+                        val last5Matches = mutableListOf<String>()
+
+                        matches.forEach { match ->
+                            val userFramesWon = countUserFrames(match, userId)
                             val opponentFramesWon = match.frames.size - userFramesWon
-                            userFramesWon > opponentFramesWon
+                            val result = when {
+                                userFramesWon > opponentFramesWon -> {
+                                    matchesWon++
+                                    "W"
+                                }
+                                userFramesWon < opponentFramesWon -> {
+                                    matchesLost++
+                                    "P"
+                                }
+                                else -> {
+                                    matchesDrawn++
+                                    "R"
+                                }
+                            }
+                            if (last5Matches.size < 5) {
+                                last5Matches.add(result)
+                            }
                         }
 
                         val fouls = userShots.count { it.type == ShotType.FOUL }
@@ -95,6 +116,9 @@ class StatsViewModel @Inject constructor(
                         val allStats = AllStats(
                             matchesPlayed = matches.size,
                             matchesWon = matchesWon,
+                            matchesLost = matchesLost,
+                            matchesDrawn = matchesDrawn,
+                            last5Matches = last5Matches,
                             highestBreak = breaks.maxByOrNull { it.value },
                             totalPoints = totalPoints,
                             totalFrames = matches.sumOf { it.frames.size },
@@ -118,6 +142,14 @@ class StatsViewModel @Inject constructor(
                     _stats.value = Resource.Error(it.message)
                 }
             }
+        }
+    }
+
+    private fun countUserFrames(match: Match, userId: String): Int {
+        return match.frames.count { frame ->
+            val p1Points = frame.shots.filter { it.playerId == match.player1Id }.sumOf { it.points }
+            val p2Points = frame.shots.filter { it.playerId == match.player2Id }.sumOf { it.points }
+            (match.player1Id == userId && p1Points > p2Points) || (match.player2Id == userId && p2Points > p1Points)
         }
     }
 }

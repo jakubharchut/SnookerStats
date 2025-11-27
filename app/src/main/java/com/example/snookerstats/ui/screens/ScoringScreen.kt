@@ -174,18 +174,32 @@ fun ScoringScreen(
 @Composable
 fun LastShotsBottomSheet(sheetState: SheetState, onDismiss: () -> Unit, shots: List<Shot>, player1: PlayerState?, player2: PlayerState?) {
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Ostatnie 10 ruchów", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp))
+        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+            Text(
+                "Ostatnie 10 ruchów",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                textAlign = TextAlign.Center
+            )
             if (shots.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp), contentAlignment = Alignment.Center
+                ) {
                     Text("Brak ruchów w tym frejmie.")
                 }
             } else {
-                LazyColumn {
+                LazyColumn(
+                    modifier = Modifier.padding(bottom = 16.dp, start = 8.dp, end = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     items(shots.takeLast(10).reversed()) { shot ->
-                        val player = if (shot.playerId == player1?.user?.uid) player1?.user else player2?.user
-                        ShotHistoryItem(shot = shot, player = player)
-                        Divider()
+                        val isPlayer1 = shot.playerId == player1?.user?.uid
+                        val player = if (isPlayer1) player1?.user else player2?.user
+                        ShotHistoryItem(shot = shot, player = player, isPlayer1 = isPlayer1)
                     }
                 }
             }
@@ -193,8 +207,9 @@ fun LastShotsBottomSheet(sheetState: SheetState, onDismiss: () -> Unit, shots: L
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ShotHistoryItem(shot: Shot, player: User?) {
+private fun ShotHistoryItem(shot: Shot, player: User?, isPlayer1: Boolean) {
     val shotDescription = when (shot.type) {
         ShotType.POTTED -> "Wbicie za ${shot.points} pkt"
         ShotType.FOUL -> if (shot.wasSnookered) "Faul po snookerze za ${shot.points} pkt" else "Faul za ${shot.points} pkt"
@@ -210,26 +225,48 @@ private fun ShotHistoryItem(shot: Shot, player: User?) {
         else -> null
     }
 
-    ListItem(
-        headlineContent = { Text(shotDescription) },
-        supportingContent = { Text(player?.firstName ?: "") },
-        leadingContent = {
-            UserAvatar(user = player, modifier = Modifier.size(40.dp))
-        },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (shot.type == ShotType.POTTED || shot.type == ShotType.FREE_BALL_POTTED) {
-                    SnookerBall.fromName(shot.ballName)?.let {
-                        BallIcon(ball = it, count = -1, modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
+    val arrangement = if (isPlayer1) Arrangement.Start else Arrangement.End
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = arrangement
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.85f),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                UserAvatar(user = player, modifier = Modifier.size(40.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = shotDescription, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                    Text(text = player?.firstName ?: "", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (pointsText != null) {
-                    Text(pointsText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (shot.type == ShotType.POTTED || shot.type == ShotType.FREE_BALL_POTTED) {
+                        SnookerBall.fromName(shot.ballName)?.let {
+                            BallIcon(ball = it, count = -1, modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                    }
+                    if (pointsText != null) {
+                        Text(
+                            text = pointsText,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (shot.type == ShotType.POTTED || shot.type == ShotType.FREE_BALL_POTTED) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
         }
-    )
+    }
 }
 
 

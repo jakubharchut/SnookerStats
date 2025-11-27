@@ -23,9 +23,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import com.example.snookerstats.domain.model.Match
-import com.example.snookerstats.domain.model.TrainingAttempt
-import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.domain.model.*
 import com.example.snookerstats.ui.common.UserAvatar
 import com.example.snookerstats.ui.main.MainViewModel
 import com.example.snookerstats.ui.navigation.BottomNavItem
@@ -627,25 +625,125 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Mecze", "Trening")
+    val isFilterSheetVisible by viewModel.isFilterSheetVisible.collectAsState()
+    val filters by viewModel.filters.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = selectedTabIndex) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { selectedTabIndex = index },
-                    text = { Text(title) }
-                )
+    if (isFilterSheetVisible) {
+        StatsFilterSheet(
+            onDismiss = viewModel::onFilterSheetDismiss,
+            onApplyFilters = viewModel::applyFilters,
+            initialFilters = filters
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Statystyki") },
+                actions = {
+                    IconButton(onClick = viewModel::onFilterClick) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filtruj")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        var selectedTabIndex by remember { mutableStateOf(0) }
+        val tabs = listOf("Mecze", "Trening")
+
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)) {
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) }
+                    )
+                }
+            }
+
+            when (selectedTabIndex) {
+                0 -> MatchStatsContent(viewModel)
+                1 -> TrainingStatsContent()
             }
         }
+    }
+}
 
-        when (selectedTabIndex) {
-            0 -> MatchStatsContent(viewModel)
-            1 -> TrainingStatsContent()
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StatsFilterSheet(
+    onDismiss: () -> Unit,
+    onApplyFilters: (StatsFilters) -> Unit,
+    initialFilters: StatsFilters
+) {
+    var matchType by remember { mutableStateOf(initialFilters.matchType) }
+    var numberOfReds by remember { mutableStateOf(initialFilters.numberOfReds) }
+    var startDate by remember { mutableStateOf(initialFilters.startDate) }
+    var endDate by remember { mutableStateOf(initialFilters.endDate) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text("Filtry", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 16.dp))
+
+            // Match Type Filter
+            Text("Rodzaj meczu", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                    onClick = { matchType = null },
+                    selected = matchType == null
+                ) { Text("Wszystkie") }
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                    onClick = { matchType = MatchType.SPARRING },
+                    selected = matchType == MatchType.SPARRING
+                ) { Text("Sparingowe") }
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                    onClick = { matchType = MatchType.RANKING },
+                    selected = matchType == MatchType.RANKING
+                ) { Text("Rankingowe") }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Number of Reds Filter
+            Text("Liczba czerwonych", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            // TODO: Implement number of reds filter
+
+            Spacer(Modifier.height(16.dp))
+
+            // Date Filter
+            Text("Zakres dat", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            // TODO: Implement date range picker
+
+            Spacer(Modifier.height(24.dp))
+
+            // Action Buttons
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) {
+                    Text("Anuluj")
+                }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = {
+                    onApplyFilters(StatsFilters(matchType, numberOfReds, startDate, endDate))
+                }) {
+                    Text("Zastosuj")
+                }
+            }
         }
     }
 }

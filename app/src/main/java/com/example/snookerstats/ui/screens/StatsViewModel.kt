@@ -3,6 +3,7 @@ package com.example.snookerstats.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Match
+import com.example.snookerstats.domain.model.MatchType
 import com.example.snookerstats.domain.model.ShotType
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.StatsRepository
@@ -10,10 +11,18 @@ import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class BreakInfo(val value: Int, val date: Long)
+
+data class StatsFilters(
+    val matchType: MatchType? = null,
+    val numberOfReds: Int? = null,
+    val startDate: Long? = null,
+    val endDate: Long? = null
+)
 
 data class AllStats(
     val matchesPlayed: Int = 0,
@@ -46,16 +55,43 @@ class StatsViewModel @Inject constructor(
     private val _stats = MutableStateFlow<Resource<AllStats>>(Resource.Loading)
     val stats = _stats.asStateFlow()
 
+    private val _isFilterSheetVisible = MutableStateFlow(false)
+    val isFilterSheetVisible = _isFilterSheetVisible.asStateFlow()
+
+    private val _filters = MutableStateFlow(StatsFilters())
+    val filters = _filters.asStateFlow()
+
     init {
         loadStats()
     }
+
+    fun onFilterClick() {
+        _isFilterSheetVisible.value = true
+    }
+
+    fun onFilterSheetDismiss() {
+        _isFilterSheetVisible.value = false
+    }
+
+    fun applyFilters(newFilters: StatsFilters) {
+        _filters.value = newFilters
+        loadStats() // Reload stats with new filters
+        onFilterSheetDismiss()
+    }
+
 
     private fun loadStats() {
         viewModelScope.launch {
             val userId = authRepository.currentUser?.uid ?: return@launch
             statsRepository.getAllMatches(userId).collect {
                 if (it is Resource.Success) {
-                    val matches = it.data.sortedByDescending { it.date } // Sort matches by date
+                    val filteredMatches = it.data.filter { match ->
+                        (_filters.value.matchType == null || match.matchType == _filters.value.matchType) &&
+                        (_filters.value.numberOfReds == null || match.numberOfReds == _filters.value.numberOfReds) &&
+                        (_filters.value.startDate == null || match.date >= _filters.value.startDate!!) &&
+                        (_filters.value.endDate == null || match.date <= _filters.value.endDate!!)
+                    }
+                    val matches = filteredMatches.sortedByDescending { it.date } // Sort matches by date
                     if (matches.isNotEmpty()) {
                         val userShots = matches.flatMap { it.frames }.flatMap { it.shots }.filter { shot -> shot.playerId == userId }
                         val totalPoints = userShots.sumOf { it.points }

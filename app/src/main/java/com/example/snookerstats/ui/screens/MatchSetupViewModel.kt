@@ -3,9 +3,7 @@ package com.example.snookerstats.ui.screens
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.snookerstats.domain.model.Match
-import com.example.snookerstats.domain.model.MatchStatus
-import com.example.snookerstats.domain.model.User
+import com.example.snookerstats.domain.model.*
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
@@ -16,9 +14,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
-
-enum class MatchType { RANKING, SPARRING }
-enum class MatchFormat(val reds: Int) { FIFTEEN(15), TEN(10), SIX(6), THREE(3) }
 
 data class MatchSetupUiState(
     val opponentType: OpponentType = OpponentType.LOADING,
@@ -104,7 +99,7 @@ class MatchSetupViewModel @Inject constructor(
                 player2Id = player2Id,
                 participants = participants,
                 date = System.currentTimeMillis(),
-                matchType = com.example.snookerstats.domain.model.MatchType.valueOf(currentState.matchType.name),
+                matchType = currentState.matchType,
                 numberOfReds = currentState.matchFormat.reds,
                 status = MatchStatus.IN_PROGRESS,
                 frames = emptyList()

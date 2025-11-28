@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 private enum class DateRangePreset {
     ALL,
@@ -578,6 +581,7 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
         MatchResult.WIN -> CardDefaults.cardColors(containerColor = Color(0xFFC8E6C9))
         MatchResult.LOSS -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
         MatchResult.DRAW -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        else -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     }
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -649,6 +653,36 @@ fun MatchHistoryItem(item: MatchHistoryDisplayItem, onClick: () -> Unit, onDelet
                 modifier = Modifier.align(Alignment.CenterHorizontally),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+fun PointsBarChart(userPoints: Int, opponentPoints: Int) {
+    val totalPoints = userPoints + opponentPoints
+    if (totalPoints == 0) return
+
+    val userPercentage = userPoints.toFloat() / totalPoints
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.errorContainer)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(userPercentage)
+                    .height(24.dp)
+                    .background(Color(0xFFC8E6C9))
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Ty: $userPoints", fontWeight = FontWeight.Bold, color = Color(0xFF388E3C))
+            Text("Przeciwnicy: $opponentPoints", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
         }
     }
 }
@@ -1029,11 +1063,25 @@ fun MatchStatsContent(viewModel: StatsViewModel) {
                                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                                 ExpandableStatItem(icon = Icons.Default.TrendingUp, label = "Punkty łącznie", value = stats.totalPoints.toString()) {
-                                    val avgPointsPerFrame = if (stats.totalFrames > 0) (stats.totalPoints / stats.totalFrames) else 0
+                                    PointsBarChart(userPoints = stats.totalPoints, opponentPoints = stats.opponentTotalPoints)
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    val pointBalance = stats.totalPoints - stats.opponentTotalPoints
+                                    val balanceSign = if (pointBalance > 0) "+" else ""
+                                    SubStatItem(label = "Bilans punktów", value = "$balanceSign$pointBalance")
+                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+
                                     val avgPointsPerMatch = if (stats.matchesPlayed > 0) (stats.totalPoints / stats.matchesPlayed) else 0
+                                    SubStatItem(label = "Średnia na mecz", value = avgPointsPerMatch.toString())
+                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                                    val avgPointsPerFrame = if (stats.totalFrames > 0) (stats.totalPoints / stats.totalFrames) else 0
                                     SubStatItem(label = "Średnia na frejm", value = avgPointsPerFrame.toString())
                                     Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                    SubStatItem(label = "Średnia na mecz", value = avgPointsPerMatch.toString())
+
+                                    val ratio = if (stats.opponentTotalPoints > 0) (stats.totalPoints.toDouble() / stats.opponentTotalPoints) else 0.0
+                                    SubStatItem(label = "Stosunek pkt.", value = "${String.format("%.2f", ratio)} : 1")
+
                                 }
                                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 

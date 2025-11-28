@@ -7,6 +7,8 @@ import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
+import com.example.snookerstats.ui.screens.MatchHistoryDisplayItem
+import com.example.snookerstats.ui.screens.MatchResult
 import com.example.snookerstats.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
@@ -19,17 +21,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 enum class TimeFilter { LAST_7_DAYS, LAST_30_DAYS, ALL_TIME }
-
-enum class MatchResult { WIN, LOSS, DRAW }
-
-data class MatchHistoryDisplayItem(
-    val match: Match,
-    val player1: User?,
-    val player2: User?,
-    val p1FramesWon: Int,
-    val p2FramesWon: Int,
-    val result: MatchResult
-)
 
 data class HistoryFilters(
     val timeFilter: TimeFilter = TimeFilter.ALL_TIME,

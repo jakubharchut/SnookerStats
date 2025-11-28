@@ -32,6 +32,7 @@ data class AllStats(
     val last5Matches: List<String> = emptyList(),
     val highestBreak: BreakInfo? = null,
     val totalPoints: Int = 0,
+    val opponentTotalPoints: Int = 0, // Added opponent's points
     val totalFrames: Int = 0,
     val averageBreak: Int = 0,
     val totalBreaks: Int = 0,
@@ -103,8 +104,13 @@ class StatsViewModel @Inject constructor(
                     }
                     val matches = filteredMatches.sortedByDescending { it.date } // Sort matches by date
                     if (matches.isNotEmpty()) {
-                        val userShots = matches.flatMap { it.frames }.flatMap { it.shots }.filter { shot -> shot.playerId == userId }
+                        val allShots = matches.flatMap { it.frames }.flatMap { it.shots }
+                        val userShots = allShots.filter { shot -> shot.playerId == userId }
+                        val opponentShots = allShots.filter { shot -> shot.playerId != userId }
+
                         val totalPoints = userShots.sumOf { it.points }
+                        val opponentTotalPoints = opponentShots.sumOf { it.points }
+
                         val breaks = mutableListOf<BreakInfo>()
                         var currentBreak = 0
                         var lastShotTimestamp = 0L
@@ -133,8 +139,20 @@ class StatsViewModel @Inject constructor(
                         val last5Matches = mutableListOf<String>()
 
                         matches.forEach { match ->
-                            val userFramesWon = countUserFrames(match, userId)
-                            val opponentFramesWon = match.frames.size - userFramesWon
+                            val p1FramesWon = match.frames.count { it.player1Points > it.player2Points }
+                            val p2FramesWon = match.frames.count { it.player2Points > it.player1Points }
+
+                            val userFramesWon: Int
+                            val opponentFramesWon: Int
+
+                            if (match.player1Id == userId) {
+                                userFramesWon = p1FramesWon
+                                opponentFramesWon = p2FramesWon
+                            } else {
+                                userFramesWon = p2FramesWon
+                                opponentFramesWon = p1FramesWon
+                            }
+
                             val result = when {
                                 userFramesWon > opponentFramesWon -> {
                                     matchesWon++
@@ -167,6 +185,7 @@ class StatsViewModel @Inject constructor(
                             last5Matches = last5Matches,
                             highestBreak = breaks.maxByOrNull { it.value },
                             totalPoints = totalPoints,
+                            opponentTotalPoints = opponentTotalPoints, // Pass opponent's points
                             totalFrames = matches.sumOf { it.frames.size },
                             averageBreak = if (breakValues.isNotEmpty()) breakValues.average().toInt() else 0,
                             totalBreaks = breaks.size,
@@ -188,14 +207,6 @@ class StatsViewModel @Inject constructor(
                     _stats.value = Resource.Error(it.message)
                 }
             }
-        }
-    }
-
-    private fun countUserFrames(match: Match, userId: String): Int {
-        return match.frames.count { frame ->
-            val p1Points = frame.shots.filter { it.playerId == match.player1Id }.sumOf { it.points }
-            val p2Points = frame.shots.filter { it.playerId == match.player2Id }.sumOf { it.points }
-            (match.player1Id == userId && p1Points > p2Points) || (match.player2Id == userId && p2Points > p1Points)
         }
     }
 }

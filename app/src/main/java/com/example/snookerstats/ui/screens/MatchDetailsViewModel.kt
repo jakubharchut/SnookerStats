@@ -3,6 +3,7 @@ package com.example.snookerstats.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.*
+import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
 import com.example.snookerstats.domain.repository.MatchRepository
 import com.example.snookerstats.domain.repository.UserRepository
@@ -94,11 +95,14 @@ class MatchDetailsViewModel @Inject constructor(
     private val matchRepository: MatchRepository,
     private val userRepository: UserRepository,
     private val chatRepository: ChatRepository,
+    private val authRepository: AuthRepository,
     private val snackbarManager: SnackbarManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MatchDetailsUiState())
     val uiState = _uiState.asStateFlow()
+    
+    private val currentUserId: String? = authRepository.currentUser?.uid
 
     fun onShareClicked() {
         _uiState.value = _uiState.value.copy(showShareDialog = true)
@@ -164,12 +168,19 @@ class MatchDetailsViewModel @Inject constructor(
 
                         val matchStats = calculateMatchStats(frameDetails)
 
+                        val result = when {
+                            (match.player1Id == currentUserId && p1FramesWon > p2FramesWon) || (match.player2Id == currentUserId && p2FramesWon > p1FramesWon) -> MatchResult.WIN
+                            p1FramesWon == p2FramesWon -> MatchResult.DRAW
+                            else -> MatchResult.LOSS
+                        }
+
                         val displayItem = MatchHistoryDisplayItem(
                             match = match,
                             player1 = player1,
                             player2 = player2,
                             p1FramesWon = p1FramesWon,
-                            p2FramesWon = p2FramesWon
+                            p2FramesWon = p2FramesWon,
+                            result = result
                         )
                         _uiState.value = _uiState.value.copy(
                             matchItem = displayItem,

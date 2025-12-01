@@ -1068,7 +1068,12 @@ fun MatchStatsContent(viewModel: StatsViewModel) {
 
                                     val pointBalance = stats.totalPoints - stats.opponentTotalPoints
                                     val balanceSign = if (pointBalance > 0) "+" else ""
-                                    SubStatItem(label = "Bilans punktów", value = "$balanceSign$pointBalance")
+                                    val balanceColor = if (pointBalance > 0) Color(0xFF388E3C) else if (pointBalance < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                                    SubStatItem(
+                                        label = "Bilans punktów",
+                                        value = "$balanceSign$pointBalance",
+                                        valueColor = balanceColor
+                                    )
                                     Divider(modifier = Modifier.padding(vertical = 4.dp))
 
                                     val avgPointsPerMatch = if (stats.matchesPlayed > 0) (stats.totalPoints / stats.matchesPlayed) else 0
@@ -1080,7 +1085,12 @@ fun MatchStatsContent(viewModel: StatsViewModel) {
                                     Divider(modifier = Modifier.padding(vertical = 4.dp))
 
                                     val ratio = if (stats.opponentTotalPoints > 0) (stats.totalPoints.toDouble() / stats.opponentTotalPoints) else 0.0
-                                    SubStatItem(label = "Stosunek pkt.", value = "${String.format("%.2f", ratio)} : 1")
+                                    val ratioColor = if (ratio >= 1.0) Color(0xFF388E3C) else MaterialTheme.colorScheme.error
+                                    SubStatItem(
+                                        label = "Stosunek pkt.",
+                                        value = "${String.format("%.2f", ratio)} : 1",
+                                        valueColor = ratioColor
+                                    )
 
                                 }
                                 Divider(modifier = Modifier.padding(vertical = 8.dp))
@@ -1147,7 +1157,8 @@ fun TrainingStatsContent() {
 }
 
 @Composable
-fun SubStatItem(label: String, value: String) {
+fun SubStatItem(label: String, value: String, valueColor: Color = Color.Unspecified) {
+    val color = if (valueColor == Color.Unspecified) MaterialTheme.colorScheme.onSurfaceVariant else valueColor
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1156,7 +1167,7 @@ fun SubStatItem(label: String, value: String) {
     ) {
         Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.weight(1f))
-        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = color)
     }
 }
 

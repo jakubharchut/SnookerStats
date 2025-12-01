@@ -57,7 +57,15 @@ data class AggregatedStats(
     val player2ShotTotalTime: Long,
     val player1ShotCount: Int,
     val player2ShotCount: Int,
-    val winnerId: String?
+    val winnerId: String?,
+    val player1SnookerEscapesFirstAttempt: Int = 0,
+    val player2SnookerEscapesFirstAttempt: Int = 0,
+    val player1SnookerEscapesSecondAttempt: Int = 0,
+    val player2SnookerEscapesSecondAttempt: Int = 0,
+    val player1SnookerEscapesThirdOrMoreAttempt: Int = 0,
+    val player2SnookerEscapesThirdOrMoreAttempt: Int = 0,
+    val player1SnookersTotal: Int = 0,
+    val player2SnookersTotal: Int = 0
 ) {
     val player1AverageBreak: Double get() = if (player1Breaks.isNotEmpty()) player1Breaks.map { it.value }.average() else 0.0
     val player2AverageBreak: Double get() = if (player2Breaks.isNotEmpty()) player2Breaks.map { it.value }.average() else 0.0
@@ -226,7 +234,15 @@ class MatchDetailsViewModel @Inject constructor(
             player2ShotTotalTime = allStats.sumOf { it.player2ShotTotalTime },
             player1ShotCount = allStats.sumOf { it.player1ShotCount },
             player2ShotCount = allStats.sumOf { it.player2ShotCount },
-            winnerId = null // Winner is a frame-level stat
+            winnerId = null, // Winner is a frame-level stat
+            player1SnookerEscapesFirstAttempt = allStats.sumOf { it.player1SnookerEscapesFirstAttempt },
+            player2SnookerEscapesFirstAttempt = allStats.sumOf { it.player2SnookerEscapesFirstAttempt },
+            player1SnookerEscapesSecondAttempt = allStats.sumOf { it.player1SnookerEscapesSecondAttempt },
+            player2SnookerEscapesSecondAttempt = allStats.sumOf { it.player2SnookerEscapesSecondAttempt },
+            player1SnookerEscapesThirdOrMoreAttempt = allStats.sumOf { it.player1SnookerEscapesThirdOrMoreAttempt },
+            player2SnookerEscapesThirdOrMoreAttempt = allStats.sumOf { it.player2SnookerEscapesThirdOrMoreAttempt },
+            player1SnookersTotal = allStats.sumOf { it.player1SnookersTotal },
+            player2SnookersTotal = allStats.sumOf { it.player2SnookersTotal }
         )
     }
 
@@ -282,11 +298,63 @@ class MatchDetailsViewModel @Inject constructor(
         var p2ShotTotalTime = 0L
         var p1ShotCount = 0
         var p2ShotCount = 0
+        var p1SnookerEscapesFirstAttempt = 0
+        var p2SnookerEscapesFirstAttempt = 0
+        var p1SnookerEscapesSecondAttempt = 0
+        var p2SnookerEscapesSecondAttempt = 0
+        var p1SnookerEscapesThirdOrMoreAttempt = 0
+        var p2SnookerEscapesThirdOrMoreAttempt = 0
+        var p1SnookersTotal = 0
+        var p2SnookersTotal = 0
 
         var currentBreakValue = 0
         var currentBreakBalls = mutableListOf<SnookerBall>()
         var activePlayerId = player1Id
         var lastShotTimestamp = frame.shots.firstOrNull()?.timestamp ?: 0
+
+        val snookerSituations = mutableListOf<MutableList<Shot>>()
+        if (frame.shots.isNotEmpty()) {
+            var currentSnookerSequence = mutableListOf<Shot>()
+            for (shot in frame.shots) {
+                if (shot.wasSnookered) {
+                    currentSnookerSequence.add(shot)
+                } else {
+                    if (currentSnookerSequence.isNotEmpty()) {
+                        snookerSituations.add(currentSnookerSequence)
+                        currentSnookerSequence = mutableListOf()
+                    }
+                }
+            }
+            if (currentSnookerSequence.isNotEmpty()) {
+                snookerSituations.add(currentSnookerSequence)
+            }
+        }
+
+        for (situation in snookerSituations) {
+            val player = situation.first().playerId
+            if (player == player1Id) p1SnookersTotal++ else p2SnookersTotal++
+
+            val successfulAttemptIndex = situation.indexOfFirst {
+                it.type != ShotType.FOUL && it.type != ShotType.MISS && it.type != ShotType.MISS_PENALTY
+            }
+
+            if (successfulAttemptIndex != -1) {
+                val attempts = successfulAttemptIndex + 1
+                if (player == player1Id) {
+                    when (attempts) {
+                        1 -> p1SnookerEscapesFirstAttempt++
+                        2 -> p1SnookerEscapesSecondAttempt++
+                        else -> p1SnookerEscapesThirdOrMoreAttempt++
+                    }
+                } else {
+                    when (attempts) {
+                        1 -> p2SnookerEscapesFirstAttempt++
+                        2 -> p2SnookerEscapesSecondAttempt++
+                        else -> p2SnookerEscapesThirdOrMoreAttempt++
+                    }
+                }
+            }
+        }
 
         for ((index, shot) in frame.shots.withIndex()) {
             val shotTime = shot.timestamp - lastShotTimestamp
@@ -387,7 +455,15 @@ class MatchDetailsViewModel @Inject constructor(
             player2ShotTotalTime = p2ShotTotalTime,
             player1ShotCount = p1ShotCount,
             player2ShotCount = p2ShotCount,
-            winnerId = winnerId
+            winnerId = winnerId,
+            player1SnookerEscapesFirstAttempt = p1SnookerEscapesFirstAttempt,
+            player2SnookerEscapesFirstAttempt = p2SnookerEscapesFirstAttempt,
+            player1SnookerEscapesSecondAttempt = p1SnookerEscapesSecondAttempt,
+            player2SnookerEscapesSecondAttempt = p2SnookerEscapesSecondAttempt,
+            player1SnookerEscapesThirdOrMoreAttempt = p1SnookerEscapesThirdOrMoreAttempt,
+            player2SnookerEscapesThirdOrMoreAttempt = p2SnookerEscapesThirdOrMoreAttempt,
+            player1SnookersTotal = p1SnookersTotal,
+            player2SnookersTotal = p2SnookersTotal
         )
     }
 }

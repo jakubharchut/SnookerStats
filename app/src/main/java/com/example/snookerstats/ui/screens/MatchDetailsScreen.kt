@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -412,6 +414,59 @@ fun BreaksInfoDialog(
 }
 
 @Composable
+fun SnookerEscapeStat(stats: AggregatedStats) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val p1TotalSnookerEscapes = stats.player1SnookerEscapesFirstAttempt + stats.player1SnookerEscapesSecondAttempt + stats.player1SnookerEscapesThirdOrMoreAttempt
+    val p2TotalSnookerEscapes = stats.player2SnookerEscapesFirstAttempt + stats.player2SnookerEscapesSecondAttempt + stats.player2SnookerEscapesThirdOrMoreAttempt
+
+    Column {
+        StatsRow(
+            label = "Wyjścia ze snookera",
+            player1Content = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "${String.format("%.1f", if (stats.player1SnookersTotal > 0) (p1TotalSnookerEscapes.toDouble() / stats.player1SnookersTotal) * 100 else 0.0)}%", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    Text(text = "($p1TotalSnookerEscapes/${stats.player1SnookersTotal})", style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            player2Content = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "${String.format("%.1f", if (stats.player2SnookersTotal > 0) (p2TotalSnookerEscapes.toDouble() / stats.player2SnookersTotal) * 100 else 0.0)}%", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                    Text(text = "($p2TotalSnookerEscapes/${stats.player2SnookersTotal})", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        )
+        if (expanded) {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                StatsRow(
+                    label = "w 1. próbie",
+                    player1Content = { Text(text = stats.player1SnookerEscapesFirstAttempt.toString(), style = MaterialTheme.typography.bodyMedium) },
+                    player2Content = { Text(text = stats.player2SnookerEscapesFirstAttempt.toString(), style = MaterialTheme.typography.bodyMedium) }
+                )
+                StatsRow(
+                    label = "w 2. próbie",
+                    player1Content = { Text(text = stats.player1SnookerEscapesSecondAttempt.toString(), style = MaterialTheme.typography.bodyMedium) },
+                    player2Content = { Text(text = stats.player2SnookerEscapesSecondAttempt.toString(), style = MaterialTheme.typography.bodyMedium) }
+                )
+                StatsRow(
+                    label = "w 3.+ próbie",
+                    player1Content = { Text(text = stats.player1SnookerEscapesThirdOrMoreAttempt.toString(), style = MaterialTheme.typography.bodyMedium) },
+                    player2Content = { Text(text = stats.player2SnookerEscapesThirdOrMoreAttempt.toString(), style = MaterialTheme.typography.bodyMedium) }
+                )
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }, contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (expanded) "Zwiń" else "Rozwiń",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 fun StatsCard(stats: AggregatedStats?, title: String, player1: User?, player2: User?) {
     var showPlayer1BreaksDialog by remember { mutableStateOf(false) }
     var showPlayer2BreaksDialog by remember { mutableStateOf(false) }
@@ -534,6 +589,8 @@ fun StatsCard(stats: AggregatedStats?, title: String, player1: User?, player2: U
                     }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+                SnookerEscapeStat(stats)
+                Spacer(modifier = Modifier.height(16.dp))
                 StatsRow(
                     label = "Średnie punktowanie",
                     player1Content = {
@@ -579,8 +636,8 @@ fun AnimatedComparisonBar(
     val color1 = MaterialTheme.colorScheme.primary
     val color2 = MaterialTheme.colorScheme.primaryContainer
 
-    val displayValue1 = if (isTime) formatMillisToTime(value1.toLong()) else value1.toString()
-    val displayValue2 = if (isTime) formatMillisToTime(value2.toLong()) else value2.toString()
+    val displayValue1 = if (isTime) formatMillisToTime(value1.toLong()) else "$value1 pkt"
+    val displayValue2 = if (isTime) formatMillisToTime(value2.toLong()) else "$value2 pkt"
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

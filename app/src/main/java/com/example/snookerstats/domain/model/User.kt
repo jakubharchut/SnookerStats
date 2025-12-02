@@ -8,9 +8,12 @@ data class User(
     @PrimaryKey
     val uid: String = "",
     val username: String = "",
+    val username_lowercase: String = "",
     val email: String = "",
     val firstName: String = "",
+    val firstName_lowercase: String = "",
     val lastName: String = "",
+    val lastName_lowercase: String = "",
     val publicProfile: Boolean = true,
     val club: String? = null,
     val profileImageUrl: String? = null,

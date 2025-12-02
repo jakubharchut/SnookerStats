@@ -10,7 +10,7 @@ import com.example.snookerstats.domain.model.User
 
 @Database(
     entities = [User::class, Match::class],
-    version = 4, 
+    version = 5, 
     exportSchema = false
 )
 @TypeConverters(Converters::class)

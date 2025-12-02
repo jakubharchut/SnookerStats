@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.domain.repository.ProfileRepository
 import com.example.snookerstats.util.Resource
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -21,15 +22,15 @@ sealed class SetupProfileState {
     data class Error(val message: String) : SetupProfileState()
 }
 
-// Nowy stan do walidacji nazwy użytkownika
 data class UsernameValidationState(
     val isChecking: Boolean = false,
-    val isAvailable: Boolean? = null // null = nie sprawdzono, true = dostępna, false = zajęta
+    val isAvailable: Boolean? = null
 )
 
 @HiltViewModel
 class SetupProfileViewModel @Inject constructor(
-    private val repository: ProfileRepository
+    private val repository: ProfileRepository,
+    private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
     private val _setupState = MutableStateFlow<SetupProfileState>(SetupProfileState.Idle)
@@ -40,7 +41,7 @@ class SetupProfileViewModel @Inject constructor(
 
     private val _navigationEvent = Channel<ProfileNavigationEvent>()
     val navigationEvent = _navigationEvent.receiveAsFlow()
-    
+
     private var usernameCheckJob: Job? = null
 
     fun onUsernameChange(username: String) {
@@ -51,13 +52,12 @@ class SetupProfileViewModel @Inject constructor(
         }
         _usernameValidationState.value = UsernameValidationState(isChecking = true)
         usernameCheckJob = viewModelScope.launch {
-            delay(500L) // Debouncing
+            delay(500L)
             when(val response = repository.isUsernameTaken(username)) {
                 is Resource.Success -> {
                     _usernameValidationState.value = UsernameValidationState(isAvailable = !response.data)
                 }
                 is Resource.Error -> {
-                    // W przypadku błędu na razie uznajemy, że nie jest dostępna
                     _usernameValidationState.value = UsernameValidationState(isAvailable = false)
                 }
                 else -> {}
@@ -65,11 +65,38 @@ class SetupProfileViewModel @Inject constructor(
         }
     }
 
-    fun saveUserProfile(user: User) {
+    fun saveUserProfile(
+        username: String,
+        firstName: String,
+        lastName: String,
+        isPublicProfile: Boolean
+    ) {
         viewModelScope.launch {
-            if (_usernameValidationState.value.isAvailable != true) return@launch // Dodatkowe zabezpieczenie
+            if (_usernameValidationState.value.isAvailable != true) return@launch
 
             _setupState.value = SetupProfileState.Loading
+
+            val firebaseUser = firebaseAuth.currentUser
+            if (firebaseUser == null) {
+                _setupState.value = SetupProfileState.Error("Błąd: Użytkownik nie jest zalogowany.")
+                return@launch
+            }
+
+            val user = User(
+                uid = firebaseUser.uid,
+                email = firebaseUser.email ?: "",
+                username = username,
+                username_lowercase = username.lowercase(),
+                firstName = firstName,
+                firstName_lowercase = firstName.lowercase(),
+                lastName = lastName,
+                lastName_lowercase = lastName.lowercase(),
+                publicProfile = isPublicProfile,
+                friends = emptyList(),
+                friendRequestsSent = emptyList(),
+                friendRequestsReceived = emptyList()
+            )
+
             when (val response = repository.saveUserProfile(user)) {
                 is Resource.Success -> {
                     _navigationEvent.send(ProfileNavigationEvent.NavigateToMain)

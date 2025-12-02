@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.example.snookerstats.domain.model.User
 import com.example.snookerstats.ui.theme.SnookerStatsTheme
 import kotlinx.coroutines.flow.collectLatest
 
@@ -28,7 +27,7 @@ fun SetupProfileScreen(
 
     val setupState by viewModel.setupState.collectAsState()
     val usernameValidationState by viewModel.usernameValidationState.collectAsState()
-    
+
     val isUsernameFormatValid = username.isNotBlank() && !username.contains(" ")
     val isButtonEnabled = isUsernameFormatValid &&
                           usernameValidationState.isAvailable == true &&
@@ -126,13 +125,12 @@ fun SetupProfileScreen(
 
         Button(
             onClick = {
-                val user = User(
+                viewModel.saveUserProfile(
                     username = username.trim(),
                     firstName = firstName.trim(),
                     lastName = lastName.trim(),
-                    publicProfile = isPublicProfile
+                    isPublicProfile = isPublicProfile
                 )
-                viewModel.saveUserProfile(user)
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = setupState !is SetupProfileState.Loading && isButtonEnabled
@@ -143,7 +141,7 @@ fun SetupProfileScreen(
                 Text("Zapisz i kontynuuj")
             }
         }
-        
+
         if (setupState is SetupProfileState.Error) {
             val errorState = setupState as SetupProfileState.Error
             Text(

@@ -3,6 +3,7 @@ package com.example.snookerstats.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.snookerstats.domain.model.Match
+import com.example.snookerstats.domain.model.MatchResult
 import com.example.snookerstats.domain.model.TrainingAttempt
 import com.example.snookerstats.domain.repository.AuthRepository
 import com.example.snookerstats.domain.repository.ChatRepository
@@ -13,11 +14,7 @@ import com.example.snookerstats.util.Resource
 import com.example.snookerstats.util.SnackbarManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,12 +25,14 @@ class MainViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val matchRepository: MatchRepository,
     private val chatRepository: ChatRepository,
-    private val trainingRepository: TrainingRepository, // Injected repository
+    private val trainingRepository: TrainingRepository,
     private val snackbarManager: SnackbarManager
 ) : ViewModel() {
 
+    private val userId = authRepository.currentUser!!.uid
+
     val username: StateFlow<String> = flow {
-        val user = (userRepository.getUser(authRepository.currentUser!!.uid) as? Resource.Success)?.data
+        val user = (userRepository.getUser(userId) as? Resource.Success)?.data
         emit(user?.username ?: "...")
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "...")
 
@@ -41,7 +40,7 @@ class MainViewModel @Inject constructor(
         chatRepository.getChats().collect { resource ->
             if (resource is Resource.Success) {
                 val count = resource.data?.count { chat ->
-                    (chat.unreadCounts[authRepository.currentUser!!.uid] ?: 0) > 0
+                    (chat.unreadCounts[userId] ?: 0) > 0
                 } ?: 0
                 emit(count)
             }
@@ -51,21 +50,29 @@ class MainViewModel @Inject constructor(
     val ongoingMatch: StateFlow<Match?> = matchRepository.getOngoingMatch()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // Flow to get the last training attempt
     val lastTrainingAttempt: StateFlow<Resource<TrainingAttempt?>> = flow {
-        val userId = authRepository.currentUser?.uid
-        if (userId != null) {
-            emit(userId)
-        } else {
-            emit(null)
-        }
-    }.flatMapLatest { userId ->
-        if (userId != null) {
-            trainingRepository.getLastTrainingAttempt(userId)
-        } else {
-            flow { emit(Resource.Success(null)) }
-        }
+        emit(userId)
+    }.flatMapLatest { uId ->
+        trainingRepository.getLastTrainingAttempt(uId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Resource.Loading)
+
+    val formState: StateFlow<List<MatchResult>> = matchRepository.getMatches(userId, 5)
+        .map { resource ->
+            if (resource is Resource.Success) {
+                resource.data.map { match ->
+                    val userFrameScore = match.frames.count { it.player1Points > it.player2Points && it.frameWinnerId == userId }
+                    val opponentFrameScore = match.frames.size - userFrameScore
+                    when {
+                        userFrameScore > opponentFrameScore -> MatchResult.WIN
+                        userFrameScore < opponentFrameScore -> MatchResult.LOSS
+                        else -> MatchResult.DRAW
+                    }
+                }
+            } else {
+                emptyList()
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
 
     fun showSnackbar(message: String) {
         viewModelScope.launch {
